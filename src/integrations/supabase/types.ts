@@ -14,16 +14,550 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      dealer_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          dealer_id: string
+          description: string
+          id: string
+          imei_ref: string | null
+          invoice_ref: string | null
+          running_balance: number
+          shop_id: string
+          type: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          dealer_id: string
+          description?: string
+          id?: string
+          imei_ref?: string | null
+          invoice_ref?: string | null
+          running_balance?: number
+          shop_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          dealer_id?: string
+          description?: string
+          id?: string
+          imei_ref?: string | null
+          invoice_ref?: string | null
+          running_balance?: number
+          shop_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealer_transactions_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dealer_transactions_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dealers: {
+        Row: {
+          address: string
+          brand_name: string
+          created_at: string
+          dealer_name: string
+          gstin: string
+          id: string
+          phone: string
+          shop_id: string
+          total_credit: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          brand_name?: string
+          created_at?: string
+          dealer_name: string
+          gstin?: string
+          id?: string
+          phone?: string
+          shop_id: string
+          total_credit?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          brand_name?: string
+          created_at?: string
+          dealer_name?: string
+          gstin?: string
+          id?: string
+          phone?: string
+          shop_id?: string
+          total_credit?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealers_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      imei_records: {
+        Row: {
+          created_at: string
+          dealer_id: string | null
+          id: string
+          imei: string
+          invoice_id: string | null
+          product_id: string
+          purchase_date: string
+          purchase_price: number
+          shop_id: string
+          sold_date: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          dealer_id?: string | null
+          id?: string
+          imei: string
+          invoice_id?: string | null
+          product_id: string
+          purchase_date?: string
+          purchase_price?: number
+          shop_id: string
+          sold_date?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          dealer_id?: string | null
+          id?: string
+          imei?: string
+          invoice_id?: string | null
+          product_id?: string
+          purchase_date?: string
+          purchase_price?: number
+          shop_id?: string
+          sold_date?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imei_records_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "imei_records_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_items: {
+        Row: {
+          created_at: string
+          discount: number
+          discount_type: string
+          discount_value: number
+          id: string
+          imei: string | null
+          invoice_id: string
+          product_id: string
+          quantity: number
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          discount?: number
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          imei?: string | null
+          invoice_id: string
+          product_id: string
+          quantity?: number
+          total?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          discount?: number
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          imei?: string | null
+          invoice_id?: string
+          product_id?: string
+          quantity?: number
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          bill_discount: number
+          bill_discount_type: string
+          cgst: number
+          created_at: string
+          customer_gst: string | null
+          customer_name: string
+          customer_phone: string
+          date: string
+          grand_total: number
+          gst_bearer: string
+          id: string
+          invoice_number: string
+          is_gst_bill: boolean
+          payment_details: Json | null
+          payment_method: string
+          print_type: string
+          sgst: number
+          shop_id: string
+          status: string
+          subtotal: number
+          total_discount: number
+          user_id: string
+        }
+        Insert: {
+          bill_discount?: number
+          bill_discount_type?: string
+          cgst?: number
+          created_at?: string
+          customer_gst?: string | null
+          customer_name?: string
+          customer_phone?: string
+          date?: string
+          grand_total?: number
+          gst_bearer?: string
+          id?: string
+          invoice_number: string
+          is_gst_bill?: boolean
+          payment_details?: Json | null
+          payment_method?: string
+          print_type?: string
+          sgst?: number
+          shop_id: string
+          status?: string
+          subtotal?: number
+          total_discount?: number
+          user_id: string
+        }
+        Update: {
+          bill_discount?: number
+          bill_discount_type?: string
+          cgst?: number
+          created_at?: string
+          customer_gst?: string | null
+          customer_name?: string
+          customer_phone?: string
+          date?: string
+          grand_total?: number
+          gst_bearer?: string
+          id?: string
+          invoice_number?: string
+          is_gst_bill?: boolean
+          payment_details?: Json | null
+          payment_method?: string
+          print_type?: string
+          sgst?: number
+          shop_id?: string
+          status?: string
+          subtotal?: number
+          total_discount?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          brand: string
+          category: string
+          color: string
+          created_at: string
+          gst_percent: number
+          id: string
+          low_stock_threshold: number
+          model: string
+          purchase_price: number
+          sale_price: number
+          shop_id: string
+          stock_quantity: number
+          updated_at: string
+          variant: string
+        }
+        Insert: {
+          brand: string
+          category?: string
+          color?: string
+          created_at?: string
+          gst_percent?: number
+          id?: string
+          low_stock_threshold?: number
+          model: string
+          purchase_price?: number
+          sale_price?: number
+          shop_id: string
+          stock_quantity?: number
+          updated_at?: string
+          variant?: string
+        }
+        Update: {
+          brand?: string
+          category?: string
+          color?: string
+          created_at?: string
+          gst_percent?: number
+          id?: string
+          low_stock_threshold?: number
+          model?: string
+          purchase_price?: number
+          sale_price?: number
+          shop_id?: string
+          stock_quantity?: number
+          updated_at?: string
+          variant?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shop_memberships: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          shop_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          shop_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          shop_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_memberships_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_settings: {
+        Row: {
+          created_at: string
+          default_gst_percent: number
+          default_print_type: string
+          discount_enabled: boolean
+          id: string
+          pin_code: string
+          shop_id: string
+          thermal_width: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_gst_percent?: number
+          default_print_type?: string
+          discount_enabled?: boolean
+          id?: string
+          pin_code?: string
+          shop_id: string
+          thermal_width?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_gst_percent?: number
+          default_print_type?: string
+          discount_enabled?: boolean
+          id?: string
+          pin_code?: string
+          shop_id?: string
+          thermal_width?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_settings_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: true
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shops: {
+        Row: {
+          address: string
+          created_at: string
+          created_by: string | null
+          gst_number: string
+          id: string
+          invoice_prefix: string
+          last_invoice_number: number
+          logo_url: string | null
+          name: string
+          phone: string
+          terms_and_conditions: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          created_at?: string
+          created_by?: string | null
+          gst_number?: string
+          id?: string
+          invoice_prefix?: string
+          last_invoice_number?: number
+          logo_url?: string | null
+          name: string
+          phone?: string
+          terms_and_conditions?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          created_by?: string | null
+          gst_number?: string
+          id?: string
+          invoice_prefix?: string
+          last_invoice_number?: number
+          logo_url?: string | null
+          name?: string
+          phone?: string
+          terms_and_conditions?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_shop_ids: { Args: { _user_id: string }; Returns: string[] }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_shop_admin: {
+        Args: { _shop_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_shop_member: {
+        Args: { _shop_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +684,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "staff"],
+    },
   },
 } as const
