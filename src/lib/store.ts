@@ -10,6 +10,17 @@ export const calculateGST = (amount: number, gstPercent: number) => {
   };
 };
 
+// GST Calculation (exclusive)
+export const calculateExclusiveGST = (amount: number, gstPercent: number) => {
+  const totalGST = amount * (gstPercent / 100);
+  return {
+    taxableAmount: Math.round(amount * 100) / 100,
+    cgst: Math.round((totalGST / 2) * 100) / 100,
+    sgst: Math.round((totalGST / 2) * 100) / 100,
+    totalGST: Math.round(totalGST * 100) / 100,
+  };
+};
+
 // Amount in words (Indian numbering)
 export const amountInWords = (num: number): string => {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',

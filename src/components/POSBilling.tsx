@@ -8,7 +8,7 @@ import { ShopSelector } from '@/components/ShopSelector';
 import { CheckoutPanel } from '@/components/CheckoutPanel';
 import { BillItemRow } from '@/components/BillItemRow';
 import { InvoicePreview } from '@/components/InvoicePreview';
-import { Search, Barcode, Keyboard, Receipt, ScanLine, Zap } from 'lucide-react';
+import { Search, Barcode, Keyboard, Receipt, ScanLine } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -70,7 +70,47 @@ export const POSBilling: React.FC = () => {
   const [flashId, setFlashId] = useState<string | null>(null);
   const imeiRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { imeiRef.current?.focus(); }, []);
+  useEffect(() => {
+    imeiRef.current?.focus();
+  }, []);
+
+  const flashItem = (id: string) => {
+    setFlashId(id);
+    setTimeout(() => setFlashId(null), 500);
+  };
+
+  const addNewItem = (product: Product, imei?: string) => {
+    const newItem: BillItem = {
+      id: crypto.randomUUID(),
+      productId: product.id,
+      product,
+      imei,
+      quantity: 1,
+      unitPrice: Number(product.sale_price),
+      discount: 0,
+      discountType: 'flat',
+      discountValue: 0,
+      total: Number(product.sale_price),
+    };
+
+    setItems(prev => [...prev, newItem]);
+    flashItem(newItem.id);
+    return newItem;
+  };
+
+  const incrementExistingItem = (itemId: string) => {
+    setItems(prev => prev.map(item => {
+      if (item.id !== itemId) return item;
+      const nextQuantity = item.quantity + 1;
+      const lineBase = item.unitPrice - item.discount;
+      return {
+        ...item,
+        quantity: nextQuantity,
+        total: lineBase * nextQuantity,
+      };
+    }));
+    flashItem(itemId);
+  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -88,7 +128,7 @@ export const POSBilling: React.FC = () => {
     if (!imei || !activeShopId) return;
 
     if (items.some(i => i.imei === imei)) {
-      toast.error('IMEI already in this bill');
+      toast.error('This IMEI is already added to the bill');
       setImeiInput('');
       return;
     }
@@ -102,7 +142,7 @@ export const POSBilling: React.FC = () => {
       .maybeSingle();
 
     if (!record) {
-      toast.error('IMEI not found or not in stock');
+      toast.error('IMEI not found or already sold');
       setImeiInput('');
       return;
     }
@@ -114,39 +154,44 @@ export const POSBilling: React.FC = () => {
       return;
     }
 
-    const newItem: BillItem = {
-      id: crypto.randomUUID(),
-      productId: product.id,
-      product,
-      imei,
-      quantity: 1,
-      unitPrice: Number(product.sale_price),
-      discount: 0,
-      discountType: 'flat',
-      discountValue: 0,
-      total: Number(product.sale_price),
-    };
-
-    setItems(prev => [...prev, newItem]);
-    setFlashId(newItem.id);
-    setTimeout(() => setFlashId(null), 500);
+    addNewItem(product, imei);
     setImeiInput('');
     toast.success(`Added: ${product.brand} ${product.model}`);
   }, [imeiInput, items, activeShopId]);
 
-  const handleSearch = useCallback(async () => {
-    const q = searchInput.toLowerCase().trim();
-    if (!q || !activeShopId) { setSearchResults([]); return; }
-    const { data } = await supabase
-      .from('products')
-      .select('*')
-      .eq('shop_id', activeShopId)
-      .or(`brand.ilike.%${q}%,model.ilike.%${q}%,variant.ilike.%${q}%`)
-      .limit(10);
-    setSearchResults(data || []);
-  }, [searchInput, activeShopId]);
+  useEffect(() => {
+    const runSearch = async () => {
+      const q = searchInput.toLowerCase().trim();
+      if (!showSearch || !q || !activeShopId) {
+        setSearchResults([]);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('shop_id', activeShopId)
+        .or(`brand.ilike.%${q}%,model.ilike.%${q}%,variant.ilike.%${q}%,color.ilike.%${q}%`)
+        .limit(12);
+
+      setSearchResults(data || []);
+    };
+
+    const timer = window.setTimeout(runSearch, 180);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, showSearch, activeShopId]);
 
   const addProductManually = async (product: Product) => {
+    const existing = items.find(i => i.productId === product.id && !i.imei);
+    if (existing) {
+      incrementExistingItem(existing.id);
+      setShowSearch(false);
+      setSearchInput('');
+      setSearchResults([]);
+      toast.success(`Increased qty: ${product.brand} ${product.model}`);
+      return;
+    }
+
     const { data: imeiRecord } = await supabase
       .from('imei_records')
       .select('imei')
@@ -159,22 +204,7 @@ export const POSBilling: React.FC = () => {
     const usedImeis = items.map(i => i.imei).filter(Boolean);
     const imei = imeiRecord && !usedImeis.includes(imeiRecord.imei) ? imeiRecord.imei : undefined;
 
-    const newItem: BillItem = {
-      id: crypto.randomUUID(),
-      productId: product.id,
-      product,
-      imei,
-      quantity: 1,
-      unitPrice: Number(product.sale_price),
-      discount: 0,
-      discountType: 'flat',
-      discountValue: 0,
-      total: Number(product.sale_price),
-    };
-
-    setItems(prev => [...prev, newItem]);
-    setFlashId(newItem.id);
-    setTimeout(() => setFlashId(null), 500);
+    addNewItem(product, imei);
     setShowSearch(false);
     setSearchInput('');
     setSearchResults([]);
@@ -230,7 +260,7 @@ export const POSBilling: React.FC = () => {
     }).select().single();
 
     if (invError || !invoice) {
-      toast.error('Failed to save invoice: ' + invError?.message);
+      toast.error(`Failed to save invoice: ${invError?.message}`);
       return;
     }
 
@@ -247,7 +277,6 @@ export const POSBilling: React.FC = () => {
     }));
     await supabase.from('invoice_items').insert(invoiceItems);
 
-    // Mark IMEIs as sold & update dealer ledger
     for (const item of items) {
       if (item.imei) {
         const { data: imeiRecord } = await supabase
@@ -262,7 +291,6 @@ export const POSBilling: React.FC = () => {
           invoice_id: invoice.id,
         }).eq('imei', item.imei);
 
-        // Auto-deduct from dealer ledger
         if (imeiRecord?.dealer_id) {
           const { data: dealer } = await supabase
             .from('dealers')
@@ -271,22 +299,22 @@ export const POSBilling: React.FC = () => {
             .single();
 
           if (dealer) {
-            const newBalance = Number(dealer.total_credit) - item.total;
+            const costValue = Number(imeiRecord.purchase_price || 0);
+            const newBalance = Number(dealer.total_credit) - costValue;
             await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', imeiRecord.dealer_id);
             await supabase.from('dealer_transactions').insert({
               dealer_id: imeiRecord.dealer_id,
               shop_id: activeShopId,
               type: 'sale_deduction',
-              amount: item.total,
+              amount: costValue,
               running_balance: newBalance,
-              description: `Sale: ${item.product.brand} ${item.product.model} (IMEI: ${item.imei})`,
+              description: `Sale deduction at cost price for ${item.product.brand} ${item.product.model} (IMEI: ${item.imei})`,
               invoice_ref: invoiceNumber,
               imei_ref: item.imei,
             });
           }
         }
 
-        // Decrease product stock
         await supabase.rpc('decrement_stock', { p_product_id: item.productId } as any);
       }
     }
@@ -327,23 +355,19 @@ export const POSBilling: React.FC = () => {
   return (
     <div className="flex h-full">
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Bar */}
         <div className="flex items-center gap-3 px-4 h-14 bg-card border-b">
           <ShopSelector />
           <div className="flex items-center gap-2 ml-auto">
             <div className="flex bg-secondary rounded-lg p-0.5">
-              <button onClick={() => setIsGSTBill(true)}
-                className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+              <button onClick={() => setIsGSTBill(true)} className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
                 GST <span className="opacity-50 ml-0.5">F2</span>
               </button>
-              <button onClick={() => setIsGSTBill(false)}
-                className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${!isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+              <button onClick={() => setIsGSTBill(false)} className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${!isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
                 Non-GST <span className="opacity-50 ml-0.5">F3</span>
               </button>
             </div>
             {isGSTBill && (
-              <select value={gstBearer} onChange={e => setGstBearer(e.target.value as 'customer' | 'seller')}
-                className="h-8 px-2 rounded-md border border-input bg-card text-xs font-display font-medium focus:outline-none focus:ring-2 focus:ring-ring">
+              <select value={gstBearer} onChange={e => setGstBearer(e.target.value as 'customer' | 'seller')} className="h-8 px-2 rounded-md border border-input bg-card text-xs font-display font-medium focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="customer">Customer bears GST</option>
                 <option value="seller">Seller bears GST</option>
               </select>
@@ -351,7 +375,6 @@ export const POSBilling: React.FC = () => {
           </div>
         </div>
 
-        {/* IMEI Input */}
         <div className="px-4 py-3 bg-card border-b">
           <div className="flex gap-2">
             <div className="flex-1 relative">
@@ -359,9 +382,9 @@ export const POSBilling: React.FC = () => {
               <input
                 ref={imeiRef}
                 value={imeiInput}
-                onChange={e => setImeiInput(e.target.value)}
+                onChange={e => setImeiInput(e.target.value.replace(/\s/g, ''))}
                 onKeyDown={e => { if (e.key === 'Enter') handleIMEIScan(); }}
-                placeholder="Scan IMEI or type number..."
+                placeholder="Scan IMEI barcode or type IMEI..."
                 className="w-full h-12 pl-12 pr-4 rounded-xl border-2 border-primary/20 bg-accent/30 font-display text-lg tracking-wider focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 placeholder:text-muted-foreground/40 placeholder:tracking-normal placeholder:text-sm transition-all"
               />
             </div>
@@ -374,37 +397,40 @@ export const POSBilling: React.FC = () => {
           </div>
 
           {showSearch && (
-            <div className="mt-3 animate-in">
+            <div className="mt-3 animate-in rounded-2xl border bg-card p-3 shadow-sm">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input value={searchInput}
-                  onChange={e => { setSearchInput(e.target.value); }}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
-                  placeholder="Search by brand, model, variant..."
-                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-card text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20"
+                <input
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  placeholder="Search by brand, model, variant or color..."
+                  className="w-full h-11 pl-10 pr-4 rounded-xl border border-input bg-card text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20"
                   autoFocus
                 />
               </div>
-              <Button size="sm" onClick={handleSearch} className="mt-2">Search</Button>
+              {searchInput.trim() && (
+                <p className="mt-2 text-[11px] text-muted-foreground">Filtered products: {searchResults.length}</p>
+              )}
               {searchResults.length > 0 && (
-                <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border bg-card shadow-lg">
+                <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border bg-card">
                   {searchResults.map(p => (
-                    <button key={p.id} onClick={() => addProductManually(p)}
-                      className="w-full text-left px-4 py-3 hover:bg-accent text-sm border-b last:border-b-0 flex justify-between items-center transition-colors">
+                    <button key={p.id} onClick={() => addProductManually(p)} className="w-full text-left px-4 py-3 hover:bg-accent text-sm border-b last:border-b-0 flex justify-between items-center transition-colors">
                       <div>
                         <span className="font-display font-semibold">{p.brand} {p.model}</span>
-                        <span className="text-muted-foreground ml-2 text-xs">{p.variant} {p.color}</span>
+                        <div className="text-muted-foreground text-xs mt-0.5">{p.variant || 'Standard'} · {p.color || 'Default'} · Stock {p.stock_quantity}</div>
                       </div>
                       <span className="price-text text-primary">₹{Number(p.sale_price).toLocaleString('en-IN')}</span>
                     </button>
                   ))}
                 </div>
               )}
+              {searchInput.trim() && searchResults.length === 0 && (
+                <div className="mt-2 rounded-xl bg-secondary/40 px-4 py-6 text-center text-sm text-muted-foreground">No matching products found</div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Shortcuts */}
         <div className="flex items-center gap-3 px-4 py-1.5 bg-secondary/30 text-[11px] text-muted-foreground font-display font-medium">
           <Keyboard className="w-3.5 h-3.5" />
           <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">F2</span> GST
@@ -413,7 +439,6 @@ export const POSBilling: React.FC = () => {
           <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">ESC</span> Close
         </div>
 
-        {/* Items */}
         <div className="flex-1 pos-scrollable">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">

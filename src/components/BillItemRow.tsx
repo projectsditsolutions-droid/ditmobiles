@@ -1,10 +1,11 @@
 import React from 'react';
-import { X, Tag } from 'lucide-react';
+import { X, Tag, Layers3 } from 'lucide-react';
 
 interface BillItem {
   id: string;
   product: { brand: string; model: string; variant: string; color: string; sale_price: number };
   imei?: string;
+  quantity: number;
   unitPrice: number;
   discountValue: number;
   discountType: 'percentage' | 'flat';
@@ -25,13 +26,25 @@ export const BillItemRow: React.FC<Props> = ({ item, index, flash, onRemove, onU
     <tr className={`border-b border-border/50 hover:bg-accent/30 transition-all duration-150 ${flash ? 'imei-flash' : ''}`}>
       <td className="px-4 py-3 text-muted-foreground font-display text-xs">{index + 1}</td>
       <td className="px-4 py-3">
-        <div className="font-display font-semibold text-sm">{item.product.brand} {item.product.model}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">{item.product.variant} · {item.product.color}</div>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="font-display font-semibold text-sm">{item.product.brand} {item.product.model}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{item.product.variant} · {item.product.color}</div>
+          </div>
+          {item.quantity > 1 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-display font-bold">
+              <Layers3 className="w-3 h-3" /> Qty {item.quantity}
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-4 py-3">
         <span className="font-mono text-xs bg-secondary/60 px-2 py-1 rounded-md">{item.imei || '—'}</span>
       </td>
-      <td className="px-4 py-3 text-right price-text text-sm">₹{item.unitPrice.toLocaleString('en-IN')}</td>
+      <td className="px-4 py-3 text-right">
+        <div className="price-text text-sm">₹{item.unitPrice.toLocaleString('en-IN')}</div>
+        {item.quantity > 1 && <div className="text-[10px] text-muted-foreground">× {item.quantity}</div>}
+      </td>
       <td className="px-4 py-3 text-right">
         {discountEnabled ? (
           <div className="flex items-center justify-end gap-1">
