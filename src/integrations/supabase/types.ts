@@ -539,6 +539,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decrement_stock: { Args: { p_product_id: string }; Returns: undefined }
       get_user_shop_ids: { Args: { _user_id: string }; Returns: string[] }
       has_role: {
         Args: {
