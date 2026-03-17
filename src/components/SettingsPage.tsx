@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { getShops, saveShops, getSettings, saveSettings, getPIN, setPIN as savePIN } from '@/lib/store';
-import { ShopProfile, AppSettings } from '@/types';
+import { ShopProfile } from '@/types';
+import { AppSettings } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
