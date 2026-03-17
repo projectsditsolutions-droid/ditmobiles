@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useShop } from '@/contexts/ShopContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Edit2, Trash2, Search, AlertTriangle, Package, Upload, ScanLine, Filter, ChevronDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, AlertTriangle, Package, Upload, ScanLine, Filter, X, BoxIcon, Smartphone, Cpu, HardDrive, Palette, IndianRupee, Tag, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -22,11 +22,18 @@ export const InventoryManagement: React.FC = () => {
   const [form, setForm] = useState(emptyProduct);
   const [newIMEI, setNewIMEI] = useState('');
   const [addingIMEIFor, setAddingIMEIFor] = useState<string | null>(null);
-  const [tab, setTab] = useState<'products' | 'imei' | 'bulk'>('products');
+  const [tab, setTab] = useState<'products' | 'imei' | 'stock_entry' | 'bulk'>('products');
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [bulkField, setBulkField] = useState<'sale_price' | 'purchase_price' | 'gst_percent'>('sale_price');
   const [bulkValue, setBulkValue] = useState('');
   const [imeiFilter, setImeiFilter] = useState<'all' | 'in_stock' | 'sold'>('all');
+  
+  // Stock entry state
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockProduct, setStockProduct] = useState<Product | null>(null);
+  const [stockIMEIs, setStockIMEIs] = useState('');
+  const [stockUnitPrice, setStockUnitPrice] = useState(0);
+  const [stockSearchResults, setStockSearchResults] = useState<Product[]>([]);
 
   const fetchProducts = async () => {
     if (!activeShopId) return;
@@ -48,8 +55,89 @@ export const InventoryManagement: React.FC = () => {
 
   const filteredIMEIs = imeis.filter(r => imeiFilter === 'all' || r.status === imeiFilter);
 
+  // Auto-filter for stock entry
+  const handleStockSearch = useCallback((q: string) => {
+    setStockSearch(q);
+    if (!q.trim()) { setStockSearchResults([]); return; }
+    const lower = q.toLowerCase();
+    // Check if it's an IMEI (numeric, 15 digits)
+    if (/^\d+$/.test(q.trim()) && q.trim().length <= 15) {
+      // Search by IMEI in existing records
+      const matchingIMEI = imeis.find(r => r.imei.includes(q.trim()));
+      if (matchingIMEI?.products) {
+        setStockSearchResults([matchingIMEI.products as Product]);
+        return;
+      }
+    }
+    const results = products.filter(p =>
+      `${p.brand} ${p.model} ${p.variant} ${p.color}`.toLowerCase().includes(lower)
+    );
+    setStockSearchResults(results);
+  }, [products, imeis]);
+
+  const selectStockProduct = (p: Product) => {
+    setStockProduct(p);
+    setStockSearch(`${p.brand} ${p.model} ${p.variant}`);
+    setStockUnitPrice(Number(p.purchase_price));
+    setStockSearchResults([]);
+  };
+
+  const handleStockEntry = async () => {
+    if (!stockProduct || !activeShopId) { toast.error('Select a product first'); return; }
+    const imeiList = stockIMEIs.split('\n').map(s => s.trim()).filter(s => s.length === 15 && /^\d+$/.test(s));
+    if (imeiList.length === 0) { toast.error('Enter valid 15-digit IMEI numbers'); return; }
+
+    let added = 0;
+    for (const imei of imeiList) {
+      const { error } = await supabase.from('imei_records').insert({
+        imei, product_id: stockProduct.id, shop_id: activeShopId,
+        status: 'in_stock', purchase_price: stockUnitPrice,
+      });
+      if (error) {
+        if (error.code === '23505') toast.error(`Duplicate IMEI: ${imei}`);
+        else toast.error(error.message);
+      } else {
+        added++;
+      }
+    }
+
+    if (added > 0) {
+      // If product already exists, increase qty
+      await supabase.from('products').update({
+        stock_quantity: stockProduct.stock_quantity + added,
+      }).eq('id', stockProduct.id);
+      toast.success(`${added} units added to ${stockProduct.brand} ${stockProduct.model}`);
+    }
+
+    setStockIMEIs('');
+    setStockProduct(null);
+    setStockSearch('');
+    setStockUnitPrice(0);
+    fetchProducts(); fetchIMEIs();
+  };
+
   const handleSaveProduct = async () => {
     if (!form.brand || !form.model || !activeShopId) { toast.error('Brand and Model are required'); return; }
+    
+    // Check if product already exists (auto-increase qty logic)
+    if (!editingId) {
+      const existing = products.find(p => 
+        p.brand.toLowerCase() === form.brand.toLowerCase() && 
+        p.model.toLowerCase() === form.model.toLowerCase() && 
+        p.variant.toLowerCase() === (form.variant || '').toLowerCase() &&
+        p.color.toLowerCase() === (form.color || '').toLowerCase()
+      );
+      if (existing) {
+        toast.info(`Product already exists: ${existing.brand} ${existing.model}. Use Stock Entry to add units.`);
+        setTab('stock_entry');
+        setStockProduct(existing);
+        setStockSearch(`${existing.brand} ${existing.model} ${existing.variant}`);
+        setStockUnitPrice(Number(existing.purchase_price));
+        setShowForm(false);
+        return;
+      }
+    }
+
     if (editingId) {
       await supabase.from('products').update({ ...form }).eq('id', editingId);
       toast.success('Product updated');
@@ -111,21 +199,72 @@ export const InventoryManagement: React.FC = () => {
 
   const getStockCount = (productId: string) => imeis.filter(r => r.product_id === productId && r.status === 'in_stock').length;
   const lowStockProducts = products.filter(p => getStockCount(p.id) <= p.low_stock_threshold);
+  const totalStockValue = products.reduce((s, p) => s + Number(p.purchase_price) * getStockCount(p.id), 0);
+  const validIMEICount = stockIMEIs.split('\n').filter(s => s.trim().length === 15 && /^\d+$/.test(s.trim())).length;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto overflow-y-auto h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-display text-2xl font-extrabold">Inventory</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {products.length} products · {imeis.filter(r => r.status === 'in_stock').length} units in stock
-          </p>
+    <div className="p-4 md:p-6 max-w-7xl mx-auto overflow-y-auto h-full">
+      {/* Header with stats */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="font-display text-2xl font-extrabold tracking-tight">Inventory Management</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Manage products, stock entries, and IMEI records</p>
+          </div>
         </div>
-        <div className="flex bg-secondary rounded-lg p-0.5">
-          {([['products', Package, 'Products'], ['imei', ScanLine, 'IMEI Records'], ['bulk', Upload, 'Bulk Update']] as const).map(([t, Icon, label]) => (
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="stat-card">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Package className="w-4 h-4 text-primary" />
+              </div>
+              <span className="text-xs text-muted-foreground font-medium">Products</span>
+            </div>
+            <p className="font-display text-xl font-extrabold">{products.length}</p>
+          </div>
+          <div className="stat-card">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                <ScanLine className="w-4 h-4 text-success" />
+              </div>
+              <span className="text-xs text-muted-foreground font-medium">In Stock</span>
+            </div>
+            <p className="font-display text-xl font-extrabold">{imeis.filter(r => r.status === 'in_stock').length}</p>
+          </div>
+          <div className="stat-card">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-warning" />
+              </div>
+              <span className="text-xs text-muted-foreground font-medium">Low Stock</span>
+            </div>
+            <p className="font-display text-xl font-extrabold text-warning">{lowStockProducts.length}</p>
+          </div>
+          <div className="stat-card">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+                <IndianRupee className="w-4 h-4 text-accent-foreground" />
+              </div>
+              <span className="text-xs text-muted-foreground font-medium">Stock Value</span>
+            </div>
+            <p className="font-display text-lg font-extrabold">₹{totalStockValue.toLocaleString('en-IN')}</p>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex bg-secondary rounded-xl p-1 gap-0.5">
+          {([
+            ['products', Package, 'Products'],
+            ['stock_entry', BoxIcon, 'Stock Entry'],
+            ['imei', ScanLine, 'IMEI Records'],
+            ['bulk', Upload, 'Bulk Update'],
+          ] as const).map(([t, Icon, label]) => (
             <button key={t} onClick={() => setTab(t as any)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${tab === t ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-display font-semibold transition-all ${
+                tab === t ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}>
               <Icon className="w-3.5 h-3.5" />{label}
             </button>
           ))}
@@ -143,60 +282,252 @@ export const InventoryManagement: React.FC = () => {
         </div>
       )}
 
+      {/* ============ STOCK ENTRY TAB ============ */}
+      {tab === 'stock_entry' && (
+        <div className="bg-card rounded-2xl border shadow-sm overflow-hidden animate-in">
+          <div className="p-5 border-b bg-gradient-to-r from-primary/5 to-transparent">
+            <h2 className="font-display font-bold text-lg flex items-center gap-2">
+              <BoxIcon className="w-5 h-5 text-primary" /> Add Stock Entry
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">Search by product name or IMEI. If the product exists, stock will be increased automatically.</p>
+          </div>
+          
+          <div className="p-5 space-y-5">
+            {/* Product Search with Auto-filter */}
+            <div>
+              <label className="text-xs font-display font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Search Product</label>
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  value={stockSearch}
+                  onChange={e => handleStockSearch(e.target.value)}
+                  placeholder="Type product name, brand, model or scan IMEI..."
+                  className="w-full h-12 pl-11 pr-10 rounded-xl border-2 border-input bg-background font-display text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 transition-all"
+                  autoFocus
+                />
+                {stockSearch && (
+                  <button onClick={() => { setStockSearch(''); setStockProduct(null); setStockSearchResults([]); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-secondary flex items-center justify-center hover:bg-destructive/10 transition-colors">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              
+              {/* Search Results Dropdown */}
+              {stockSearchResults.length > 0 && !stockProduct && (
+                <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border bg-card shadow-lg animate-in">
+                  {stockSearchResults.map(p => (
+                    <button key={p.id} onClick={() => selectStockProduct(p)}
+                      className="w-full text-left px-4 py-3 hover:bg-accent border-b last:border-b-0 flex justify-between items-center transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Smartphone className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <span className="font-display font-semibold text-sm">{p.brand} {p.model}</span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {p.variant && <span className="text-xs text-muted-foreground flex items-center gap-1"><Cpu className="w-3 h-3" />{p.variant}</span>}
+                            {p.color && <span className="text-xs text-muted-foreground flex items-center gap-1"><Palette className="w-3 h-3" />{p.color}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="price-text text-primary text-sm">₹{Number(p.sale_price).toLocaleString('en-IN')}</span>
+                        <p className="text-[10px] text-muted-foreground">Stock: {p.stock_quantity}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Selected Product Card */}
+              {stockProduct && (
+                <div className="mt-3 p-4 rounded-xl bg-accent/50 border border-primary/20 animate-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Smartphone className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-display font-bold text-base">{stockProduct.brand} {stockProduct.model}</p>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          {stockProduct.variant && <span className="text-xs text-muted-foreground">{stockProduct.variant}</span>}
+                          {stockProduct.color && <span className="text-xs text-muted-foreground">{stockProduct.color}</span>}
+                          <span className="text-xs font-display font-bold text-success">Current Stock: {stockProduct.stock_quantity}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={() => { setStockProduct(null); setStockSearch(''); }}
+                      className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center hover:bg-destructive/10 transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Price & IMEIs */}
+            {stockProduct && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-display font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Purchase Price (₹)</label>
+                    <div className="relative">
+                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input type="number" value={stockUnitPrice || ''} onChange={e => setStockUnitPrice(Number(e.target.value))}
+                        className="h-12 pl-10 text-lg font-display font-bold" placeholder="0" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-display font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Total Value</label>
+                    <div className="h-12 px-4 rounded-lg border border-primary/20 bg-primary/5 flex items-center text-lg font-display font-extrabold text-primary">
+                      ₹{(validIMEICount * stockUnitPrice).toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-display font-semibold text-muted-foreground uppercase tracking-wider">IMEI Numbers (one per line)</label>
+                    <span className="text-xs font-display font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                      {validIMEICount} valid IMEIs
+                    </span>
+                  </div>
+                  <textarea value={stockIMEIs}
+                    onChange={e => setStockIMEIs(e.target.value)}
+                    rows={6} placeholder="Enter 15-digit IMEI numbers, one per line...&#10;356789012345678&#10;356789012345679"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-input bg-background text-sm font-mono leading-relaxed focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 transition-all" />
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <div className="text-sm text-muted-foreground">
+                    Adding <span className="font-display font-bold text-foreground">{validIMEICount}</span> units of <span className="font-display font-bold text-foreground">{stockProduct.brand} {stockProduct.model}</span>
+                  </div>
+                  <Button size="lg" onClick={handleStockEntry} disabled={validIMEICount === 0}
+                    className="gradient-primary border-0 text-primary-foreground px-8 h-12 font-display font-bold text-base shadow-lg">
+                    <Plus className="w-5 h-5 mr-2" /> Add {validIMEICount} Units to Stock
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ============ PRODUCTS TAB ============ */}
       {tab === 'products' && (
         <>
           <div className="flex gap-3 mb-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search products..."
-                className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 transition-all" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search by brand, model, variant..."
+                className="w-full h-11 pl-11 pr-4 rounded-xl border-2 border-input bg-card text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/20 transition-all" />
             </div>
-            <Button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyProduct); }} className="gradient-primary border-0 text-primary-foreground">
-              <Plus className="w-4 h-4 mr-1.5" /> Add Product
+            <Button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyProduct); }} size="lg" className="gradient-primary border-0 text-primary-foreground h-11 px-5">
+              <Plus className="w-4 h-4 mr-2" /> Add Product
             </Button>
           </div>
 
+          {/* Product Form Modal */}
           {showForm && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm">
-              <div className="bg-card rounded-2xl p-6 shadow-2xl w-[520px] animate-scale-in border">
-                <h2 className="font-display font-bold text-lg mb-5">{editingId ? 'Edit Product' : 'Add New Product'}</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  {[['brand', 'Brand *'], ['model', 'Model *'], ['variant', 'Variant (RAM/Storage)'], ['color', 'Color']].map(([f, l]) => (
-                    <div key={f}>
-                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{l}</label>
-                      <Input value={(form as any)[f]} onChange={e => setForm({...form, [f]: e.target.value})} placeholder={f === 'variant' ? '6GB/128GB' : ''} className="h-10" />
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm" onClick={() => setShowForm(false)}>
+              <div className="bg-card rounded-2xl p-6 shadow-2xl w-[560px] animate-scale-in border" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="font-display font-bold text-lg">{editingId ? 'Edit Product' : 'Add New Product'}</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Fill in the mobile phone details</p>
+                  </div>
+                  <button onClick={() => setShowForm(false)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center hover:bg-destructive/10 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {/* Brand & Model Row */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                        <Tag className="w-3 h-3" /> Brand *
+                      </label>
+                      <Input value={form.brand} onChange={e => setForm({...form, brand: e.target.value})} placeholder="Samsung, Oppo, Vivo..." className="h-11" />
                     </div>
-                  ))}
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Purchase Price (₹)</label>
-                    <Input type="number" value={form.purchase_price || ''} onChange={e => setForm({...form, purchase_price: Number(e.target.value)})} className="h-10" />
+                    <div>
+                      <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                        <Smartphone className="w-3 h-3" /> Model *
+                      </label>
+                      <Input value={form.model} onChange={e => setForm({...form, model: e.target.value})} placeholder="Galaxy A54, Reno 11..." className="h-11" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Sale Price (₹)</label>
-                    <Input type="number" value={form.sale_price || ''} onChange={e => setForm({...form, sale_price: Number(e.target.value)})} className="h-10" />
+                  
+                  {/* Mobile Features Row */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                        <HardDrive className="w-3 h-3" /> RAM / Storage
+                      </label>
+                      <Input value={form.variant} onChange={e => setForm({...form, variant: e.target.value})} placeholder="6GB/128GB, 8GB/256GB..." className="h-11" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                        <Palette className="w-3 h-3" /> Color
+                      </label>
+                      <Input value={form.color} onChange={e => setForm({...form, color: e.target.value})} placeholder="Black, Blue, Gold..." className="h-11" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">GST %</label>
-                    <Input type="number" value={form.gst_percent} onChange={e => setForm({...form, gst_percent: Number(e.target.value)})} className="h-10" />
+                  
+                  {/* Pricing Row */}
+                  <div className="p-4 rounded-xl bg-accent/50 border border-accent-foreground/10">
+                    <p className="text-xs font-display font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
+                      <IndianRupee className="w-3 h-3" /> Pricing
+                    </p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-1 block">Purchase Price (₹)</label>
+                        <Input type="number" value={form.purchase_price || ''} onChange={e => setForm({...form, purchase_price: Number(e.target.value)})} className="h-10" placeholder="0" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-1 block">Sale Price (₹)</label>
+                        <Input type="number" value={form.sale_price || ''} onChange={e => setForm({...form, sale_price: Number(e.target.value)})} className="h-10" placeholder="0" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-1 block">GST %</label>
+                        <Input type="number" value={form.gst_percent} onChange={e => setForm({...form, gst_percent: Number(e.target.value)})} className="h-10" />
+                      </div>
+                    </div>
+                    {form.purchase_price > 0 && form.sale_price > 0 && (
+                      <div className="mt-3 pt-3 border-t border-accent-foreground/10 flex items-center gap-4 text-xs">
+                        <span className="text-muted-foreground">Margin:</span>
+                        <span className="font-display font-bold text-success">
+                          ₹{(form.sale_price - form.purchase_price).toLocaleString('en-IN')} ({((form.sale_price - form.purchase_price) / form.purchase_price * 100).toFixed(1)}%)
+                        </span>
+                      </div>
+                    )}
                   </div>
+                  
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Category</label>
-                    <select value={form.category} onChange={e => setForm({...form, category: e.target.value})}
-                      className="w-full h-10 px-3 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/20">
-                      <option value="mobile">Mobile</option>
-                      <option value="accessory">Accessory</option>
-                      <option value="other">Other</option>
-                    </select>
+                    <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Category</label>
+                    <div className="flex gap-2">
+                      {[['mobile', '📱 Mobile'], ['accessory', '🎧 Accessory'], ['other', '📦 Other']].map(([val, label]) => (
+                        <button key={val} onClick={() => setForm({...form, category: val})}
+                          className={`flex-1 py-2.5 rounded-lg text-xs font-display font-semibold transition-all border ${
+                            form.category === val ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-secondary border-transparent text-muted-foreground hover:text-foreground'
+                          }`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
+                
                 <div className="flex justify-end gap-3 mt-6">
                   <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); }}>Cancel</Button>
-                  <Button onClick={handleSaveProduct} className="gradient-primary border-0 text-primary-foreground">{editingId ? 'Update' : 'Add Product'}</Button>
+                  <Button onClick={handleSaveProduct} className="gradient-primary border-0 text-primary-foreground px-6">{editingId ? 'Update Product' : 'Add Product'}</Button>
                 </div>
               </div>
             </div>
           )}
 
+          {/* Products Table */}
           <div className="bg-card rounded-xl border overflow-hidden shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-secondary/40">
@@ -218,9 +549,9 @@ export const InventoryManagement: React.FC = () => {
                     <tr key={p.id} className="border-t border-border/50 hover:bg-accent/30 transition-colors">
                       <td className="px-4 py-3">
                         <div className="font-display font-semibold">{p.brand} {p.model}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{p.color} · GST {Number(p.gst_percent)}%</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{p.color} · GST {Number(p.gst_percent)}% · {p.category}</div>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{p.variant}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{p.variant || '—'}</td>
                       <td className="px-4 py-3 text-right price-text text-xs">₹{Number(p.purchase_price).toLocaleString('en-IN')}</td>
                       <td className="px-4 py-3 text-right price-text text-sm">₹{Number(p.sale_price).toLocaleString('en-IN')}</td>
                       <td className="px-4 py-3 text-center">
@@ -263,6 +594,7 @@ export const InventoryManagement: React.FC = () => {
                   <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
                     <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="font-display font-medium">No products found</p>
+                    <p className="text-xs mt-1">Add a product to get started</p>
                   </td></tr>
                 )}
               </tbody>
@@ -271,12 +603,13 @@ export const InventoryManagement: React.FC = () => {
         </>
       )}
 
+      {/* ============ IMEI TAB ============ */}
       {tab === 'imei' && (
         <>
           <div className="flex gap-2 mb-4">
             {(['all', 'in_stock', 'sold'] as const).map(f => (
               <button key={f} onClick={() => setImeiFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-display font-semibold transition-all ${imeiFilter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>
+                className={`px-4 py-2 rounded-lg text-xs font-display font-semibold transition-all ${imeiFilter === f ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>
                 {f === 'all' ? `All (${imeis.length})` : f === 'in_stock' ? `In Stock (${imeis.filter(r => r.status === 'in_stock').length})` : `Sold (${imeis.filter(r => r.status === 'sold').length})`}
               </button>
             ))}
@@ -324,14 +657,15 @@ export const InventoryManagement: React.FC = () => {
         </>
       )}
 
+      {/* ============ BULK TAB ============ */}
       {tab === 'bulk' && (
-        <div className="bg-card rounded-xl border p-6 space-y-5 shadow-sm">
+        <div className="bg-card rounded-2xl border p-6 space-y-5 shadow-sm animate-in">
           <div>
             <h2 className="font-display font-bold text-lg">Bulk Update</h2>
-            <p className="text-sm text-muted-foreground mt-1">Select products below and update a field for all selected items at once.</p>
+            <p className="text-sm text-muted-foreground mt-1">Select products and update a field for all at once.</p>
           </div>
           
-          <div className="flex gap-3 items-end p-4 rounded-xl bg-accent/50">
+          <div className="flex gap-3 items-end p-4 rounded-xl bg-accent/50 border">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Field</label>
               <select value={bulkField} onChange={e => setBulkField(e.target.value as any)}
@@ -360,7 +694,7 @@ export const InventoryManagement: React.FC = () => {
 
           <div className="space-y-1 max-h-[400px] overflow-y-auto pos-scrollable">
             {products.map(p => (
-              <label key={p.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg cursor-pointer transition-all ${selectedProducts.has(p.id) ? 'bg-accent' : 'hover:bg-secondary'}`}>
+              <label key={p.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg cursor-pointer transition-all ${selectedProducts.has(p.id) ? 'bg-accent border border-primary/20' : 'hover:bg-secondary border border-transparent'}`}>
                 <input type="checkbox" checked={selectedProducts.has(p.id)}
                   onChange={e => {
                     const next = new Set(selectedProducts);
