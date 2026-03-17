@@ -1,101 +1,127 @@
-import React, { useState } from 'react';
-import { getShops, saveShops, getSettings, saveSettings, getPIN, setPIN as savePIN } from '@/lib/store';
-import { ShopProfile } from '@/types';
-import { AppSettings } from '@/lib/store';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useShop } from '@/contexts/ShopContext';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, Trash2, Save, LogOut, Users, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import type { Database } from '@/integrations/supabase/types';
+
+type Shop = Database['public']['Tables']['shops']['Row'];
 
 export const SettingsPage: React.FC = () => {
-  const [shops, setShops] = useState<ShopProfile[]>(getShops());
-  const [settings, setSettings] = useState(getSettings());
-  const [pin, setPin] = useState('');
+  const { user, isAdmin, signOut } = useAuth();
+  const { shops, settings, refreshShops, refreshSettings, activeShopId } = useShop();
+  const [localShops, setLocalShops] = useState<Shop[]>(shops);
+  const [localSettings, setLocalSettings] = useState(settings);
   const [newPin, setNewPin] = useState('');
-  const [tab, setTab] = useState<'shops' | 'general' | 'pin'>('shops');
+  const [tab, setTab] = useState<'shops' | 'general' | 'pin' | 'users'>('shops');
+  const [members, setMembers] = useState<any[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
 
-  const handleSaveShop = (idx: number, field: keyof ShopProfile, value: string) => {
-    const updated = [...shops];
+  useEffect(() => { setLocalShops(shops); }, [shops]);
+  useEffect(() => { setLocalSettings(settings); }, [settings]);
+
+  const fetchMembers = async () => {
+    if (!activeShopId) return;
+    const { data } = await supabase
+      .from('shop_memberships')
+      .select('*, profiles(email, full_name)')
+      .eq('shop_id', activeShopId);
+    if (data) setMembers(data);
+  };
+
+  useEffect(() => { if (tab === 'users') fetchMembers(); }, [tab, activeShopId]);
+
+  const handleSaveShop = (idx: number, field: string, value: string) => {
+    const updated = [...localShops];
     (updated[idx] as any)[field] = value;
-    setShops(updated);
+    setLocalShops(updated);
   };
 
-  const handleSaveAllShops = () => {
-    saveShops(shops);
+  const handleSaveAllShops = async () => {
+    for (const shop of localShops) {
+      await supabase.from('shops').update({
+        name: shop.name, address: shop.address, phone: shop.phone,
+        gst_number: shop.gst_number, invoice_prefix: shop.invoice_prefix,
+      }).eq('id', shop.id);
+    }
     toast.success('Shop profiles saved');
+    refreshShops();
   };
 
-  const addShop = () => {
-    const newShop: ShopProfile = {
-      id: crypto.randomUUID(),
-      name: 'New Shop',
-      address: '',
-      phone: '',
-      gstNumber: '',
-      termsAndConditions: [
-        'வாங்கிய பொருள் மாற்றம் / பணம் திருப்பம் இல்லை',
-        'பில் இல்லாமல் மாற்றம் செய்ய முடியாது',
-        '2 நாட்களுக்குள் மட்டும் மாற்றம்',
-        'தொழில்நுட்ப குறைபாடு மட்டும் மாற்றம்',
-        'IMEI பொருந்த வேண்டும்',
-        'சேதமடைந்த பொருளுக்கு கடை பொறுப்பல்ல',
-      ],
-      invoicePrefix: 'INV',
-      lastInvoiceNumber: 0,
-    };
-    setShops([...shops, newShop]);
+  const addShop = async () => {
+    if (!user) return;
+    const { data: shop } = await supabase.from('shops').insert({
+      name: 'New Shop', created_by: user.id,
+    }).select().single();
+    if (shop) {
+      await supabase.from('shop_memberships').insert({ user_id: user.id, shop_id: shop.id, role: 'admin' as const });
+      await supabase.from('shop_settings').insert({ shop_id: shop.id });
+      toast.success('Shop created');
+      refreshShops();
+    }
   };
 
-  const removeShop = (id: string) => {
-    if (shops.length <= 1) { toast.error('Must have at least one shop'); return; }
-    setShops(shops.filter(s => s.id !== id));
+  const removeShop = async (id: string) => {
+    if (localShops.length <= 1) { toast.error('Must have at least one shop'); return; }
+    await supabase.from('shops').delete().eq('id', id);
+    toast.success('Shop removed');
+    refreshShops();
   };
 
-  const handleSaveSettings = () => {
-    saveSettings(settings);
+  const handleSaveSettings = async () => {
+    if (!localSettings || !activeShopId) return;
+    await supabase.from('shop_settings').update({
+      discount_enabled: localSettings.discount_enabled,
+      default_gst_percent: localSettings.default_gst_percent,
+      thermal_width: localSettings.thermal_width,
+      default_print_type: localSettings.default_print_type,
+    }).eq('shop_id', activeShopId);
     toast.success('Settings saved');
+    refreshSettings();
   };
 
-  const handleChangePin = () => {
+  const handleChangePin = async () => {
     if (newPin.length < 4) { toast.error('PIN must be at least 4 digits'); return; }
-    savePIN(newPin);
+    if (!activeShopId) return;
+    await supabase.from('shop_settings').update({ pin_code: newPin }).eq('shop_id', activeShopId);
     setNewPin('');
     toast.success('PIN updated');
+    refreshSettings();
   };
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <h1 className="font-display text-2xl font-bold mb-4">Settings</h1>
+    <div className="p-4 max-w-4xl mx-auto overflow-y-auto h-full">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="font-display text-2xl font-bold">Settings</h1>
+        <Button variant="outline" size="sm" onClick={signOut}>
+          <LogOut className="w-4 h-4 mr-1" /> Sign Out
+        </Button>
+      </div>
 
       <div className="flex gap-2 mb-4">
-        {(['shops', 'general', 'pin'] as const).map(t => (
+        {(['shops', 'general', 'pin', 'users'] as const).map(t => (
           <Button key={t} variant={tab === t ? 'default' : 'outline'} size="sm" onClick={() => setTab(t)} className="capitalize">
-            {t === 'shops' ? 'Shop Profiles' : t === 'general' ? 'General' : 'Change PIN'}
+            {t === 'shops' ? 'Shop Profiles' : t === 'general' ? 'General' : t === 'pin' ? 'Change PIN' : 'Team'}
           </Button>
         ))}
       </div>
 
       {tab === 'shops' && (
         <div className="space-y-4">
-          {shops.map((shop, idx) => (
+          {localShops.map((shop, idx) => (
             <div key={shop.id} className="bg-card rounded-xl border p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-display font-semibold">Shop #{idx + 1}</h3>
-                <button onClick={() => removeShop(shop.id)} className="text-muted-foreground hover:text-destructive">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <button onClick={() => removeShop(shop.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {([
-                  ['name', 'Shop Name'], ['address', 'Address'], ['phone', 'Phone'], ['gstNumber', 'GST Number'],
-                  ['invoicePrefix', 'Invoice Prefix'],
-                ] as [keyof ShopProfile, string][]).map(([field, label]) => (
+                {[['name', 'Shop Name'], ['address', 'Address'], ['phone', 'Phone'], ['gst_number', 'GST Number'], ['invoice_prefix', 'Invoice Prefix']].map(([field, label]) => (
                   <div key={field}>
                     <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
-                    <input
-                      value={String(shop[field] || '')}
-                      onChange={e => handleSaveShop(idx, field, e.target.value)}
-                      className="w-full h-9 px-3 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
+                    <Input value={String((shop as any)[field] || '')} onChange={e => handleSaveShop(idx, field, e.target.value)} />
                   </div>
                 ))}
               </div>
@@ -108,36 +134,34 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {tab === 'general' && (
+      {tab === 'general' && localSettings && (
         <div className="bg-card rounded-xl border p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-display font-medium">Enable Discounts</p>
               <p className="text-xs text-muted-foreground">Allow item and bill-level discounts</p>
             </div>
-            <button
-              onClick={() => setSettings({...settings, discountEnabled: !settings.discountEnabled})}
-              className={`w-12 h-6 rounded-full transition-colors ${settings.discountEnabled ? 'bg-primary' : 'bg-muted'}`}
-            >
-              <div className={`w-5 h-5 rounded-full bg-card shadow transition-transform ${settings.discountEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+            <button onClick={() => setLocalSettings({...localSettings, discount_enabled: !localSettings.discount_enabled})}
+              className={`w-12 h-6 rounded-full transition-colors ${localSettings.discount_enabled ? 'bg-primary' : 'bg-muted'}`}>
+              <div className={`w-5 h-5 rounded-full bg-card shadow transition-transform ${localSettings.discount_enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
             </button>
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Default GST %</label>
-            <input type="number" value={settings.defaultGSTPercent} onChange={e => setSettings({...settings, defaultGSTPercent: Number(e.target.value)})} className="w-24 h-9 px-3 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            <Input type="number" value={localSettings.default_gst_percent} onChange={e => setLocalSettings({...localSettings, default_gst_percent: Number(e.target.value)})} className="w-24" />
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Thermal Printer Width</label>
-            <select value={settings.thermalWidth} onChange={e => setSettings({...settings, thermalWidth: e.target.value as any})} className="w-32 h-9 px-3 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="58mm">58mm</option>
-              <option value="80mm">80mm</option>
+            <select value={localSettings.thermal_width} onChange={e => setLocalSettings({...localSettings, thermal_width: e.target.value})}
+              className="w-32 h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <option value="58mm">58mm</option><option value="80mm">80mm</option>
             </select>
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Default Print Type</label>
-            <select value={settings.defaultPrintType} onChange={e => setSettings({...settings, defaultPrintType: e.target.value as any})} className="w-32 h-9 px-3 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="thermal">Thermal</option>
-              <option value="a4">A4</option>
+            <select value={localSettings.default_print_type} onChange={e => setLocalSettings({...localSettings, default_print_type: e.target.value})}
+              className="w-32 h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <option value="thermal">Thermal</option><option value="a4">A4</option>
             </select>
           </div>
           <Button onClick={handleSaveSettings}><Save className="w-4 h-4 mr-1" /> Save Settings</Button>
@@ -146,12 +170,37 @@ export const SettingsPage: React.FC = () => {
 
       {tab === 'pin' && (
         <div className="bg-card rounded-xl border p-4 space-y-4 max-w-sm">
-          <p className="text-sm text-muted-foreground">Current PIN is set. Enter a new PIN to change it.</p>
+          <p className="text-sm text-muted-foreground">Enter a new PIN to change it.</p>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">New PIN (4-6 digits)</label>
-            <input type="password" maxLength={6} value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))} className="w-full h-9 px-3 rounded-md border bg-background text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-ring" />
+            <Input type="password" maxLength={6} value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))} className="font-mono tracking-widest" />
           </div>
           <Button onClick={handleChangePin}>Update PIN</Button>
+        </div>
+      )}
+
+      {tab === 'users' && (
+        <div className="bg-card rounded-xl border p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="w-5 h-5 text-primary" />
+            <h2 className="font-display font-bold">Team Members</h2>
+          </div>
+          <div className="space-y-2">
+            {members.map(m => (
+              <div key={m.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30">
+                <div>
+                  <p className="font-display font-medium text-sm">{(m.profiles as any)?.full_name || (m.profiles as any)?.email || 'Unknown'}</p>
+                  <p className="text-xs text-muted-foreground">{(m.profiles as any)?.email}</p>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-display font-semibold ${
+                  m.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'
+                }`}>
+                  <Shield className="w-3 h-3 inline mr-1" />{m.role}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">Team management features coming soon. Currently, the first user to sign up gets admin access.</p>
         </div>
       )}
     </div>
