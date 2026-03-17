@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,55 +6,61 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 215 28% 17%;
+    --background: 220 20% 97%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 28% 17%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 28% 17%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 217 91% 60%;
+    --primary: 230 80% 56%;
     --primary-foreground: 0 0% 100%;
+    --primary-glow: 230 80% 68%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 215 28% 17%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 215 28% 17%;
+    --accent: 230 80% 97%;
+    --accent-foreground: 230 80% 40%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 160 84% 39%;
+    --success: 152 69% 31%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 60%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 230 80% 56%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 28% 17%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 230 80% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 215 28% 17%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 230 80% 97%;
+    --sidebar-accent-foreground: 230 80% 40%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 230 80% 56%;
 
-    --imei-highlight: 217 91% 95%;
+    --imei-highlight: 230 80% 95%;
     --pos-panel: 0 0% 100%;
-    --checkout-bg: 215 28% 10%;
-    --checkout-fg: 0 0% 100%;
+    --checkout-bg: 222 47% 8%;
+    --checkout-fg: 0 0% 98%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(230 80% 56%), hsl(230 80% 68%));
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+    --shadow-elevated: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --shadow-modal: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 }
 
@@ -74,13 +80,13 @@
 
 @layer utilities {
   .font-display {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   }
   .font-body {
-    font-family: 'Roboto', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }
   .imei-text {
-    @apply font-display font-semibold tracking-wider text-foreground;
+    @apply font-mono font-semibold tracking-wider text-foreground;
     font-variant-numeric: tabular-nums;
   }
   .price-text {
@@ -90,15 +96,67 @@
   .pos-scrollable {
     @apply overflow-y-auto;
     scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .pos-scrollable::-webkit-scrollbar {
+    width: 6px;
+  }
+  .pos-scrollable::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .pos-scrollable::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
   }
   .imei-flash {
-    animation: imei-flash 0.4s ease-out;
+    animation: imei-flash 0.5s ease-out;
+  }
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border shadow-sm;
+  }
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .animate-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+  .stat-card {
+    @apply bg-card rounded-xl border p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
   }
 }
 
 @keyframes imei-flash {
-  0% { background-color: hsl(217 91% 95%); }
-  100% { background-color: transparent; }
+  0% { background-color: hsl(var(--imei-highlight)); transform: scale(1.005); }
+  100% { background-color: transparent; transform: scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
 }
 
 /* Print styles */

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Lock, Delete, AlertTriangle } from 'lucide-react';
+import { Lock, Delete, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 interface PinModalProps {
   open: boolean;
@@ -45,51 +45,50 @@ export const PinModal: React.FC<PinModalProps> = ({ open, onClose, onSubmit, att
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60 backdrop-blur-sm">
-      <div className="bg-card rounded-xl p-8 shadow-2xl w-80 flex flex-col items-center gap-6">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-          <Lock className="w-8 h-8 text-primary" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-md">
+      <div className="bg-card rounded-2xl p-8 shadow-2xl w-80 flex flex-col items-center gap-6 animate-scale-in border">
+        <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center shadow-lg">
+          <ShieldCheck className="w-8 h-8 text-primary-foreground" />
         </div>
-        <h2 className="font-display text-xl font-bold text-foreground">Enter PIN</h2>
+        <div className="text-center">
+          <h2 className="font-display text-xl font-extrabold text-foreground">Enter PIN</h2>
+          <p className="text-xs text-muted-foreground mt-1">Access protected module</p>
+        </div>
 
         {locked ? (
-          <div className="flex items-center gap-2 text-destructive text-sm">
+          <div className="flex items-center gap-2 text-destructive bg-destructive/10 px-3 py-2 rounded-lg text-sm">
             <AlertTriangle className="w-4 h-4" />
-            <span>Locked. Try again in 30s</span>
+            <span className="font-display font-semibold">Locked for 30s</span>
           </div>
         ) : error ? (
-          <p className="text-destructive text-sm font-medium">Wrong PIN. {3 - attempts} attempts left.</p>
+          <p className="text-destructive text-sm font-display font-semibold bg-destructive/10 px-3 py-1.5 rounded-lg">Wrong PIN · {3 - attempts} left</p>
         ) : null}
 
         {/* PIN dots */}
         <div className="flex gap-3">
           {[0, 1, 2, 3].map(i => (
-            <div
-              key={i}
-              className={`w-4 h-4 rounded-full border-2 transition-all duration-100 ${
-                i < pin.length ? 'bg-primary border-primary scale-110' : 'border-muted-foreground/40'
-              } ${error ? 'border-destructive' : ''}`}
+            <div key={i}
+              className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${
+                i < pin.length ? 'bg-primary border-primary scale-125' : 'border-muted-foreground/30'
+              } ${error ? 'border-destructive bg-destructive' : ''}`}
             />
           ))}
         </div>
 
-        {/* Numeric keypad */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Keypad */}
+        <div className="grid grid-cols-3 gap-2.5">
           {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((key, i) => (
-            <button
-              key={i}
-              disabled={locked || key === ''}
+            <button key={i} disabled={locked || key === ''}
               onClick={() => key === '⌫' ? handleDelete() : key !== '' && handleDigit(key)}
-              className={`w-16 h-14 rounded-lg font-display text-xl font-semibold transition-all duration-75 
-                ${key === '' ? 'invisible' : 'bg-secondary hover:bg-accent active:scale-95 text-foreground'}
-                ${locked ? 'opacity-40' : ''}`}
-            >
+              className={`w-16 h-14 rounded-xl font-display text-xl font-bold transition-all duration-100
+                ${key === '' ? 'invisible' : 'bg-secondary hover:bg-accent active:scale-95 active:bg-primary/10 text-foreground'}
+                ${locked ? 'opacity-30' : ''}`}>
               {key === '⌫' ? <Delete className="w-5 h-5 mx-auto" /> : key}
             </button>
           ))}
         </div>
 
-        <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground">
+        <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground hover:text-foreground">
           Cancel
         </Button>
 

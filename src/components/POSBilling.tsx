@@ -8,7 +8,7 @@ import { ShopSelector } from '@/components/ShopSelector';
 import { CheckoutPanel } from '@/components/CheckoutPanel';
 import { BillItemRow } from '@/components/BillItemRow';
 import { InvoicePreview } from '@/components/InvoicePreview';
-import { Search, Barcode, Keyboard, Receipt } from 'lucide-react';
+import { Search, Barcode, Keyboard, Receipt, ScanLine, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -76,7 +76,6 @@ export const POSBilling: React.FC = () => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'F2') { e.preventDefault(); setIsGSTBill(true); toast.info('GST Bill Mode'); }
       if (e.key === 'F3') { e.preventDefault(); setIsGSTBill(false); toast.info('Non-GST Bill Mode'); }
-      if (e.key === 'F4') { e.preventDefault(); }
       if (e.key === 'F9') { e.preventDefault(); handleCompleteSale(); }
       if (e.key === 'Escape') { setShowSearch(false); setShowInvoice(null); }
     };
@@ -148,7 +147,6 @@ export const POSBilling: React.FC = () => {
   }, [searchInput, activeShopId]);
 
   const addProductManually = async (product: Product) => {
-    // Find available IMEI
     const { data: imeiRecord } = await supabase
       .from('imei_records')
       .select('imei')
@@ -205,14 +203,11 @@ export const POSBilling: React.FC = () => {
     if (items.length === 0) { toast.error('Add items to bill first'); return; }
     if (!activeShop || !activeShopId || !user) return;
 
-    // Get next invoice number
     const nextNum = (activeShop.last_invoice_number || 0) + 1;
     const invoiceNumber = `${activeShop.invoice_prefix}-${String(nextNum).padStart(4, '0')}`;
 
-    // Update shop last invoice number
     await supabase.from('shops').update({ last_invoice_number: nextNum }).eq('id', activeShopId);
 
-    // Create invoice
     const { data: invoice, error: invError } = await supabase.from('invoices').insert({
       invoice_number: invoiceNumber,
       shop_id: activeShopId,
@@ -239,7 +234,6 @@ export const POSBilling: React.FC = () => {
       return;
     }
 
-    // Save invoice items
     const invoiceItems = items.map(item => ({
       invoice_id: invoice.id,
       product_id: item.productId,
@@ -256,7 +250,6 @@ export const POSBilling: React.FC = () => {
     // Mark IMEIs as sold & update dealer ledger
     for (const item of items) {
       if (item.imei) {
-        // Get IMEI record to find dealer
         const { data: imeiRecord } = await supabase
           .from('imei_records')
           .select('dealer_id, purchase_price')
@@ -294,7 +287,7 @@ export const POSBilling: React.FC = () => {
         }
 
         // Decrease product stock
-        await supabase.rpc('decrement_stock' as never, { p_product_id: item.productId } as never).then(() => {});
+        await supabase.rpc('decrement_stock', { p_product_id: item.productId } as any);
       }
     }
 
@@ -335,65 +328,74 @@ export const POSBilling: React.FC = () => {
     <div className="flex h-full">
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
-        <div className="flex items-center gap-3 p-3 bg-card border-b">
+        <div className="flex items-center gap-3 px-4 h-14 bg-card border-b">
           <ShopSelector />
-          <div className="flex gap-1 ml-auto">
-            <Button variant={isGSTBill ? 'default' : 'outline'} size="sm" onClick={() => setIsGSTBill(true)}>
-              GST Bill <span className="text-xs opacity-70 ml-1">F2</span>
-            </Button>
-            <Button variant={!isGSTBill ? 'default' : 'outline'} size="sm" onClick={() => setIsGSTBill(false)}>
-              Non-GST <span className="text-xs opacity-70 ml-1">F3</span>
-            </Button>
+          <div className="flex items-center gap-2 ml-auto">
+            <div className="flex bg-secondary rounded-lg p-0.5">
+              <button onClick={() => setIsGSTBill(true)}
+                className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                GST <span className="opacity-50 ml-0.5">F2</span>
+              </button>
+              <button onClick={() => setIsGSTBill(false)}
+                className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${!isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                Non-GST <span className="opacity-50 ml-0.5">F3</span>
+              </button>
+            </div>
             {isGSTBill && (
-              <select
-                value={gstBearer}
-                onChange={e => setGstBearer(e.target.value as 'customer' | 'seller')}
-                className="h-9 px-2 rounded-md border border-input bg-background text-xs font-display font-medium focus:outline-none"
-              >
-                <option value="customer">GST: Customer</option>
-                <option value="seller">GST: Seller</option>
+              <select value={gstBearer} onChange={e => setGstBearer(e.target.value as 'customer' | 'seller')}
+                className="h-8 px-2 rounded-md border border-input bg-card text-xs font-display font-medium focus:outline-none focus:ring-2 focus:ring-ring">
+                <option value="customer">Customer bears GST</option>
+                <option value="seller">Seller bears GST</option>
               </select>
             )}
           </div>
         </div>
 
         {/* IMEI Input */}
-        <div className="p-3 bg-card border-b">
+        <div className="px-4 py-3 bg-card border-b">
           <div className="flex gap-2">
             <div className="flex-1 relative">
-              <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <ScanLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
               <input
                 ref={imeiRef}
                 value={imeiInput}
                 onChange={e => setImeiInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleIMEIScan(); }}
-                placeholder="Scan IMEI barcode or type IMEI number..."
-                className="w-full h-12 pl-11 pr-4 rounded-lg border-2 border-primary/30 bg-background font-display text-lg tracking-wider focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 placeholder:text-muted-foreground/50 placeholder:tracking-normal placeholder:text-base"
+                placeholder="Scan IMEI or type number..."
+                className="w-full h-12 pl-12 pr-4 rounded-xl border-2 border-primary/20 bg-accent/30 font-display text-lg tracking-wider focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 placeholder:text-muted-foreground/40 placeholder:tracking-normal placeholder:text-sm transition-all"
               />
             </div>
-            <Button size="lg" onClick={handleIMEIScan}>Add</Button>
-            <Button variant="outline" size="lg" onClick={() => setShowSearch(!showSearch)}>
+            <Button size="lg" className="h-12 px-6 gradient-primary border-0 text-primary-foreground shadow-sm" onClick={handleIMEIScan}>
+              <Barcode className="w-5 h-5 mr-2" /> Add
+            </Button>
+            <Button variant="outline" size="lg" className="h-12" onClick={() => setShowSearch(!showSearch)}>
               <Search className="w-5 h-5" />
             </Button>
           </div>
 
           {showSearch && (
-            <div className="mt-2">
-              <input
-                value={searchInput}
-                onChange={e => setSearchInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
-                placeholder="Search by brand, model, variant..."
-                className="w-full h-10 px-4 rounded-lg border border-input bg-background text-sm focus:border-primary focus:outline-none"
-              />
-              <Button size="sm" onClick={handleSearch} className="mt-1">Search</Button>
+            <div className="mt-3 animate-in">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input value={searchInput}
+                  onChange={e => { setSearchInput(e.target.value); }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
+                  placeholder="Search by brand, model, variant..."
+                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-input bg-card text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20"
+                  autoFocus
+                />
+              </div>
+              <Button size="sm" onClick={handleSearch} className="mt-2">Search</Button>
               {searchResults.length > 0 && (
-                <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border bg-card">
+                <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border bg-card shadow-lg">
                   {searchResults.map(p => (
                     <button key={p.id} onClick={() => addProductManually(p)}
-                      className="w-full text-left px-3 py-2 hover:bg-accent text-sm border-b last:border-b-0 flex justify-between">
-                      <span className="font-medium">{p.brand} {p.model} <span className="text-muted-foreground">{p.variant} {p.color}</span></span>
-                      <span className="price-text">₹{Number(p.sale_price).toLocaleString('en-IN')}</span>
+                      className="w-full text-left px-4 py-3 hover:bg-accent text-sm border-b last:border-b-0 flex justify-between items-center transition-colors">
+                      <div>
+                        <span className="font-display font-semibold">{p.brand} {p.model}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">{p.variant} {p.color}</span>
+                      </div>
+                      <span className="price-text text-primary">₹{Number(p.sale_price).toLocaleString('en-IN')}</span>
                     </button>
                   ))}
                 </div>
@@ -402,32 +404,38 @@ export const POSBilling: React.FC = () => {
           )}
         </div>
 
-        {/* Shortcuts bar */}
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 text-xs text-muted-foreground font-display">
+        {/* Shortcuts */}
+        <div className="flex items-center gap-3 px-4 py-1.5 bg-secondary/30 text-[11px] text-muted-foreground font-display font-medium">
           <Keyboard className="w-3.5 h-3.5" />
-          <span>F2 GST</span><span>·</span><span>F3 Non-GST</span><span>·</span>
-          <span>F4 Discount</span><span>·</span><span>F9 Print & Save</span><span>·</span><span>ESC Close</span>
+          <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">F2</span> GST
+          <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">F3</span> Non-GST
+          <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">F9</span> Print & Save
+          <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">ESC</span> Close
         </div>
 
-        {/* Items Table */}
+        {/* Items */}
         <div className="flex-1 pos-scrollable">
           {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <Receipt className="w-16 h-16 mb-4 opacity-30" />
-              <p className="font-display text-lg font-medium">Scan IMEI to start billing</p>
-              <p className="text-sm mt-1">Or use Search to find products manually</p>
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
+              <div className="w-20 h-20 rounded-2xl bg-accent flex items-center justify-center">
+                <Receipt className="w-10 h-10 text-accent-foreground/40" />
+              </div>
+              <div className="text-center">
+                <p className="font-display text-lg font-semibold text-foreground/60">Ready for billing</p>
+                <p className="text-sm mt-1">Scan IMEI barcode or search products to start</p>
+              </div>
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-secondary/50 sticky top-0">
-                <tr className="text-left font-display text-xs text-muted-foreground uppercase tracking-wider">
-                  <th className="px-3 py-2 w-8">#</th>
-                  <th className="px-3 py-2">Product</th>
-                  <th className="px-3 py-2">IMEI</th>
-                  <th className="px-3 py-2 text-right">Price</th>
-                  <th className="px-3 py-2 text-right">Disc.</th>
-                  <th className="px-3 py-2 text-right">Total</th>
-                  <th className="px-3 py-2 w-10"></th>
+              <thead className="bg-secondary/40 sticky top-0 z-10">
+                <tr className="text-left font-display text-[11px] text-muted-foreground uppercase tracking-wider">
+                  <th className="px-4 py-2.5 w-8">#</th>
+                  <th className="px-4 py-2.5">Product</th>
+                  <th className="px-4 py-2.5">IMEI</th>
+                  <th className="px-4 py-2.5 text-right">Price</th>
+                  <th className="px-4 py-2.5 text-right">Disc.</th>
+                  <th className="px-4 py-2.5 text-right">Total</th>
+                  <th className="px-4 py-2.5 w-10"></th>
                 </tr>
               </thead>
               <tbody>
