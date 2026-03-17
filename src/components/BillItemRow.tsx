@@ -1,6 +1,15 @@
 import React from 'react';
-import { BillItem } from '@/types';
 import { X } from 'lucide-react';
+
+interface BillItem {
+  id: string;
+  product: { brand: string; model: string; variant: string; color: string; sale_price: number };
+  imei?: string;
+  unitPrice: number;
+  discountValue: number;
+  discountType: 'percentage' | 'flat';
+  total: number;
+}
 
 interface Props {
   item: BillItem;
@@ -29,7 +38,7 @@ export const BillItemRow: React.FC<Props> = ({ item, index, flash, onRemove, onU
             type="number"
             value={item.discountValue || ''}
             onChange={e => onUpdateDiscount(Number(e.target.value), item.discountType)}
-            className="w-16 h-7 text-right text-xs rounded border bg-background px-1 focus:outline-none focus:border-primary"
+            className="w-16 h-7 text-right text-xs rounded border border-input bg-background px-1 focus:outline-none focus:border-primary"
             placeholder="0"
           />
         ) : (

@@ -1,12 +1,15 @@
 import { useState, useCallback } from 'react';
-import { verifyPIN } from '@/lib/store';
+import { useShop } from '@/contexts/ShopContext';
 
 export function usePinLock() {
+  const { settings } = useShop();
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pendingModule, setPendingModule] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [locked, setLocked] = useState(false);
+
+  const pin = settings?.pin_code || '1234';
 
   const requestAccess = useCallback((module: string) => {
     if (isUnlocked) return true;
@@ -15,9 +18,9 @@ export function usePinLock() {
     return false;
   }, [isUnlocked]);
 
-  const submitPin = useCallback((pin: string): boolean => {
+  const submitPin = useCallback((inputPin: string): boolean => {
     if (locked) return false;
-    if (verifyPIN(pin)) {
+    if (inputPin === pin) {
       setIsUnlocked(true);
       setShowPinModal(false);
       setAttempts(0);
@@ -30,21 +33,14 @@ export function usePinLock() {
       setTimeout(() => { setLocked(false); setAttempts(0); }, 30000);
     }
     return false;
-  }, [attempts, locked]);
+  }, [attempts, locked, pin]);
 
   const lockSession = useCallback(() => {
     setIsUnlocked(false);
   }, []);
 
   return {
-    isUnlocked,
-    showPinModal,
-    setShowPinModal,
-    pendingModule,
-    attempts,
-    locked,
-    requestAccess,
-    submitPin,
-    lockSession,
+    isUnlocked, showPinModal, setShowPinModal, pendingModule,
+    attempts, locked, requestAccess, submitPin, lockSession,
   };
 }

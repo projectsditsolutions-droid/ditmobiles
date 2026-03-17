@@ -1,32 +1,56 @@
-import React, { useState } from 'react';
-import { getInvoices, getProducts, getIMEIs, getDealers } from '@/lib/store';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useShop } from '@/contexts/ShopContext';
 import { BarChart3, TrendingUp, Package, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import type { Database } from '@/integrations/supabase/types';
+
+type Invoice = Database['public']['Tables']['invoices']['Row'];
 
 export const ReportsPage: React.FC = () => {
+  const { activeShopId } = useShop();
   const [tab, setTab] = useState<'daily' | 'stock' | 'gst'>('daily');
-  const invoices = getInvoices();
-  const products = getProducts();
-  const imeis = getIMEIs();
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [stockData, setStockData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!activeShopId) return;
+    const fetchData = async () => {
+      setLoading(true);
+      const { data: inv } = await supabase.from('invoices').select('*').eq('shop_id', activeShopId).order('date', { ascending: false });
+      if (inv) setInvoices(inv);
+
+      const { data: products } = await supabase.from('products').select('*').eq('shop_id', activeShopId);
+      const { data: imeis } = await supabase.from('imei_records').select('*').eq('shop_id', activeShopId);
+      if (products && imeis) {
+        setStockData(products.map(p => ({
+          ...p,
+          inStock: imeis.filter(r => r.product_id === p.id && r.status === 'in_stock').length,
+          sold: imeis.filter(r => r.product_id === p.id && r.status === 'sold').length,
+          total: imeis.filter(r => r.product_id === p.id).length,
+        })));
+      }
+      setLoading(false);
+    };
+    fetchData();
+  }, [activeShopId]);
 
   const today = new Date().toDateString();
   const todaySales = invoices.filter(i => new Date(i.date).toDateString() === today);
-  const todayTotal = todaySales.reduce((s, i) => s + i.grandTotal, 0);
-  const totalSales = invoices.reduce((s, i) => s + i.grandTotal, 0);
-  const totalItems = imeis.length;
-  const inStock = imeis.filter(r => r.status === 'in_stock').length;
-  const sold = imeis.filter(r => r.status === 'sold').length;
+  const todayTotal = todaySales.reduce((s, i) => s + Number(i.grand_total), 0);
+  const totalSales = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
+  const totalInStock = stockData.reduce((s, p) => s + p.inStock, 0);
 
   return (
-    <div className="p-4 max-w-6xl mx-auto">
+    <div className="p-4 max-w-6xl mx-auto overflow-y-auto h-full">
       <h1 className="font-display text-2xl font-bold mb-4">Reports</h1>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-3 mb-6">
         {[
           { label: "Today's Sales", value: `₹${todayTotal.toLocaleString('en-IN')}`, icon: TrendingUp, color: 'text-success' },
           { label: 'Total Revenue', value: `₹${totalSales.toLocaleString('en-IN')}`, icon: BarChart3, color: 'text-primary' },
-          { label: 'In Stock', value: String(inStock), icon: Package, color: 'text-warning' },
+          { label: 'In Stock', value: String(totalInStock), icon: Package, color: 'text-warning' },
           { label: 'Total Invoices', value: String(invoices.length), icon: FileText, color: 'text-muted-foreground' },
         ].map(c => (
           <div key={c.label} className="bg-card rounded-xl border p-4">
@@ -55,24 +79,22 @@ export const ReportsPage: React.FC = () => {
                 <th className="px-4 py-3">Invoice</th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Items</th>
                 <th className="px-4 py-3">Payment</th>
                 <th className="px-4 py-3 text-right">Total</th>
               </tr>
             </thead>
             <tbody>
-              {invoices.slice().reverse().map(inv => (
+              {invoices.map(inv => (
                 <tr key={inv.id} className="border-t hover:bg-accent/50">
-                  <td className="px-4 py-2 font-display font-medium text-primary">{inv.invoiceNumber}</td>
+                  <td className="px-4 py-2 font-display font-medium text-primary">{inv.invoice_number}</td>
                   <td className="px-4 py-2 text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-2">{inv.customerName}</td>
-                  <td className="px-4 py-2">{inv.items.length}</td>
-                  <td className="px-4 py-2 capitalize">{inv.paymentMethod}</td>
-                  <td className="px-4 py-2 text-right price-text">₹{inv.grandTotal.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-2">{inv.customer_name}</td>
+                  <td className="px-4 py-2 capitalize">{inv.payment_method}</td>
+                  <td className="px-4 py-2 text-right price-text">₹{Number(inv.grand_total).toLocaleString('en-IN')}</td>
                 </tr>
               ))}
               {invoices.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">No invoices yet.</td></tr>
+                <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No invoices yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -91,17 +113,14 @@ export const ReportsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {products.map(p => {
-                const pImeis = imeis.filter(r => r.productId === p.id);
-                return (
-                  <tr key={p.id} className="border-t hover:bg-accent/50">
-                    <td className="px-4 py-2 font-display font-medium">{p.brand} {p.model} <span className="text-muted-foreground">{p.variant}</span></td>
-                    <td className="px-4 py-2 text-center text-success font-bold">{pImeis.filter(r => r.status === 'in_stock').length}</td>
-                    <td className="px-4 py-2 text-center text-muted-foreground">{pImeis.filter(r => r.status === 'sold').length}</td>
-                    <td className="px-4 py-2 text-center">{pImeis.length}</td>
-                  </tr>
-                );
-              })}
+              {stockData.map((p: any) => (
+                <tr key={p.id} className="border-t hover:bg-accent/50">
+                  <td className="px-4 py-2 font-display font-medium">{p.brand} {p.model} <span className="text-muted-foreground">{p.variant}</span></td>
+                  <td className="px-4 py-2 text-center text-success font-bold">{p.inStock}</td>
+                  <td className="px-4 py-2 text-center text-muted-foreground">{p.sold}</td>
+                  <td className="px-4 py-2 text-center">{p.total}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -111,18 +130,17 @@ export const ReportsPage: React.FC = () => {
         <div className="bg-card rounded-xl border p-4">
           <p className="text-muted-foreground text-sm mb-4">GST Summary for all GST invoices</p>
           {(() => {
-            const gstInvoices = invoices.filter(i => i.isGSTBill);
-            const totalCGST = gstInvoices.reduce((s, i) => s + i.cgst, 0);
-            const totalSGST = gstInvoices.reduce((s, i) => s + i.sgst, 0);
-            const totalTaxable = gstInvoices.reduce((s, i) => s + (i.grandTotal - i.cgst - i.sgst), 0);
+            const gstInvoices = invoices.filter(i => i.is_gst_bill);
+            const totalCGST = gstInvoices.reduce((s, i) => s + Number(i.cgst), 0);
+            const totalSGST = gstInvoices.reduce((s, i) => s + Number(i.sgst), 0);
+            const totalTaxable = gstInvoices.reduce((s, i) => s + (Number(i.grand_total) - Number(i.cgst) - Number(i.sgst)), 0);
             return (
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between"><span>Total Taxable Value</span><span className="price-text">₹{totalTaxable.toLocaleString('en-IN')}</span></div>
                 <div className="flex justify-between"><span>Total CGST</span><span className="price-text">₹{totalCGST.toLocaleString('en-IN')}</span></div>
                 <div className="flex justify-between"><span>Total SGST</span><span className="price-text">₹{totalSGST.toLocaleString('en-IN')}</span></div>
                 <div className="flex justify-between font-display font-bold text-lg border-t pt-2">
-                  <span>Total Tax Collected</span>
-                  <span>₹{(totalCGST + totalSGST).toLocaleString('en-IN')}</span>
+                  <span>Total Tax Collected</span><span>₹{(totalCGST + totalSGST).toLocaleString('en-IN')}</span>
                 </div>
               </div>
             );
