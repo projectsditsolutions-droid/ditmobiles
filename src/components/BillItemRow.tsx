@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Tag } from 'lucide-react';
 
 interface BillItem {
   id: string;
@@ -22,32 +22,37 @@ interface Props {
 
 export const BillItemRow: React.FC<Props> = ({ item, index, flash, onRemove, onUpdateDiscount, discountEnabled }) => {
   return (
-    <tr className={`border-b hover:bg-accent/50 transition-colors ${flash ? 'imei-flash' : ''}`}>
-      <td className="px-3 py-2.5 text-muted-foreground">{index + 1}</td>
-      <td className="px-3 py-2.5">
-        <div className="font-medium font-display text-sm">{item.product.brand} {item.product.model}</div>
-        <div className="text-xs text-muted-foreground">{item.product.variant} · {item.product.color}</div>
+    <tr className={`border-b border-border/50 hover:bg-accent/30 transition-all duration-150 ${flash ? 'imei-flash' : ''}`}>
+      <td className="px-4 py-3 text-muted-foreground font-display text-xs">{index + 1}</td>
+      <td className="px-4 py-3">
+        <div className="font-display font-semibold text-sm">{item.product.brand} {item.product.model}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{item.product.variant} · {item.product.color}</div>
       </td>
-      <td className="px-3 py-2.5">
-        <span className="imei-text text-xs">{item.imei || '—'}</span>
+      <td className="px-4 py-3">
+        <span className="font-mono text-xs bg-secondary/60 px-2 py-1 rounded-md">{item.imei || '—'}</span>
       </td>
-      <td className="px-3 py-2.5 text-right price-text">₹{item.unitPrice.toLocaleString('en-IN')}</td>
-      <td className="px-3 py-2.5 text-right">
+      <td className="px-4 py-3 text-right price-text text-sm">₹{item.unitPrice.toLocaleString('en-IN')}</td>
+      <td className="px-4 py-3 text-right">
         {discountEnabled ? (
-          <input
-            type="number"
-            value={item.discountValue || ''}
-            onChange={e => onUpdateDiscount(Number(e.target.value), item.discountType)}
-            className="w-16 h-7 text-right text-xs rounded border border-input bg-background px-1 focus:outline-none focus:border-primary"
-            placeholder="0"
-          />
+          <div className="flex items-center justify-end gap-1">
+            <Tag className="w-3 h-3 text-muted-foreground" />
+            <input
+              type="number"
+              value={item.discountValue || ''}
+              onChange={e => onUpdateDiscount(Number(e.target.value), item.discountType)}
+              className="w-16 h-7 text-right text-xs rounded-md border border-input bg-card px-2 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              placeholder="0"
+            />
+          </div>
         ) : (
           <span className="text-xs text-muted-foreground">—</span>
         )}
       </td>
-      <td className="px-3 py-2.5 text-right price-text">₹{item.total.toLocaleString('en-IN')}</td>
-      <td className="px-3 py-2.5">
-        <button onClick={onRemove} className="text-muted-foreground hover:text-destructive transition-colors">
+      <td className="px-4 py-3 text-right">
+        <span className="price-text text-sm text-primary">₹{item.total.toLocaleString('en-IN')}</span>
+      </td>
+      <td className="px-4 py-3">
+        <button onClick={onRemove} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
           <X className="w-4 h-4" />
         </button>
       </td>
