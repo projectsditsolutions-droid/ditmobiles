@@ -418,6 +418,22 @@ export const POSBilling: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <div className="flex items-center gap-3 px-4 h-14 bg-card border-b">
           <ShopSelector />
+          {gstProfiles.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+              <select
+                value={selectedProfileId || ''}
+                onChange={e => setSelectedProfileId(e.target.value || null)}
+                className="h-8 px-2 rounded-md border border-input bg-card text-xs font-display font-medium focus:outline-none focus:ring-2 focus:ring-ring max-w-[200px]"
+              >
+                {gstProfiles.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.profile_name || p.business_name} {p.gst_number ? `(${p.gst_number.slice(-4)})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex items-center gap-2 ml-auto">
             <div className="flex bg-secondary rounded-lg p-0.5">
               <button onClick={() => setIsGSTBill(true)} className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
