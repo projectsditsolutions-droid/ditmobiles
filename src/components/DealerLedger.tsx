@@ -42,7 +42,7 @@ const getQuantityFromTxn = (txn: DealerTransaction) => {
 };
 
 export const DealerLedger: React.FC = () => {
-  const { activeShopId } = useShop();
+  const { activeShopId, isAllShops, allShopIds } = useShop();
   const [dealers, setDealers] = useState<Dealer[]>([]);
   const [allTxns, setAllTxns] = useState<DealerTransaction[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -61,20 +61,29 @@ export const DealerLedger: React.FC = () => {
   const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '' });
 
   const fetchDealers = async () => {
-    if (!activeShopId) return;
-    const { data } = await supabase.from('dealers').select('*').eq('shop_id', activeShopId).order('brand_name').order('dealer_name');
+    if (!activeShopId && !isAllShops) return;
+    let query = supabase.from('dealers').select('*');
+    if (isAllShops) query = query.in('shop_id', allShopIds);
+    else query = query.eq('shop_id', activeShopId!);
+    const { data } = await query.order('brand_name').order('dealer_name');
     setDealers(data || []);
   };
 
   const fetchTransactions = async () => {
-    if (!activeShopId) return;
-    const { data } = await supabase.from('dealer_transactions').select('*').eq('shop_id', activeShopId).order('created_at', { ascending: false });
+    if (!activeShopId && !isAllShops) return;
+    let query = supabase.from('dealer_transactions').select('*');
+    if (isAllShops) query = query.in('shop_id', allShopIds);
+    else query = query.eq('shop_id', activeShopId!);
+    const { data } = await query.order('created_at', { ascending: false });
     setAllTxns(data || []);
   };
 
   const fetchProducts = async () => {
-    if (!activeShopId) return;
-    const { data } = await supabase.from('products').select('*').eq('shop_id', activeShopId).order('brand').order('model');
+    if (!activeShopId && !isAllShops) return;
+    let query = supabase.from('products').select('*');
+    if (isAllShops) query = query.in('shop_id', allShopIds);
+    else query = query.eq('shop_id', activeShopId!);
+    const { data } = await query.order('brand').order('model');
     setProducts(data || []);
   };
 

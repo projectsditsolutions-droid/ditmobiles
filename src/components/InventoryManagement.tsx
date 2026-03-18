@@ -13,7 +13,7 @@ type IMEIRecord = Database['public']['Tables']['imei_records']['Row'];
 const emptyProduct = { brand: '', model: '', variant: '', color: '', purchase_price: 0, sale_price: 0, gst_percent: 18, category: 'mobile' };
 
 export const InventoryManagement: React.FC = () => {
-  const { activeShopId } = useShop();
+  const { activeShopId, isAllShops, allShopIds } = useShop();
   const [products, setProducts] = useState<Product[]>([]);
   const [imeis, setImeis] = useState<(IMEIRecord & { products?: Product })[]>([]);
   const [searchQ, setSearchQ] = useState('');
@@ -36,14 +36,20 @@ export const InventoryManagement: React.FC = () => {
   const [stockSearchResults, setStockSearchResults] = useState<Product[]>([]);
 
   const fetchProducts = async () => {
-    if (!activeShopId) return;
-    const { data } = await supabase.from('products').select('*').eq('shop_id', activeShopId).order('brand');
+    if (!activeShopId && !isAllShops) return;
+    let query = supabase.from('products').select('*');
+    if (isAllShops) query = query.in('shop_id', allShopIds);
+    else query = query.eq('shop_id', activeShopId!);
+    const { data } = await query.order('brand');
     if (data) setProducts(data);
   };
 
   const fetchIMEIs = async () => {
-    if (!activeShopId) return;
-    const { data } = await supabase.from('imei_records').select('*, products(*)').eq('shop_id', activeShopId).order('created_at', { ascending: false });
+    if (!activeShopId && !isAllShops) return;
+    let query = supabase.from('imei_records').select('*, products(*)');
+    if (isAllShops) query = query.in('shop_id', allShopIds);
+    else query = query.eq('shop_id', activeShopId!);
+    const { data } = await query.order('created_at', { ascending: false });
     if (data) setImeis(data as any);
   };
 
