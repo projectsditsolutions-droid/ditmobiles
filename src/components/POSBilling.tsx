@@ -88,6 +88,26 @@ export const POSBilling: React.FC = () => {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const imeiRef = useRef<HTMLInputElement>(null);
 
+  // Fetch GST profiles for this shop
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      if (!activeShopId || isAllShops) return;
+      const { data } = await supabase
+        .from('shop_gst_profiles')
+        .select('*')
+        .eq('shop_id', activeShopId)
+        .order('is_default', { ascending: false });
+      if (data) {
+        setGstProfiles(data as GSTProfile[]);
+        const def = data.find((p: any) => p.is_default);
+        setSelectedProfileId(def?.id || data[0]?.id || null);
+      }
+    };
+    fetchProfiles();
+  }, [activeShopId, isAllShops]);
+
+  const selectedProfile = gstProfiles.find(p => p.id === selectedProfileId) || null;
+
   useEffect(() => {
     imeiRef.current?.focus();
   }, []);
