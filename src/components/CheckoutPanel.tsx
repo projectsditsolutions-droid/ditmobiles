@@ -83,7 +83,7 @@ export const CheckoutPanel: React.FC<Props> = ({
           <div>
             <label className="text-[10px] text-checkout-foreground/45 font-medium mb-1.5 block">Phone Number</label>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
               <input
                 value={customerPhone}
                 onChange={e => onCustomerPhoneChange(e.target.value.replace(/\D/g, '').slice(0, 10))}
