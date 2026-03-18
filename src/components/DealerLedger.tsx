@@ -120,16 +120,25 @@ export const DealerLedger: React.FC = () => {
       return;
     }
 
-    await supabase.from('dealers').insert({
-      ...dealerForm,
+    const { error } = await supabase.from('dealers').insert({
       shop_id: activeShopId,
-      gstin: dealerForm.gstin.trim(),
+      brand_name: dealerForm.brand_name.trim(),
+      dealer_name: dealerForm.dealer_name.trim(),
       phone: dealerForm.phone.trim(),
+      address: dealerForm.address.trim(),
+      gstin: dealerForm.gstin.trim(),
+      total_credit: dealerForm.total_credit || 0,
     });
+
+    if (error) {
+      console.error('Dealer insert error:', error);
+      toast.error('Failed to add dealer: ' + error.message);
+      return;
+    }
 
     setShowDealerForm(false);
     setDealerForm({ brand_name: '', dealer_name: '', phone: '', address: '', gstin: '', total_credit: 0 });
-    toast.success('Dealer added');
+    toast.success('Dealer added successfully');
     fetchDealers();
   };
 
