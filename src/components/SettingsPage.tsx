@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useShop } from '@/contexts/ShopContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Save, LogOut, Users, Shield, Store, Settings2, KeyRound, Printer, Hash } from 'lucide-react';
+import { Plus, Trash2, Save, LogOut, Users, Shield, Store, Settings2, KeyRound, Printer, Hash, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
