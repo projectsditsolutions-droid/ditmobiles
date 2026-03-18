@@ -260,26 +260,6 @@ export const DealerLedger: React.FC = () => {
     fetchProducts();
   };
 
-  const Modal: React.FC<{ open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode }> = ({ open, onClose, title, subtitle, children }) => {
-    if (!open) return null;
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm" onClick={onClose}>
-        <div className="bg-card rounded-2xl shadow-2xl w-[560px] max-w-[calc(100vw-2rem)] animate-scale-in border overflow-hidden" onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-primary/5 to-transparent">
-            <div>
-              <h2 className="font-display font-bold text-lg">{title}</h2>
-              {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
-            </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center hover:bg-destructive/10 transition-colors">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="p-5">{children}</div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="h-full p-5 overflow-y-auto pos-scrollable">
       <div className="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-5 h-full">
