@@ -353,6 +353,20 @@ export const POSBilling: React.FC = () => {
     setBillDiscount(0);
   }, [items, customerName, customerPhone, customerGST, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user]);
 
+  if (isAllShops) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+        <Receipt className="w-16 h-16 text-muted-foreground/30" />
+        <div>
+          <h2 className="font-display font-bold text-xl mb-1">Select a Specific Shop</h2>
+          <p className="text-sm text-muted-foreground max-w-md">
+            Billing requires a specific shop to create invoices. Please select an individual shop from the shop selector above.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full">
       <div className="flex-1 flex flex-col min-w-0">
