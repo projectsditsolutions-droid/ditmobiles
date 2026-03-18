@@ -52,7 +52,21 @@ export interface InvoiceData {
 
 export const POSBilling: React.FC = () => {
   const { user } = useAuth();
-  const { activeShop, activeShopId, settings } = useShop();
+  const { activeShop, activeShopId, settings, isAllShops } = useShop();
+
+  if (isAllShops) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+        <Receipt className="w-16 h-16 text-muted-foreground/30" />
+        <div>
+          <h2 className="font-display font-bold text-xl mb-1">Select a Specific Shop</h2>
+          <p className="text-sm text-muted-foreground max-w-md">
+            Billing requires a specific shop to create invoices. Please select an individual shop from the shop selector above.
+          </p>
+        </div>
+      </div>
+    );
+  }
   const [items, setItems] = useState<BillItem[]>([]);
   const [imeiInput, setImeiInput] = useState('');
   const [searchInput, setSearchInput] = useState('');

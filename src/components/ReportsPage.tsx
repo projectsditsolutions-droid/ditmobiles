@@ -17,13 +17,23 @@ export const ReportsPage: React.FC = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
 
   useEffect(() => {
-    if (!activeShopId) return;
+    if (!activeShopId && !isAllShops) return;
     const fetchData = async () => {
-      const { data: inv } = await supabase.from('invoices').select('*').eq('shop_id', activeShopId).order('date', { ascending: false });
+      let invQ = supabase.from('invoices').select('*');
+      if (isAllShops) invQ = invQ.in('shop_id', allShopIds);
+      else invQ = invQ.eq('shop_id', activeShopId!);
+      const { data: inv } = await invQ.order('date', { ascending: false });
       if (inv) setInvoices(inv);
 
-      const { data: products } = await supabase.from('products').select('*').eq('shop_id', activeShopId);
-      const { data: imeis } = await supabase.from('imei_records').select('*').eq('shop_id', activeShopId);
+      let prodQ = supabase.from('products').select('*');
+      if (isAllShops) prodQ = prodQ.in('shop_id', allShopIds);
+      else prodQ = prodQ.eq('shop_id', activeShopId!);
+      const { data: products } = await prodQ;
+
+      let imeiQ = supabase.from('imei_records').select('*');
+      if (isAllShops) imeiQ = imeiQ.in('shop_id', allShopIds);
+      else imeiQ = imeiQ.eq('shop_id', activeShopId!);
+      const { data: imeis } = await imeiQ;
       if (products && imeis) {
         setStockData(products.map(p => ({
           ...p,
