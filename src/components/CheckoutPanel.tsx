@@ -70,7 +70,7 @@ export const CheckoutPanel: React.FC<Props> = ({
           <div>
             <label className="text-[10px] text-checkout-foreground/45 font-medium mb-1.5 block">Customer Name</label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
               <input
                 value={customerName}
                 onChange={e => onCustomerNameChange(e.target.value)}
