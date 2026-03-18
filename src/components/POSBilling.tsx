@@ -59,6 +59,10 @@ export interface InvoiceData {
   gst_bearer: string;
   print_type: string;
   status: string;
+  billing_business_name?: string;
+  billing_address?: string;
+  billing_phone?: string;
+  billing_gst_number?: string;
 }
 
 export const POSBilling: React.FC = () => {
