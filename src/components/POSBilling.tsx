@@ -397,7 +397,7 @@ export const POSBilling: React.FC = () => {
     setCustomerPhone('');
     setCustomerGST('');
     setBillDiscount(0);
-  }, [items, customerName, customerPhone, customerGST, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user]);
+  }, [items, customerName, customerPhone, customerGST, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile]);
 
   if (isAllShops) {
     return (
