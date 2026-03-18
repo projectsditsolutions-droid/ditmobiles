@@ -275,6 +275,7 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
+      {tab === 'general' && localSettings && (
         <div className="bg-card rounded-xl border p-5 shadow-sm space-y-5">
           <div className="flex items-center justify-between">
             <div>
