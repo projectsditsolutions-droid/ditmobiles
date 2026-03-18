@@ -70,7 +70,7 @@ export const CheckoutPanel: React.FC<Props> = ({
           <div>
             <label className="text-[10px] text-checkout-foreground/45 font-medium mb-1.5 block">Customer Name</label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
               <input
                 value={customerName}
                 onChange={e => onCustomerNameChange(e.target.value)}
@@ -83,7 +83,7 @@ export const CheckoutPanel: React.FC<Props> = ({
           <div>
             <label className="text-[10px] text-checkout-foreground/45 font-medium mb-1.5 block">Phone Number</label>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
               <input
                 value={customerPhone}
                 onChange={e => onCustomerPhoneChange(e.target.value.replace(/\D/g, '').slice(0, 10))}
@@ -103,7 +103,7 @@ export const CheckoutPanel: React.FC<Props> = ({
                 <span className="text-[10px] text-checkout-foreground/35">Required for B2B</span>
               </div>
               <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
                 <input
                   value={customerGST}
                   onChange={e => onCustomerGSTChange(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15))}
@@ -111,7 +111,7 @@ export const CheckoutPanel: React.FC<Props> = ({
                   maxLength={15}
                   className="checkout-input w-full h-11 pl-10 pr-10 rounded-xl text-sm font-mono tracking-wider"
                 />
-                <Hash className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Hash className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
               </div>
             </div>
           )}
