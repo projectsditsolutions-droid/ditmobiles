@@ -424,9 +424,12 @@ export type Database = {
           created_at: string
           gst_number: string
           id: string
+          invoice_prefix: string
           is_default: boolean
+          last_invoice_number: number
           phone: string
           profile_name: string
+          profile_type: string
           shop_id: string
           updated_at: string
         }
@@ -436,9 +439,12 @@ export type Database = {
           created_at?: string
           gst_number?: string
           id?: string
+          invoice_prefix?: string
           is_default?: boolean
+          last_invoice_number?: number
           phone?: string
           profile_name?: string
+          profile_type?: string
           shop_id: string
           updated_at?: string
         }
@@ -448,9 +454,12 @@ export type Database = {
           created_at?: string
           gst_number?: string
           id?: string
+          invoice_prefix?: string
           is_default?: boolean
+          last_invoice_number?: number
           phone?: string
           profile_name?: string
+          profile_type?: string
           shop_id?: string
           updated_at?: string
         }
