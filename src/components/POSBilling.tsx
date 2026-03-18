@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShop } from '@/contexts/ShopContext';
 import { calculateGST } from '@/lib/store';
-import { ShopSelector } from '@/components/ShopSelector';
+
 import { CheckoutPanel } from '@/components/CheckoutPanel';
 import { BillItemRow } from '@/components/BillItemRow';
 import { InvoicePreview } from '@/components/InvoicePreview';
