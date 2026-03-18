@@ -86,6 +86,10 @@ export const ReportsPage: React.FC = () => {
       gst_bearer: invoice.gst_bearer,
       print_type: invoice.print_type,
       status: invoice.status,
+      billing_business_name: (invoice as any).billing_business_name || undefined,
+      billing_address: (invoice as any).billing_address || undefined,
+      billing_phone: (invoice as any).billing_phone || undefined,
+      billing_gst_number: (invoice as any).billing_gst_number || undefined,
     };
 
     setSelectedInvoice(preview);

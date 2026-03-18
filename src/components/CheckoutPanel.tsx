@@ -13,6 +13,7 @@ interface Props {
   grandTotal: number;
   isGSTBill: boolean;
   gstBearer: string;
+  customerType: 'B2B' | 'B2C';
   paymentMethod: 'cash' | 'upi' | 'card' | 'mixed';
   customerName: string;
   customerPhone: string;
@@ -29,14 +30,13 @@ interface Props {
 
 export const CheckoutPanel: React.FC<Props> = ({
   items, subtotal, itemDiscountTotal, billDiscount, billDiscountType, billDiscountAmount,
-  gstCalc, grandTotal, isGSTBill, gstBearer, paymentMethod,
+  gstCalc, grandTotal, isGSTBill, gstBearer, customerType, paymentMethod,
   customerName, customerPhone, customerGST,
   onBillDiscountChange, onBillDiscountTypeChange, onPaymentMethodChange,
   onCustomerNameChange, onCustomerPhoneChange, onCustomerGSTChange,
   onCompleteSale, discountEnabled,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-  const customerMode = isGSTBill ? (customerGST.trim() ? 'B2B' : 'B2C') : 'Retail';
 
   const paymentMethods = [
     { key: 'cash' as const, icon: Banknote, label: 'Cash' },
@@ -47,6 +47,7 @@ export const CheckoutPanel: React.FC<Props> = ({
 
   return (
     <div className="w-[360px] bg-checkout text-checkout-foreground flex flex-col border-l border-checkout-foreground/10">
+      {/* ── Customer Details ───────────────────────────────────────── */}
       <div className="p-4 border-b border-checkout-foreground/10">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -55,15 +56,15 @@ export const CheckoutPanel: React.FC<Props> = ({
             </div>
             <p className="text-xs font-display font-semibold uppercase tracking-widest text-checkout-foreground/55">Customer Details</p>
           </div>
-          <span className={`px-2.5 py-1 rounded-full text-[10px] font-display font-bold ${
-            customerMode === 'B2B'
-              ? 'bg-primary/25 text-primary-foreground'
-              : customerMode === 'B2C'
+          {isGSTBill && (
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-display font-bold ${
+              customerType === 'B2B'
                 ? 'bg-warning/20 text-warning'
-                : 'bg-checkout-foreground/10 text-checkout-foreground/65'
-          }`}>
-            {customerMode}
-          </span>
+                : 'bg-primary/25 text-primary-foreground'
+            }`}>
+              {customerType}
+            </span>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -96,11 +97,12 @@ export const CheckoutPanel: React.FC<Props> = ({
             </div>
           </div>
 
-          {isGSTBill && (
+          {/* GSTIN only for B2B */}
+          {isGSTBill && customerType === 'B2B' && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[10px] text-checkout-foreground/45 font-medium block">GSTIN</label>
-                <span className="text-[10px] text-checkout-foreground/35">Required for B2B</span>
+                <label className="text-[10px] text-checkout-foreground/45 font-medium block">Customer GSTIN</label>
+                <span className="text-[10px] text-warning font-display font-semibold">B2B Required</span>
               </div>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
@@ -118,6 +120,7 @@ export const CheckoutPanel: React.FC<Props> = ({
         </div>
       </div>
 
+      {/* ── Order Summary ─────────────────────────────────────────── */}
       <div className="flex-1 p-4 space-y-3 text-sm pos-scrollable">
         <div className="flex items-center gap-2 mb-1">
           <Receipt className="w-3.5 h-3.5 text-checkout-foreground/40" />
@@ -197,6 +200,7 @@ export const CheckoutPanel: React.FC<Props> = ({
         )}
       </div>
 
+      {/* ── Payment Method ────────────────────────────────────────── */}
       <div className="px-4 py-3 border-t border-checkout-foreground/8">
         <label className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold mb-2.5 block">Payment Method</label>
         <div className="grid grid-cols-4 gap-2">
@@ -216,6 +220,7 @@ export const CheckoutPanel: React.FC<Props> = ({
         </div>
       </div>
 
+      {/* ── Grand Total + Complete ────────────────────────────────── */}
       <div className="p-4 border-t border-checkout-foreground/8 bg-checkout-foreground/5">
         <div className="flex justify-between items-baseline mb-4">
           <span className="text-checkout-foreground/50 font-display text-xs uppercase tracking-wider">Grand Total</span>
