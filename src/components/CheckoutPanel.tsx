@@ -111,7 +111,7 @@ export const CheckoutPanel: React.FC<Props> = ({
                   maxLength={15}
                   className="checkout-input w-full h-11 pl-10 pr-10 rounded-xl text-sm font-mono tracking-wider"
                 />
-                <Hash className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Hash className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
               </div>
             </div>
           )}

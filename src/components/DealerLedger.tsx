@@ -149,7 +149,7 @@ export const DealerLedger: React.FC = () => {
     }
 
     const newBalance = Number(selectedDealer.total_credit) - paymentForm.amount;
-    await supabase.from('dealer_transactions').insert({
+    const { error: txnError } = await supabase.from('dealer_transactions').insert({
       dealer_id: selectedDealer.id,
       shop_id: activeShopId,
       type: 'payment',
@@ -157,6 +157,7 @@ export const DealerLedger: React.FC = () => {
       running_balance: newBalance,
       description: paymentForm.description || 'Payment made to dealer',
     });
+    if (txnError) { toast.error('Failed: ' + txnError.message); return; }
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
 
     setShowPayment(false);
