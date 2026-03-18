@@ -16,8 +16,9 @@ export const SettingsPage: React.FC = () => {
   const [localShops, setLocalShops] = useState<Shop[]>(shops);
   const [localSettings, setLocalSettings] = useState(settings);
   const [newPin, setNewPin] = useState('');
-  const [tab, setTab] = useState<'shops' | 'general' | 'pin' | 'users'>('shops');
+  const [tab, setTab] = useState<'shops' | 'gst_profiles' | 'general' | 'pin' | 'users'>('shops');
   const [members, setMembers] = useState<any[]>([]);
+  const [gstProfiles, setGstProfiles] = useState<any[]>([]);
 
   useEffect(() => { setLocalShops(shops); }, [shops]);
   useEffect(() => { setLocalSettings(settings); }, [settings]);
