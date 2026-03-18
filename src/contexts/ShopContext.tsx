@@ -10,6 +10,10 @@ interface ShopContextType {
   shops: Shop[];
   activeShop: Shop | null;
   activeShopId: string | null;
+  /** All shop IDs the user has access to */
+  allShopIds: string[];
+  /** True when "All Shops" is selected */
+  isAllShops: boolean;
   settings: ShopSettings | null;
   setActiveShopId: (id: string) => void;
   refreshShops: () => Promise<void>;
@@ -18,10 +22,12 @@ interface ShopContextType {
 }
 
 const ShopContext = createContext<ShopContextType>({
-  shops: [], activeShop: null, activeShopId: null, settings: null,
+  shops: [], activeShop: null, activeShopId: null, allShopIds: [], isAllShops: false, settings: null,
   setActiveShopId: () => {}, refreshShops: async () => {}, refreshSettings: async () => {},
   loading: true,
 });
+
+export const ALL_SHOPS_ID = '__all__';
 
 export const useShop = () => useContext(ShopContext);
 
@@ -31,6 +37,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeShopId, setActiveShopIdState] = useState<string | null>(null);
   const [settings, setSettings] = useState<ShopSettings | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const allShopIds = shops.map(s => s.id);
+  const isAllShops = activeShopId === ALL_SHOPS_ID;
 
   const refreshShops = async () => {
     if (!user) return;
@@ -45,7 +54,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshSettings = async () => {
-    if (!activeShopId) return;
+    if (!activeShopId || isAllShops) return;
     const { data } = await supabase
       .from('shop_settings')
       .select('*')
@@ -59,7 +68,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   useEffect(() => {
-    if (activeShopId) refreshSettings();
+    if (activeShopId && !isAllShops) refreshSettings();
   }, [activeShopId]);
 
   const setActiveShopId = (id: string) => {
@@ -73,11 +82,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (saved) setActiveShopIdState(saved);
   }, []);
 
-  const activeShop = shops.find(s => s.id === activeShopId) || shops[0] || null;
+  const activeShop = isAllShops ? null : (shops.find(s => s.id === activeShopId) || shops[0] || null);
 
   return (
     <ShopContext.Provider value={{
-      shops, activeShop, activeShopId: activeShop?.id || null, settings,
+      shops, activeShop, activeShopId: isAllShops ? ALL_SHOPS_ID : (activeShop?.id || null),
+      allShopIds, isAllShops, settings,
       setActiveShopId, refreshShops, refreshSettings, loading,
     }}>
       {children}
