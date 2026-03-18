@@ -8,7 +8,10 @@ import { calculateGST } from '@/lib/store';
 import { CheckoutPanel } from '@/components/CheckoutPanel';
 import { BillItemRow } from '@/components/BillItemRow';
 import { InvoicePreview } from '@/components/InvoicePreview';
-import { Search, Barcode, Keyboard, Receipt, ScanLine, Building2 } from 'lucide-react';
+import {
+  Search, Barcode, Keyboard, Receipt, ScanLine,
+  Building2, ChevronDown, Store, Tag, CheckCircle2
+} from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -21,6 +24,9 @@ export interface GSTProfile {
   address: string;
   phone: string;
   is_default: boolean;
+  profile_type: 'retail' | 'wholesale';
+  invoice_prefix: string;
+  last_invoice_number: number;
 }
 
 type Product = Database['public']['Tables']['products']['Row'];
@@ -63,16 +69,119 @@ export interface InvoiceData {
   billing_address?: string;
   billing_phone?: string;
   billing_gst_number?: string;
+  profile_type?: string;
 }
 
+// ─── GST Profile Card Selector ───────────────────────────────────────────────
+interface ProfileSelectorProps {
+  profiles: GSTProfile[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}
+
+const ProfileSelector: React.FC<ProfileSelectorProps> = ({ profiles, selectedId, onSelect }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = profiles.find(p => p.id === selectedId);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  if (profiles.length === 0) return null;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 h-9 pl-2.5 pr-3 rounded-xl border border-border bg-card hover:bg-accent transition-all shadow-sm min-w-[200px] max-w-[280px]"
+      >
+        <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${
+          selected?.profile_type === 'wholesale' ? 'bg-warning/15' : 'bg-primary/15'
+        }`}>
+          {selected?.profile_type === 'wholesale'
+            ? <Store className="w-3.5 h-3.5 text-warning" />
+            : <Building2 className="w-3.5 h-3.5 text-primary" />
+          }
+        </div>
+        <div className="flex-1 text-left min-w-0">
+          <p className="text-xs font-display font-bold text-foreground truncate">
+            {selected?.profile_name || selected?.business_name || 'Select Profile'}
+          </p>
+          {selected && (
+            <p className="text-[10px] text-muted-foreground truncate">
+              {selected.gst_number || 'No GST'} · {selected.profile_type === 'wholesale' ? 'Wholesale' : 'Retail'}
+            </p>
+          )}
+        </div>
+        <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-1.5 w-72 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+          <p className="text-[10px] font-display font-bold uppercase tracking-wider text-muted-foreground px-3 pt-2.5 pb-1.5">
+            Select Billing Profile
+          </p>
+          <div className="max-h-64 overflow-y-auto pb-1">
+            {profiles.map(p => (
+              <button
+                key={p.id}
+                onClick={() => { onSelect(p.id); setOpen(false); }}
+                className={`w-full text-left px-3 py-2.5 flex items-center gap-2.5 hover:bg-accent transition-colors ${
+                  selectedId === p.id ? 'bg-primary/8' : ''
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  p.profile_type === 'wholesale' ? 'bg-warning/15' : 'bg-primary/15'
+                }`}>
+                  {p.profile_type === 'wholesale'
+                    ? <Store className="w-4 h-4 text-warning" />
+                    : <Building2 className="w-4 h-4 text-primary" />
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-display font-bold truncate">{p.profile_name || p.business_name}</p>
+                    {p.is_default && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-display font-bold flex-shrink-0">Default</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{p.business_name}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-display font-semibold ${
+                      p.profile_type === 'wholesale' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'
+                    }`}>
+                      {p.profile_type === 'wholesale' ? 'Wholesale' : 'Retail'}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{p.invoice_prefix}-XXXX</span>
+                  </div>
+                </div>
+                {selectedId === p.id && (
+                  <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Main POS Component ───────────────────────────────────────────────────────
 export const POSBilling: React.FC = () => {
   const { user } = useAuth();
-  const { activeShop, activeShopId, settings, isAllShops } = useShop();
+  const { activeShop, activeShopId, settings } = useShop();
 
   const [items, setItems] = useState<BillItem[]>([]);
   const [imeiInput, setImeiInput] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [isGSTBill, setIsGSTBill] = useState(true);
+  const [customerType, setCustomerType] = useState<'B2C' | 'B2B'>('B2C');
   const [gstBearer, setGstBearer] = useState<'customer' | 'seller'>('customer');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'mixed'>('cash');
   const [customerName, setCustomerName] = useState('');
@@ -88,29 +197,32 @@ export const POSBilling: React.FC = () => {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const imeiRef = useRef<HTMLInputElement>(null);
 
+  // Reset customer GST when switching to B2C
+  useEffect(() => {
+    if (customerType === 'B2C') setCustomerGST('');
+  }, [customerType]);
+
   // Fetch GST profiles for this shop
   useEffect(() => {
     const fetchProfiles = async () => {
-      if (!activeShopId || isAllShops) return;
+      if (!activeShopId) return;
       const { data } = await supabase
         .from('shop_gst_profiles')
         .select('*')
         .eq('shop_id', activeShopId)
         .order('is_default', { ascending: false });
       if (data) {
-        setGstProfiles(data as GSTProfile[]);
+        setGstProfiles(data as unknown as GSTProfile[]);
         const def = data.find((p: any) => p.is_default);
         setSelectedProfileId(def?.id || data[0]?.id || null);
       }
     };
     fetchProfiles();
-  }, [activeShopId, isAllShops]);
+  }, [activeShopId]);
 
   const selectedProfile = gstProfiles.find(p => p.id === selectedProfileId) || null;
 
-  useEffect(() => {
-    imeiRef.current?.focus();
-  }, []);
+  useEffect(() => { imeiRef.current?.focus(); }, []);
 
   const flashItem = (id: string) => {
     setFlashId(id);
@@ -130,7 +242,6 @@ export const POSBilling: React.FC = () => {
       discountValue: 0,
       total: Number(product.sale_price),
     };
-
     setItems(prev => [...prev, newItem]);
     flashItem(newItem.id);
     return newItem;
@@ -141,11 +252,7 @@ export const POSBilling: React.FC = () => {
       if (item.id !== itemId) return item;
       const nextQuantity = item.quantity + 1;
       const lineBase = item.unitPrice - item.discount;
-      return {
-        ...item,
-        quantity: nextQuantity,
-        total: lineBase * nextQuantity,
-      };
+      return { ...item, quantity: nextQuantity, total: lineBase * nextQuantity };
     }));
     flashItem(itemId);
   };
@@ -204,17 +311,14 @@ export const POSBilling: React.FC = () => {
         setSearchResults([]);
         return;
       }
-
       const { data } = await supabase
         .from('products')
         .select('*')
         .eq('shop_id', activeShopId)
         .or(`brand.ilike.%${q}%,model.ilike.%${q}%,variant.ilike.%${q}%,color.ilike.%${q}%`)
         .limit(12);
-
       setSearchResults(data || []);
     };
-
     const timer = window.setTimeout(runSearch, 180);
     return () => window.clearTimeout(timer);
   }, [searchInput, showSearch, activeShopId]);
@@ -271,10 +375,28 @@ export const POSBilling: React.FC = () => {
     if (items.length === 0) { toast.error('Add items to bill first'); return; }
     if (!activeShop || !activeShopId || !user) return;
 
-    const nextNum = (activeShop.last_invoice_number || 0) + 1;
-    const invoiceNumber = `${activeShop.invoice_prefix}-${String(nextNum).padStart(4, '0')}`;
-
-    await supabase.from('shops').update({ last_invoice_number: nextNum }).eq('id', activeShopId);
+    // Use per-profile invoice numbering if a profile is selected
+    let invoiceNumber: string;
+    if (selectedProfile) {
+      const nextNum = (selectedProfile.last_invoice_number || 0) + 1;
+      const prefix = selectedProfile.invoice_prefix || (
+        selectedProfile.profile_type === 'wholesale' ? 'INV-W' : 'INV-R'
+      );
+      invoiceNumber = `${prefix}-${String(nextNum).padStart(4, '0')}`;
+      // Increment the profile's invoice counter
+      await supabase
+        .from('shop_gst_profiles')
+        .update({ last_invoice_number: nextNum } as any)
+        .eq('id', selectedProfile.id);
+      // Update local state
+      setGstProfiles(prev => prev.map(p =>
+        p.id === selectedProfile.id ? { ...p, last_invoice_number: nextNum } : p
+      ));
+    } else {
+      const nextNum = (activeShop.last_invoice_number || 0) + 1;
+      invoiceNumber = `${activeShop.invoice_prefix}-${String(nextNum).padStart(4, '0')}`;
+      await supabase.from('shops').update({ last_invoice_number: nextNum }).eq('id', activeShopId);
+    }
 
     const { data: invoice, error: invError } = await supabase.from('invoices').insert({
       invoice_number: invoiceNumber,
@@ -282,7 +404,7 @@ export const POSBilling: React.FC = () => {
       user_id: user.id,
       customer_name: customerName || 'Walk-in Customer',
       customer_phone: customerPhone,
-      customer_gst: customerGST || null,
+      customer_gst: customerType === 'B2B' ? (customerGST || null) : null,
       subtotal,
       total_discount: itemDiscountTotal + billDiscountAmount,
       bill_discount: billDiscountAmount,
@@ -351,7 +473,7 @@ export const POSBilling: React.FC = () => {
               type: 'sale_deduction',
               amount: costValue,
               running_balance: newBalance,
-              description: `Sale deduction at cost price for ${item.product.brand} ${item.product.model} (IMEI: ${item.imei})`,
+              description: `Sale deduction for ${item.product.brand} ${item.product.model} (IMEI: ${item.imei})`,
               invoice_ref: invoiceNumber,
               imei_ref: item.imei,
             });
@@ -369,7 +491,7 @@ export const POSBilling: React.FC = () => {
       date: invoice.date,
       customer_name: customerName || 'Walk-in Customer',
       customer_phone: customerPhone,
-      customer_gst: customerGST || undefined,
+      customer_gst: customerType === 'B2B' ? (customerGST || undefined) : undefined,
       items,
       subtotal,
       total_discount: itemDiscountTotal + billDiscountAmount,
@@ -387,6 +509,7 @@ export const POSBilling: React.FC = () => {
       billing_address: selectedProfile?.address || activeShop.address,
       billing_phone: selectedProfile?.phone || activeShop.phone,
       billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
+      profile_type: selectedProfile?.profile_type,
     };
 
     setShowInvoice(invoiceData);
@@ -397,40 +520,73 @@ export const POSBilling: React.FC = () => {
     setCustomerPhone('');
     setCustomerGST('');
     setBillDiscount(0);
-  }, [items, customerName, customerPhone, customerGST, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile]);
-
+  }, [items, customerName, customerPhone, customerGST, customerType, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile]);
 
   return (
     <div className="flex h-full">
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex items-center gap-3 px-4 h-14 bg-card border-b">
-          {gstProfiles.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-              <select
-                value={selectedProfileId || ''}
-                onChange={e => setSelectedProfileId(e.target.value || null)}
-                className="h-8 px-2 rounded-md border border-input bg-card text-xs font-display font-medium focus:outline-none focus:ring-2 focus:ring-ring max-w-[200px]"
-              >
-                {gstProfiles.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.profile_name || p.business_name} {p.gst_number ? `(${p.gst_number.slice(-4)})` : ''}
-                  </option>
-                ))}
-              </select>
+
+        {/* ── Top Bar ─────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-2 px-4 h-14 bg-card border-b flex-wrap">
+          {/* GST Profile Selector */}
+          <ProfileSelector
+            profiles={gstProfiles}
+            selectedId={selectedProfileId}
+            onSelect={setSelectedProfileId}
+          />
+
+          {/* Profile active indicator */}
+          {selectedProfile && (
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary/60 border border-border">
+              <Tag className="w-3 h-3 text-muted-foreground" />
+              <span className="text-[10px] font-display font-semibold text-muted-foreground">
+                {selectedProfile.invoice_prefix}-{String((selectedProfile.last_invoice_number || 0) + 1).padStart(4, '0')}
+              </span>
             </div>
           )}
+
           <div className="flex items-center gap-2 ml-auto">
+            {/* GST / Non-GST toggle */}
             <div className="flex bg-secondary rounded-lg p-0.5">
-              <button onClick={() => setIsGSTBill(true)} className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+              <button
+                onClick={() => setIsGSTBill(true)}
+                className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
                 GST <span className="opacity-50 ml-0.5">F2</span>
               </button>
-              <button onClick={() => setIsGSTBill(false)} className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${!isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+              <button
+                onClick={() => setIsGSTBill(false)}
+                className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${!isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
                 Non-GST <span className="opacity-50 ml-0.5">F3</span>
               </button>
             </div>
+
+            {/* B2B / B2C Toggle */}
             {isGSTBill && (
-              <select value={gstBearer} onChange={e => setGstBearer(e.target.value as 'customer' | 'seller')} className="h-8 px-2 rounded-md border border-input bg-card text-xs font-display font-medium focus:outline-none focus:ring-2 focus:ring-ring">
+              <div className="flex bg-secondary rounded-lg p-0.5">
+                <button
+                  onClick={() => setCustomerType('B2C')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${customerType === 'B2C' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  B2C
+                </button>
+                <button
+                  onClick={() => setCustomerType('B2B')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${customerType === 'B2B' ? 'bg-warning text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  B2B
+                </button>
+              </div>
+            )}
+
+            {/* GST Bearer */}
+            {isGSTBill && (
+              <select
+                value={gstBearer}
+                onChange={e => setGstBearer(e.target.value as 'customer' | 'seller')}
+                className="h-8 px-2 rounded-md border border-input bg-card text-xs font-display font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+              >
                 <option value="customer">Customer bears GST</option>
                 <option value="seller">Seller bears GST</option>
               </select>
@@ -438,6 +594,7 @@ export const POSBilling: React.FC = () => {
           </div>
         </div>
 
+        {/* ── IMEI Scan Bar ────────────────────────────────────────────── */}
         <div className="px-4 py-3 bg-card border-b">
           <div className="flex gap-2">
             <div className="flex-1 relative">
@@ -477,7 +634,8 @@ export const POSBilling: React.FC = () => {
               {searchResults.length > 0 && (
                 <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border bg-card">
                   {searchResults.map(p => (
-                    <button key={p.id} onClick={() => addProductManually(p)} className="w-full text-left px-4 py-3 hover:bg-accent text-sm border-b last:border-b-0 flex justify-between items-center transition-colors">
+                    <button key={p.id} onClick={() => addProductManually(p)}
+                      className="w-full text-left px-4 py-3 hover:bg-accent text-sm border-b last:border-b-0 flex justify-between items-center transition-colors">
                       <div>
                         <span className="font-display font-semibold">{p.brand} {p.model}</span>
                         <div className="text-muted-foreground text-xs mt-0.5">{p.variant || 'Standard'} · {p.color || 'Default'} · Stock {p.stock_quantity}</div>
@@ -494,14 +652,26 @@ export const POSBilling: React.FC = () => {
           )}
         </div>
 
+        {/* ── Keyboard shortcuts ───────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-4 py-1.5 bg-secondary/30 text-[11px] text-muted-foreground font-display font-medium">
           <Keyboard className="w-3.5 h-3.5" />
           <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">F2</span> GST
           <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">F3</span> Non-GST
           <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">F9</span> Print & Save
           <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">ESC</span> Close
+          {selectedProfile && (
+            <>
+              <span className="text-border mx-1">|</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                selectedProfile.profile_type === 'wholesale' ? 'bg-warning/15 text-warning' : 'bg-primary/15 text-primary'
+              }`}>
+                {selectedProfile.profile_type === 'wholesale' ? '🏪 Wholesale' : '🏬 Retail'} · {selectedProfile.business_name}
+              </span>
+            </>
+          )}
         </div>
 
+        {/* ── Bill Items Table ─────────────────────────────────────────── */}
         <div className="flex-1 pos-scrollable">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
@@ -511,6 +681,12 @@ export const POSBilling: React.FC = () => {
               <div className="text-center">
                 <p className="font-display text-lg font-semibold text-foreground/60">Ready for billing</p>
                 <p className="text-sm mt-1">Scan IMEI barcode or search products to start</p>
+                {selectedProfile && (
+                  <p className="text-xs mt-1 text-muted-foreground">
+                    Billing as: <span className="font-semibold text-foreground">{selectedProfile.business_name}</span>
+                    {selectedProfile.gst_number && <span className="ml-1 text-primary">({selectedProfile.gst_number})</span>}
+                  </p>
+                )}
               </div>
             </div>
           ) : (
@@ -555,6 +731,7 @@ export const POSBilling: React.FC = () => {
         grandTotal={grandTotal}
         isGSTBill={isGSTBill}
         gstBearer={gstBearer}
+        customerType={customerType}
         paymentMethod={paymentMethod}
         customerName={customerName}
         customerPhone={customerPhone}
