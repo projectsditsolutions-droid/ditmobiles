@@ -295,7 +295,12 @@ export const POSBilling: React.FC = () => {
       gst_bearer: gstBearer,
       print_type: settings?.default_print_type || 'thermal',
       status: 'completed',
-    }).select().single();
+      gst_profile_id: selectedProfile?.id || null,
+      billing_business_name: selectedProfile?.business_name || activeShop.name,
+      billing_address: selectedProfile?.address || activeShop.address,
+      billing_phone: selectedProfile?.phone || activeShop.phone,
+      billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
+    } as any).select().single();
 
     if (invError || !invoice) {
       toast.error(`Failed to save invoice: ${invError?.message}`);
