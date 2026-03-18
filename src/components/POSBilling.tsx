@@ -8,9 +8,20 @@ import { ShopSelector } from '@/components/ShopSelector';
 import { CheckoutPanel } from '@/components/CheckoutPanel';
 import { BillItemRow } from '@/components/BillItemRow';
 import { InvoicePreview } from '@/components/InvoicePreview';
-import { Search, Barcode, Keyboard, Receipt, ScanLine } from 'lucide-react';
+import { Search, Barcode, Keyboard, Receipt, ScanLine, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+
+export interface GSTProfile {
+  id: string;
+  shop_id: string;
+  profile_name: string;
+  business_name: string;
+  gst_number: string;
+  address: string;
+  phone: string;
+  is_default: boolean;
+}
 
 type Product = Database['public']['Tables']['products']['Row'];
 
