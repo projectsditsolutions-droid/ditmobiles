@@ -13,7 +13,7 @@ type IMEIRecord = Database['public']['Tables']['imei_records']['Row'];
 const emptyProduct = { brand: '', model: '', variant: '', color: '', purchase_price: 0, sale_price: 0, gst_percent: 18, category: 'mobile' };
 
 export const InventoryManagement: React.FC = () => {
-  const { activeShopId } = useShop();
+  const { activeShopId, isAllShops, allShopIds } = useShop();
   const [products, setProducts] = useState<Product[]>([]);
   const [imeis, setImeis] = useState<(IMEIRecord & { products?: Product })[]>([]);
   const [searchQ, setSearchQ] = useState('');
