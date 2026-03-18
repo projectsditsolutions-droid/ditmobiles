@@ -404,7 +404,6 @@ export const POSBilling: React.FC = () => {
     <div className="flex h-full">
       <div className="flex-1 flex flex-col min-w-0">
         <div className="flex items-center gap-3 px-4 h-14 bg-card border-b">
-          <ShopSelector />
           {gstProfiles.length > 0 && (
             <div className="flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
