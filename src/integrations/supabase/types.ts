@@ -233,6 +233,10 @@ export type Database = {
         Row: {
           bill_discount: number
           bill_discount_type: string
+          billing_address: string | null
+          billing_business_name: string | null
+          billing_gst_number: string | null
+          billing_phone: string | null
           cgst: number
           created_at: string
           customer_gst: string | null
@@ -241,6 +245,7 @@ export type Database = {
           date: string
           grand_total: number
           gst_bearer: string
+          gst_profile_id: string | null
           id: string
           invoice_number: string
           is_gst_bill: boolean
@@ -257,6 +262,10 @@ export type Database = {
         Insert: {
           bill_discount?: number
           bill_discount_type?: string
+          billing_address?: string | null
+          billing_business_name?: string | null
+          billing_gst_number?: string | null
+          billing_phone?: string | null
           cgst?: number
           created_at?: string
           customer_gst?: string | null
@@ -265,6 +274,7 @@ export type Database = {
           date?: string
           grand_total?: number
           gst_bearer?: string
+          gst_profile_id?: string | null
           id?: string
           invoice_number: string
           is_gst_bill?: boolean
@@ -281,6 +291,10 @@ export type Database = {
         Update: {
           bill_discount?: number
           bill_discount_type?: string
+          billing_address?: string | null
+          billing_business_name?: string | null
+          billing_gst_number?: string | null
+          billing_phone?: string | null
           cgst?: number
           created_at?: string
           customer_gst?: string | null
@@ -289,6 +303,7 @@ export type Database = {
           date?: string
           grand_total?: number
           gst_bearer?: string
+          gst_profile_id?: string | null
           id?: string
           invoice_number?: string
           is_gst_bill?: boolean
@@ -303,6 +318,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_gst_profile_id_fkey"
+            columns: ["gst_profile_id"]
+            isOneToOne: false
+            referencedRelation: "shop_gst_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_shop_id_fkey"
             columns: ["shop_id"]
@@ -394,6 +416,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      shop_gst_profiles: {
+        Row: {
+          address: string
+          business_name: string
+          created_at: string
+          gst_number: string
+          id: string
+          is_default: boolean
+          phone: string
+          profile_name: string
+          shop_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          business_name?: string
+          created_at?: string
+          gst_number?: string
+          id?: string
+          is_default?: boolean
+          phone?: string
+          profile_name?: string
+          shop_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          business_name?: string
+          created_at?: string
+          gst_number?: string
+          id?: string
+          is_default?: boolean
+          phone?: string
+          profile_name?: string
+          shop_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_gst_profiles_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shop_memberships: {
         Row: {

@@ -18,6 +18,12 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
 
   if (!shop) return null;
 
+  // Use billing profile details if available, otherwise fall back to shop details
+  const businessName = invoice.billing_business_name || shop.name;
+  const businessAddress = invoice.billing_address || shop.address;
+  const businessPhone = invoice.billing_phone || shop.phone;
+  const businessGST = invoice.billing_gst_number || shop.gst_number;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-sm">
       <div className="bg-card rounded-xl shadow-2xl w-[700px] max-h-[90vh] flex flex-col">
@@ -35,12 +41,12 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
 
         <div className="flex-1 overflow-y-auto p-6 print-area">
           <div className="max-w-[600px] mx-auto font-body text-sm text-foreground">
-            {/* Header */}
+            {/* Header - uses selected GST profile details */}
             <div className="text-center mb-4 border-b pb-4">
-              <h1 className="font-display text-2xl font-extrabold">{shop.name}</h1>
-              <p className="text-muted-foreground text-xs mt-1">{shop.address}</p>
-              <p className="text-muted-foreground text-xs">Phone: {shop.phone}</p>
-              <p className="font-display text-xs font-semibold mt-1">GSTIN: {shop.gst_number}</p>
+              <h1 className="font-display text-2xl font-extrabold">{businessName}</h1>
+              <p className="text-muted-foreground text-xs mt-1">{businessAddress}</p>
+              <p className="text-muted-foreground text-xs">Phone: {businessPhone}</p>
+              <p className="font-display text-xs font-semibold mt-1">GSTIN: {businessGST}</p>
             </div>
 
             <div className="flex justify-between text-xs mb-4">

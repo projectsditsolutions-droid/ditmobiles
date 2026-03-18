@@ -8,9 +8,20 @@ import { ShopSelector } from '@/components/ShopSelector';
 import { CheckoutPanel } from '@/components/CheckoutPanel';
 import { BillItemRow } from '@/components/BillItemRow';
 import { InvoicePreview } from '@/components/InvoicePreview';
-import { Search, Barcode, Keyboard, Receipt, ScanLine } from 'lucide-react';
+import { Search, Barcode, Keyboard, Receipt, ScanLine, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+
+export interface GSTProfile {
+  id: string;
+  shop_id: string;
+  profile_name: string;
+  business_name: string;
+  gst_number: string;
+  address: string;
+  phone: string;
+  is_default: boolean;
+}
 
 type Product = Database['public']['Tables']['products']['Row'];
 
@@ -48,6 +59,10 @@ export interface InvoiceData {
   gst_bearer: string;
   print_type: string;
   status: string;
+  billing_business_name?: string;
+  billing_address?: string;
+  billing_phone?: string;
+  billing_gst_number?: string;
 }
 
 export const POSBilling: React.FC = () => {
@@ -69,7 +84,29 @@ export const POSBilling: React.FC = () => {
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [showInvoice, setShowInvoice] = useState<InvoiceData | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
+  const [gstProfiles, setGstProfiles] = useState<GSTProfile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const imeiRef = useRef<HTMLInputElement>(null);
+
+  // Fetch GST profiles for this shop
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      if (!activeShopId || isAllShops) return;
+      const { data } = await supabase
+        .from('shop_gst_profiles')
+        .select('*')
+        .eq('shop_id', activeShopId)
+        .order('is_default', { ascending: false });
+      if (data) {
+        setGstProfiles(data as GSTProfile[]);
+        const def = data.find((p: any) => p.is_default);
+        setSelectedProfileId(def?.id || data[0]?.id || null);
+      }
+    };
+    fetchProfiles();
+  }, [activeShopId, isAllShops]);
+
+  const selectedProfile = gstProfiles.find(p => p.id === selectedProfileId) || null;
 
   useEffect(() => {
     imeiRef.current?.focus();
@@ -258,7 +295,12 @@ export const POSBilling: React.FC = () => {
       gst_bearer: gstBearer,
       print_type: settings?.default_print_type || 'thermal',
       status: 'completed',
-    }).select().single();
+      gst_profile_id: selectedProfile?.id || null,
+      billing_business_name: selectedProfile?.business_name || activeShop.name,
+      billing_address: selectedProfile?.address || activeShop.address,
+      billing_phone: selectedProfile?.phone || activeShop.phone,
+      billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
+    } as any).select().single();
 
     if (invError || !invoice) {
       toast.error(`Failed to save invoice: ${invError?.message}`);
@@ -341,6 +383,10 @@ export const POSBilling: React.FC = () => {
       gst_bearer: gstBearer,
       print_type: settings?.default_print_type || 'thermal',
       status: 'completed',
+      billing_business_name: selectedProfile?.business_name || activeShop.name,
+      billing_address: selectedProfile?.address || activeShop.address,
+      billing_phone: selectedProfile?.phone || activeShop.phone,
+      billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
     };
 
     setShowInvoice(invoiceData);
@@ -351,7 +397,7 @@ export const POSBilling: React.FC = () => {
     setCustomerPhone('');
     setCustomerGST('');
     setBillDiscount(0);
-  }, [items, customerName, customerPhone, customerGST, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user]);
+  }, [items, customerName, customerPhone, customerGST, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile]);
 
   if (isAllShops) {
     return (
@@ -372,6 +418,22 @@ export const POSBilling: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <div className="flex items-center gap-3 px-4 h-14 bg-card border-b">
           <ShopSelector />
+          {gstProfiles.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+              <select
+                value={selectedProfileId || ''}
+                onChange={e => setSelectedProfileId(e.target.value || null)}
+                className="h-8 px-2 rounded-md border border-input bg-card text-xs font-display font-medium focus:outline-none focus:ring-2 focus:ring-ring max-w-[200px]"
+              >
+                {gstProfiles.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.profile_name || p.business_name} {p.gst_number ? `(${p.gst_number.slice(-4)})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex items-center gap-2 ml-auto">
             <div className="flex bg-secondary rounded-lg p-0.5">
               <button onClick={() => setIsGSTBill(true)} className={`px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${isGSTBill ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>

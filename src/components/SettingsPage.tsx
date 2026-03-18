@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useShop } from '@/contexts/ShopContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Save, LogOut, Users, Shield, Store, Settings2, KeyRound, Printer, Hash } from 'lucide-react';
+import { Plus, Trash2, Save, LogOut, Users, Shield, Store, Settings2, KeyRound, Printer, Hash, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -16,8 +16,9 @@ export const SettingsPage: React.FC = () => {
   const [localShops, setLocalShops] = useState<Shop[]>(shops);
   const [localSettings, setLocalSettings] = useState(settings);
   const [newPin, setNewPin] = useState('');
-  const [tab, setTab] = useState<'shops' | 'general' | 'pin' | 'users'>('shops');
+  const [tab, setTab] = useState<'shops' | 'gst_profiles' | 'general' | 'pin' | 'users'>('shops');
   const [members, setMembers] = useState<any[]>([]);
+  const [gstProfiles, setGstProfiles] = useState<any[]>([]);
 
   useEffect(() => { setLocalShops(shops); }, [shops]);
   useEffect(() => { setLocalSettings(settings); }, [settings]);
@@ -91,8 +92,66 @@ export const SettingsPage: React.FC = () => {
     refreshSettings();
   };
 
+  const fetchGstProfiles = async () => {
+    if (!activeShopId) return;
+    const { data } = await supabase
+      .from('shop_gst_profiles')
+      .select('*')
+      .eq('shop_id', activeShopId)
+      .order('is_default', { ascending: false });
+    if (data) setGstProfiles(data);
+  };
+
+  useEffect(() => { if (tab === 'gst_profiles') fetchGstProfiles(); }, [tab, activeShopId]);
+
+  const addGstProfile = async () => {
+    if (!activeShopId) return;
+    const { error } = await supabase.from('shop_gst_profiles').insert({
+      shop_id: activeShopId,
+      profile_name: 'New Profile',
+      business_name: '',
+      gst_number: '',
+      address: '',
+      phone: '',
+      is_default: gstProfiles.length === 0,
+    } as any);
+    if (!error) { toast.success('GST Profile added'); fetchGstProfiles(); }
+  };
+
+  const updateGstProfile = (idx: number, field: string, value: any) => {
+    const updated = [...gstProfiles];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setGstProfiles(updated);
+  };
+
+  const saveGstProfiles = async () => {
+    for (const p of gstProfiles) {
+      await supabase.from('shop_gst_profiles').update({
+        profile_name: p.profile_name,
+        business_name: p.business_name,
+        gst_number: p.gst_number,
+        address: p.address,
+        phone: p.phone,
+        is_default: p.is_default,
+      } as any).eq('id', p.id);
+    }
+    toast.success('GST Profiles saved');
+    fetchGstProfiles();
+  };
+
+  const deleteGstProfile = async (id: string) => {
+    await supabase.from('shop_gst_profiles').delete().eq('id', id);
+    toast.success('Profile deleted');
+    fetchGstProfiles();
+  };
+
+  const setDefaultProfile = (idx: number) => {
+    setGstProfiles(prev => prev.map((p, i) => ({ ...p, is_default: i === idx })));
+  };
+
   const tabItems = [
     { key: 'shops', icon: Store, label: 'Shop Profiles' },
+    { key: 'gst_profiles', icon: Building2, label: 'GST Profiles' },
     { key: 'general', icon: Settings2, label: 'General' },
     { key: 'pin', icon: KeyRound, label: 'PIN Security' },
     { key: 'users', icon: Users, label: 'Team' },
@@ -147,6 +206,71 @@ export const SettingsPage: React.FC = () => {
           <div className="flex gap-3">
             <Button variant="outline" onClick={addShop}><Plus className="w-4 h-4 mr-1.5" /> Add Shop</Button>
             <Button onClick={handleSaveAllShops} className="gradient-primary border-0 text-primary-foreground"><Save className="w-4 h-4 mr-1.5" /> Save All</Button>
+          </div>
+        </div>
+      )}
+
+      {tab === 'gst_profiles' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-display font-bold">GST Billing Profiles</h3>
+              <p className="text-xs text-muted-foreground">Create multiple GST identities for this shop. Select one when billing.</p>
+            </div>
+          </div>
+          {gstProfiles.length === 0 && (
+            <div className="bg-card rounded-xl border p-6 text-center text-muted-foreground text-sm">
+              <p>No GST profiles yet. Add one to bill under different GST numbers.</p>
+              <p className="text-xs mt-1">If no profiles exist, the shop's default GST details will be used.</p>
+            </div>
+          )}
+          {gstProfiles.map((profile, idx) => (
+            <div key={profile.id} className="bg-card rounded-xl border p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
+                    <Building2 className="w-4 h-4 text-primary-foreground" />
+                  </div>
+                  <h3 className="font-display font-bold text-sm">{profile.profile_name || 'Unnamed Profile'}</h3>
+                  {profile.is_default && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-display font-bold bg-primary/15 text-primary">Default</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {!profile.is_default && (
+                    <button onClick={() => setDefaultProfile(idx)} className="text-[10px] font-display font-semibold text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-primary/10">
+                      Set Default
+                    </button>
+                  )}
+                  <button onClick={() => deleteGstProfile(profile.id)} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  ['profile_name', 'Profile Name (Label)'],
+                  ['business_name', 'Business Name (on Invoice)'],
+                  ['gst_number', 'GST Number'],
+                  ['address', 'Address'],
+                  ['phone', 'Phone'],
+                ].map(([field, label]) => (
+                  <div key={field}>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</label>
+                    <Input value={String(profile[field] || '')} onChange={e => updateGstProfile(idx, field, e.target.value)} className="h-10" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={addGstProfile}><Plus className="w-4 h-4 mr-1.5" /> Add GST Profile</Button>
+            {gstProfiles.length > 0 && (
+              <Button onClick={saveGstProfiles} className="gradient-primary border-0 text-primary-foreground"><Save className="w-4 h-4 mr-1.5" /> Save All</Button>
+            )}
           </div>
         </div>
       )}
