@@ -42,7 +42,7 @@ const getQuantityFromTxn = (txn: DealerTransaction) => {
 };
 
 export const DealerLedger: React.FC = () => {
-  const { activeShopId } = useShop();
+  const { activeShopId, isAllShops, allShopIds } = useShop();
   const [dealers, setDealers] = useState<Dealer[]>([]);
   const [allTxns, setAllTxns] = useState<DealerTransaction[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
