@@ -92,8 +92,66 @@ export const SettingsPage: React.FC = () => {
     refreshSettings();
   };
 
+  const fetchGstProfiles = async () => {
+    if (!activeShopId) return;
+    const { data } = await supabase
+      .from('shop_gst_profiles')
+      .select('*')
+      .eq('shop_id', activeShopId)
+      .order('is_default', { ascending: false });
+    if (data) setGstProfiles(data);
+  };
+
+  useEffect(() => { if (tab === 'gst_profiles') fetchGstProfiles(); }, [tab, activeShopId]);
+
+  const addGstProfile = async () => {
+    if (!activeShopId) return;
+    const { error } = await supabase.from('shop_gst_profiles').insert({
+      shop_id: activeShopId,
+      profile_name: 'New Profile',
+      business_name: '',
+      gst_number: '',
+      address: '',
+      phone: '',
+      is_default: gstProfiles.length === 0,
+    } as any);
+    if (!error) { toast.success('GST Profile added'); fetchGstProfiles(); }
+  };
+
+  const updateGstProfile = (idx: number, field: string, value: any) => {
+    const updated = [...gstProfiles];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setGstProfiles(updated);
+  };
+
+  const saveGstProfiles = async () => {
+    for (const p of gstProfiles) {
+      await supabase.from('shop_gst_profiles').update({
+        profile_name: p.profile_name,
+        business_name: p.business_name,
+        gst_number: p.gst_number,
+        address: p.address,
+        phone: p.phone,
+        is_default: p.is_default,
+      } as any).eq('id', p.id);
+    }
+    toast.success('GST Profiles saved');
+    fetchGstProfiles();
+  };
+
+  const deleteGstProfile = async (id: string) => {
+    await supabase.from('shop_gst_profiles').delete().eq('id', id);
+    toast.success('Profile deleted');
+    fetchGstProfiles();
+  };
+
+  const setDefaultProfile = (idx: number) => {
+    setGstProfiles(prev => prev.map((p, i) => ({ ...p, is_default: i === idx })));
+  };
+
   const tabItems = [
     { key: 'shops', icon: Store, label: 'Shop Profiles' },
+    { key: 'gst_profiles', icon: Building2, label: 'GST Profiles' },
     { key: 'general', icon: Settings2, label: 'General' },
     { key: 'pin', icon: KeyRound, label: 'PIN Security' },
     { key: 'users', icon: Users, label: 'Team' },
