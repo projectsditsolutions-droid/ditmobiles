@@ -103,7 +103,7 @@ export const CheckoutPanel: React.FC<Props> = ({
                 <span className="text-[10px] text-checkout-foreground/35">Required for B2B</span>
               </div>
               <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
                 <input
                   value={customerGST}
                   onChange={e => onCustomerGSTChange(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15))}
