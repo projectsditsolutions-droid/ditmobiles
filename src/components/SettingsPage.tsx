@@ -210,7 +210,71 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {tab === 'general' && localSettings && (
+      {tab === 'gst_profiles' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-display font-bold">GST Billing Profiles</h3>
+              <p className="text-xs text-muted-foreground">Create multiple GST identities for this shop. Select one when billing.</p>
+            </div>
+          </div>
+          {gstProfiles.length === 0 && (
+            <div className="bg-card rounded-xl border p-6 text-center text-muted-foreground text-sm">
+              <p>No GST profiles yet. Add one to bill under different GST numbers.</p>
+              <p className="text-xs mt-1">If no profiles exist, the shop's default GST details will be used.</p>
+            </div>
+          )}
+          {gstProfiles.map((profile, idx) => (
+            <div key={profile.id} className="bg-card rounded-xl border p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
+                    <Building2 className="w-4 h-4 text-primary-foreground" />
+                  </div>
+                  <h3 className="font-display font-bold text-sm">{profile.profile_name || 'Unnamed Profile'}</h3>
+                  {profile.is_default && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-display font-bold bg-primary/15 text-primary">Default</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {!profile.is_default && (
+                    <button onClick={() => setDefaultProfile(idx)} className="text-[10px] font-display font-semibold text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-primary/10">
+                      Set Default
+                    </button>
+                  )}
+                  <button onClick={() => deleteGstProfile(profile.id)} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  ['profile_name', 'Profile Name (Label)'],
+                  ['business_name', 'Business Name (on Invoice)'],
+                  ['gst_number', 'GST Number'],
+                  ['address', 'Address'],
+                  ['phone', 'Phone'],
+                ].map(([field, label]) => (
+                  <div key={field}>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</label>
+                    <Input value={String(profile[field] || '')} onChange={e => updateGstProfile(idx, field, e.target.value)} className="h-10" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={addGstProfile}><Plus className="w-4 h-4 mr-1.5" /> Add GST Profile</Button>
+            {gstProfiles.length > 0 && (
+              <Button onClick={saveGstProfiles} className="gradient-primary border-0 text-primary-foreground"><Save className="w-4 h-4 mr-1.5" /> Save All</Button>
+            )}
+          </div>
+        </div>
+      )}
+
         <div className="bg-card rounded-xl border p-5 shadow-sm space-y-5">
           <div className="flex items-center justify-between">
             <div>
