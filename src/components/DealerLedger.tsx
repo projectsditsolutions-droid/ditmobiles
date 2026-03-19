@@ -247,7 +247,9 @@ export const DealerLedger: React.FC = () => {
     });
 
     setShowStockEntry(false);
-    setStockForm({ product_id: '', unit_price: 0, imeis: '' });
+    setStockForm({ product_id: '', unit_price: 0, imeis: '', hsn_code: '' });
+    setShowNewProductInStock(false);
+    setNewProductForm({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
     toast.success(`Added ${added} units to inventory and ledger`);
     fetchDealers();
     fetchTransactions();
