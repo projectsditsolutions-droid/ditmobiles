@@ -17,9 +17,9 @@ const fmt = (n: number) => `₹${Math.abs(n).toLocaleString('en-IN')}`;
 const Modal: React.FC<{ open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode }> = ({ open, onClose, title, subtitle, children }) => {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-card rounded-2xl shadow-2xl w-[560px] max-w-[calc(100vw-2rem)] animate-scale-in border overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-primary/5 to-transparent">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-[560px] animate-scale-in border overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-primary/5 to-transparent flex-shrink-0">
           <div>
             <h2 className="font-display font-bold text-lg">{title}</h2>
             {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
@@ -28,7 +28,7 @@ const Modal: React.FC<{ open: boolean; onClose: () => void; title: string; subti
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-5 overflow-y-auto pos-scrollable">{children}</div>
       </div>
     </div>
   );
