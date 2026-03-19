@@ -147,31 +147,62 @@ export const DealerLedger: React.FC = () => {
     return 'text-success';
   };
 
+  const openEditDealer = (dealer: Dealer) => {
+    setDealerForm({
+      brand_name: dealer.brand_name,
+      dealer_name: dealer.dealer_name,
+      phone: dealer.phone,
+      address: dealer.address,
+      gstin: dealer.gstin,
+      total_credit: Number(dealer.total_credit),
+    });
+    setEditingDealerId(dealer.id);
+    setShowDealerForm(true);
+  };
+
+  const handleDeleteDealer = async (id: string) => {
+    if (!confirm('Delete this dealer? All transactions will also be deleted.')) return;
+    await supabase.from('dealer_transactions').delete().eq('dealer_id', id);
+    await supabase.from('dealers').delete().eq('id', id);
+    if (selectedDealerId === id) setSelectedDealerId(null);
+    toast.success('Dealer deleted');
+    fetchDealers();
+    fetchTransactions();
+  };
+
   const handleAddDealer = async () => {
     if (!activeShopId || !dealerForm.dealer_name.trim()) {
       toast.error('Dealer name is required');
       return;
     }
 
-    const { error } = await supabase.from('dealers').insert({
-      shop_id: activeShopId,
-      brand_name: dealerForm.brand_name.trim(),
-      dealer_name: dealerForm.dealer_name.trim(),
-      phone: dealerForm.phone.trim(),
-      address: dealerForm.address.trim(),
-      gstin: dealerForm.gstin.trim(),
-      total_credit: dealerForm.total_credit || 0,
-    });
-
-    if (error) {
-      console.error('Dealer insert error:', error);
-      toast.error('Failed to add dealer: ' + error.message);
-      return;
+    if (editingDealerId) {
+      const { error } = await supabase.from('dealers').update({
+        brand_name: dealerForm.brand_name.trim(),
+        dealer_name: dealerForm.dealer_name.trim(),
+        phone: dealerForm.phone.trim(),
+        address: dealerForm.address.trim(),
+        gstin: dealerForm.gstin.trim(),
+      }).eq('id', editingDealerId);
+      if (error) { toast.error('Failed: ' + error.message); return; }
+      toast.success('Dealer updated');
+    } else {
+      const { error } = await supabase.from('dealers').insert({
+        shop_id: activeShopId,
+        brand_name: dealerForm.brand_name.trim(),
+        dealer_name: dealerForm.dealer_name.trim(),
+        phone: dealerForm.phone.trim(),
+        address: dealerForm.address.trim(),
+        gstin: dealerForm.gstin.trim(),
+        total_credit: dealerForm.total_credit || 0,
+      });
+      if (error) { toast.error('Failed: ' + error.message); return; }
+      toast.success('Dealer added');
     }
 
     setShowDealerForm(false);
+    setEditingDealerId(null);
     setDealerForm({ brand_name: '', dealer_name: '', phone: '', address: '', gstin: '', total_credit: 0 });
-    toast.success('Dealer added successfully');
     fetchDealers();
   };
 
