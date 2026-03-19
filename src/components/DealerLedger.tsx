@@ -440,6 +440,14 @@ export const DealerLedger: React.FC = () => {
                       <span className="flex items-center gap-1"><Hash className="w-4 h-4" /> {selectedDealer.gstin || 'No GSTIN'}</span>
                     </div>
                   </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => openEditDealer(selectedDealer)}>
+                      <Edit2 className="w-4 h-4 mr-1" /> Edit
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleDeleteDealer(selectedDealer.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                   <div className="text-right">
                     <p className="text-xs font-display uppercase tracking-widest text-muted-foreground">Current Balance</p>
                     <p className={`font-display text-4xl font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
