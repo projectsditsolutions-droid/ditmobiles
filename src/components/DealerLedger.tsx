@@ -62,7 +62,9 @@ export const DealerLedger: React.FC = () => {
   const [showNewProductInStock, setShowNewProductInStock] = useState(false);
   const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
   const [returnForm, setReturnForm] = useState({ imei: '', reason: '' });
-  const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '' });
+  const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'opening_credit' as 'sold_cost' | 'opening_credit' | 'both', soldCostAmount: 0, openingCreditAmount: 0 });
+  const [showEditCredit, setShowEditCredit] = useState(false);
+  const [editCreditValue, setEditCreditValue] = useState(0);
 
   const fetchDealers = async () => {
     if (!activeShopId && !isAllShops) return;
