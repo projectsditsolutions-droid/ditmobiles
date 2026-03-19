@@ -506,6 +506,7 @@ export type Database = {
           profile_name: string
           profile_type: string
           shop_id: string
+          sub_heading: string
           updated_at: string
         }
         Insert: {
@@ -521,6 +522,7 @@ export type Database = {
           profile_name?: string
           profile_type?: string
           shop_id: string
+          sub_heading?: string
           updated_at?: string
         }
         Update: {
@@ -536,6 +538,7 @@ export type Database = {
           profile_name?: string
           profile_type?: string
           shop_id?: string
+          sub_heading?: string
           updated_at?: string
         }
         Relationships: [

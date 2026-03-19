@@ -1,0 +1,1 @@
+ALTER TABLE public.shop_gst_profiles ADD COLUMN IF NOT EXISTS sub_heading text NOT NULL DEFAULT '';
