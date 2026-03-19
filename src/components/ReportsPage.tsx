@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useShop } from '@/contexts/ShopContext';
-import { TrendingUp, Package, FileText, Calendar, DollarSign, Eye, Printer, IndianRupee, ShoppingBag, Download, Trash2, CheckSquare, Filter, X } from 'lucide-react';
+import { TrendingUp, Package, FileText, Calendar, DollarSign, Eye, Printer, IndianRupee, ShoppingBag, Download, Trash2, CheckSquare, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,6 +24,7 @@ export const ReportsPage: React.FC = () => {
   const [dateTo, setDateTo] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [modeFilter, setModeFilter] = useState('all');
+  const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activeShopId && !isAllShops) return;
@@ -111,6 +112,8 @@ export const ReportsPage: React.FC = () => {
       warranty_mobile: (invoice as any).warranty_mobile || undefined,
       warranty_accessories: (invoice as any).warranty_accessories || undefined,
     };
+    // Attach payment_details for mixed payment breakdown
+    (preview as any).payment_details = invoice.payment_details;
 
     setSelectedInvoice(preview);
     if (autoPrint) window.setTimeout(() => window.print(), 250);
@@ -212,6 +215,25 @@ export const ReportsPage: React.FC = () => {
     { key: 'gst', label: 'GST', icon: FileText },
     { key: 'profit', label: 'Profit', icon: DollarSign },
   ] as const;
+
+  const renderPaymentDetail = (inv: Invoice) => {
+    if (inv.payment_method !== 'mixed' || !inv.payment_details) return null;
+    const details = inv.payment_details as Record<string, number>;
+    return (
+      <div className="px-6 py-3 bg-accent/20 border-t text-xs">
+        <p className="font-display font-semibold text-foreground mb-1.5">Payment Breakdown:</p>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(details).map(([key, val]) =>
+            Number(val) > 0 ? (
+              <span key={key} className="px-2 py-1 rounded-full bg-secondary font-display font-bold capitalize">
+                {key}: ₹{Number(val).toLocaleString('en-IN')}
+              </span>
+            ) : null
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto overflow-y-auto h-full">
@@ -328,29 +350,46 @@ export const ReportsPage: React.FC = () => {
             </thead>
             <tbody>
               {filteredInvoices.slice(0, 200).map(inv => (
-                <tr key={inv.id} className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${selectedIds.has(inv.id) ? 'bg-accent/40' : ''}`}>
-                  <td className="px-3 py-2.5">
-                    <Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} />
-                  </td>
-                  <td className="px-4 py-2.5 font-display font-semibold text-primary text-xs">{inv.invoice_number}</td>
-                  <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                  <td className="px-4 py-2.5 font-display text-sm">{inv.customer_name}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold ${
-                      inv.is_gst_bill ? (inv.customer_gst ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning') : 'bg-secondary text-secondary-foreground'
-                    }`}>
-                      {inv.is_gst_bill ? (inv.customer_gst ? 'B2B' : 'B2C') : 'Non-GST'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5"><span className="px-2 py-0.5 rounded-full text-[10px] font-display font-bold bg-secondary capitalize">{inv.payment_method}</span></td>
-                  <td className="px-4 py-2.5 text-right price-text">₹{Number(inv.grand_total).toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" className="h-8" onClick={() => openInvoice(inv)}><Eye className="w-3.5 h-3.5 mr-1" /> View</Button>
-                      <Button size="sm" className="h-8" onClick={() => openInvoice(inv, true)}><Printer className="w-3.5 h-3.5 mr-1" /> Reprint</Button>
-                    </div>
-                  </td>
-                </tr>
+                <React.Fragment key={inv.id}>
+                  <tr className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${selectedIds.has(inv.id) ? 'bg-accent/40' : ''}`}>
+                    <td className="px-3 py-2.5">
+                      <Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} />
+                    </td>
+                    <td className="px-4 py-2.5 font-display font-semibold text-primary text-xs">{inv.invoice_number}</td>
+                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                    <td className="px-4 py-2.5 font-display text-sm">{inv.customer_name}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold ${
+                        inv.is_gst_bill ? (inv.customer_gst ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning') : 'bg-secondary text-secondary-foreground'
+                      }`}>
+                        {inv.is_gst_bill ? (inv.customer_gst ? 'B2B' : 'B2C') : 'Non-GST'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <button
+                        onClick={() => setExpandedPaymentId(expandedPaymentId === inv.id ? null : inv.id)}
+                        className="flex items-center gap-1"
+                      >
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-display font-bold bg-secondary capitalize">{inv.payment_method}</span>
+                        {inv.payment_method === 'mixed' && inv.payment_details && (
+                          expandedPaymentId === inv.id ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                        )}
+                      </button>
+                    </td>
+                    <td className="px-4 py-2.5 text-right price-text">₹{Number(inv.grand_total).toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" className="h-8" onClick={() => openInvoice(inv)}><Eye className="w-3.5 h-3.5 mr-1" /> View</Button>
+                        <Button size="sm" className="h-8" onClick={() => openInvoice(inv, true)}><Printer className="w-3.5 h-3.5 mr-1" /> Reprint</Button>
+                      </div>
+                    </td>
+                  </tr>
+                  {expandedPaymentId === inv.id && inv.payment_method === 'mixed' && inv.payment_details && (
+                    <tr>
+                      <td colSpan={8}>{renderPaymentDetail(inv)}</td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
