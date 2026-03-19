@@ -744,6 +744,10 @@ export const POSBilling: React.FC = () => {
         onCustomerNameChange={setCustomerName}
         onCustomerPhoneChange={setCustomerPhone}
         onCustomerGSTChange={setCustomerGST}
+        customerAddress={customerAddress}
+        onCustomerAddressChange={setCustomerAddress}
+        mixedPayment={mixedPayment}
+        onMixedPaymentChange={setMixedPayment}
         onCompleteSale={handleCompleteSale}
         discountEnabled={settings?.discount_enabled ?? true}
       />
