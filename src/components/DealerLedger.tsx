@@ -199,6 +199,34 @@ export const DealerLedger: React.FC = () => {
     fetchTransactions();
   };
 
+  const handleCreateProductInStock = async () => {
+    if (!activeShopId || !newProductForm.brand || !newProductForm.model) {
+      toast.error('Brand and Model are required');
+      return;
+    }
+    const { data, error } = await supabase.from('products').insert({
+      brand: newProductForm.brand,
+      model: newProductForm.model,
+      variant: newProductForm.variant,
+      color: newProductForm.color,
+      purchase_price: stockForm.unit_price,
+      sale_price: newProductForm.sale_price,
+      gst_percent: newProductForm.gst_percent,
+      hsn_code: newProductForm.hsn_code,
+      category: newProductForm.category,
+      shop_id: activeShopId,
+      stock_quantity: 0,
+    } as any).select().single();
+    if (error) { toast.error('Failed to create product: ' + error.message); return; }
+    if (data) {
+      setStockForm({ ...stockForm, product_id: data.id, hsn_code: newProductForm.hsn_code });
+      setStockSearch(`${data.brand} ${data.model} ${data.variant}`);
+      setShowNewProductInStock(false);
+      toast.success('Product created! Now add IMEIs below.');
+      fetchProducts();
+    }
+  };
+
   const handleStockEntry = async () => {
     if (!selectedDealer || !activeShopId || !stockForm.product_id) {
       toast.error('Select a product');
@@ -225,13 +253,15 @@ export const DealerLedger: React.FC = () => {
     }
 
     if (added === 0) {
-      toast.error('No IMEIs were added');
+      toast.error('No IMEIs were added (duplicates?)');
       return;
     }
 
     const product = products.find(p => p.id === stockForm.product_id);
     if (product) {
-      await supabase.from('products').update({ stock_quantity: product.stock_quantity + added }).eq('id', product.id);
+      const updateData: any = { stock_quantity: product.stock_quantity + added };
+      if (stockForm.hsn_code) updateData.hsn_code = stockForm.hsn_code;
+      await supabase.from('products').update(updateData).eq('id', product.id);
     }
 
     const purchaseValue = added * stockForm.unit_price;
@@ -250,6 +280,7 @@ export const DealerLedger: React.FC = () => {
     setStockForm({ product_id: '', unit_price: 0, imeis: '', hsn_code: '' });
     setShowNewProductInStock(false);
     setNewProductForm({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
+    setStockSearch('');
     toast.success(`Added ${added} units to inventory and ledger`);
     fetchDealers();
     fetchTransactions();
