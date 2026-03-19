@@ -533,11 +533,11 @@ export const DealerLedger: React.FC = () => {
                   <p className="font-display font-bold text-foreground mb-2">Ledger Rules</p>
                   <div className="grid md:grid-cols-2 gap-2">
                     <p>• Purchase adds cost price to dealer credit</p>
-                    <p>• Sale deducts cost price from balance</p>
-                    <p>• Payment reduces dealer credit directly</p>
-                    <p>• Stock return reduces balance &amp; removes from purchases</p>
-                    <p>• Opening credit is settled via payments</p>
-                    <p>• Balance = Opening + Purchases - Sales - Payments - Returns</p>
+                    <p>• Sold cost is tracked but does NOT auto-settle</p>
+                    <p>• Settlement happens ONLY via Record Payment</p>
+                    <p>• Stock return reduces balance &amp; removes from inventory</p>
+                    <p>• Record Payment: settle from Sold Cost / Opening Credit / Both</p>
+                    <p>• Balance = Opening + Purchases - Payments - Returns</p>
                   </div>
                 </div>
 
