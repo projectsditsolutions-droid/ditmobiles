@@ -521,6 +521,8 @@ export const POSBilling: React.FC = () => {
       billing_phone: selectedProfile?.phone || activeShop.phone,
       billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
       profile_type: selectedProfile?.profile_type,
+      warranty_mobile: warrantyMobile || undefined,
+      warranty_accessories: warrantyAccessories || undefined,
     };
 
     setShowInvoice(invoiceData);
@@ -533,7 +535,9 @@ export const POSBilling: React.FC = () => {
     setCustomerAddress('');
     setMixedPayment({ cash: 0, upi: 0, card: 0 });
     setBillDiscount(0);
-  }, [items, customerName, customerPhone, customerGST, customerType, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile]);
+    setWarrantyMobile('');
+    setWarrantyAccessories('');
+  }, [items, customerName, customerPhone, customerGST, customerType, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories]);
 
   return (
     <div className="flex h-full">
