@@ -136,12 +136,11 @@ export const DealerLedger: React.FC = () => {
     const payment = selectedTxns.filter(t => t.type === 'payment').reduce((s, t) => s + Number(t.amount), 0);
     const sold = selectedTxns.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
+    const openingAdj = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    // Opening = Current - Purchases + Payments + Sales + Returns
     const opening = current - purchase + payment + sold + returned;
-    // Net balance = Opening + Purchases - Payments - Sales - Returns = Current
     const totalSettled = payment + sold + returned;
-    return { purchase, payment, sold, returned, current, opening, totalSettled };
+    return { purchase, payment, sold, returned, current, opening, totalSettled, openingAdj };
   }, [selectedDealer, selectedTxns]);
 
   const totalOutstanding = dealers.reduce((sum, dealer) => sum + Number(dealer.total_credit), 0);
