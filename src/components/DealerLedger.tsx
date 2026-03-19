@@ -4,7 +4,7 @@ import { useShop } from '@/contexts/ShopContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, RotateCcw, FileText, ArrowDownLeft, ArrowUpRight, TrendingDown, CalendarDays, Filter, X } from 'lucide-react';
+import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, RotateCcw, FileText, ArrowDownLeft, ArrowUpRight, TrendingDown, CalendarDays, Filter, X, Smartphone, Tag, HardDrive, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -56,7 +56,10 @@ export const DealerLedger: React.FC = () => {
   const [sortBy, setSortBy] = useState<'credit_desc' | 'credit_asc' | 'recent'>('credit_desc');
   const [txnFilter, setTxnFilter] = useState<'all' | 'purchase' | 'payment' | 'sale_deduction' | 'stock_return'>('all');
   const [dealerForm, setDealerForm] = useState({ brand_name: '', dealer_name: '', phone: '', address: '', gstin: '', total_credit: 0 });
-  const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, imeis: '' });
+  const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, imeis: '', hsn_code: '' });
+  const [stockSearch, setStockSearch] = useState('');
+  const [showNewProductInStock, setShowNewProductInStock] = useState(false);
+  const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
   const [returnForm, setReturnForm] = useState({ imei: '', reason: '' });
   const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '' });
 
@@ -196,6 +199,34 @@ export const DealerLedger: React.FC = () => {
     fetchTransactions();
   };
 
+  const handleCreateProductInStock = async () => {
+    if (!activeShopId || !newProductForm.brand || !newProductForm.model) {
+      toast.error('Brand and Model are required');
+      return;
+    }
+    const { data, error } = await supabase.from('products').insert({
+      brand: newProductForm.brand,
+      model: newProductForm.model,
+      variant: newProductForm.variant,
+      color: newProductForm.color,
+      purchase_price: stockForm.unit_price,
+      sale_price: newProductForm.sale_price,
+      gst_percent: newProductForm.gst_percent,
+      hsn_code: newProductForm.hsn_code,
+      category: newProductForm.category,
+      shop_id: activeShopId,
+      stock_quantity: 0,
+    } as any).select().single();
+    if (error) { toast.error('Failed to create product: ' + error.message); return; }
+    if (data) {
+      setStockForm({ ...stockForm, product_id: data.id, hsn_code: newProductForm.hsn_code });
+      setStockSearch(`${data.brand} ${data.model} ${data.variant}`);
+      setShowNewProductInStock(false);
+      toast.success('Product created! Now add IMEIs below.');
+      fetchProducts();
+    }
+  };
+
   const handleStockEntry = async () => {
     if (!selectedDealer || !activeShopId || !stockForm.product_id) {
       toast.error('Select a product');
@@ -222,13 +253,15 @@ export const DealerLedger: React.FC = () => {
     }
 
     if (added === 0) {
-      toast.error('No IMEIs were added');
+      toast.error('No IMEIs were added (duplicates?)');
       return;
     }
 
     const product = products.find(p => p.id === stockForm.product_id);
     if (product) {
-      await supabase.from('products').update({ stock_quantity: product.stock_quantity + added }).eq('id', product.id);
+      const updateData: any = { stock_quantity: product.stock_quantity + added };
+      if (stockForm.hsn_code) updateData.hsn_code = stockForm.hsn_code;
+      await supabase.from('products').update(updateData).eq('id', product.id);
     }
 
     const purchaseValue = added * stockForm.unit_price;
@@ -244,7 +277,10 @@ export const DealerLedger: React.FC = () => {
     });
 
     setShowStockEntry(false);
-    setStockForm({ product_id: '', unit_price: 0, imeis: '' });
+    setStockForm({ product_id: '', unit_price: 0, imeis: '', hsn_code: '' });
+    setShowNewProductInStock(false);
+    setNewProductForm({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
+    setStockSearch('');
     toast.success(`Added ${added} units to inventory and ledger`);
     fetchDealers();
     fetchTransactions();
@@ -533,34 +569,132 @@ export const DealerLedger: React.FC = () => {
         </div>
       </Modal>
 
-      <Modal open={showStockEntry} onClose={() => setShowStockEntry(false)} title="Purchase Stock" subtitle="Adds inventory and increases dealer payable by cost price">
-        <div className="space-y-3">
+      <Modal open={showStockEntry} onClose={() => { setShowStockEntry(false); setShowNewProductInStock(false); }} title="Purchase Stock" subtitle={`Adds inventory for ${selectedDealer?.dealer_name || 'dealer'} and increases payable balance`}>
+        <div className="space-y-4">
+          {/* Product Selection */}
           <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Product</label>
-            <select value={stockForm.product_id} onChange={e => {
-              const product = products.find(p => p.id === e.target.value);
-              setStockForm({ ...stockForm, product_id: e.target.value, unit_price: Number(product?.purchase_price || 0) });
-            }} className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="">Select product</option>
-              {products.map(product => <option key={product.id} value={product.id}>{product.brand} {product.model} {product.variant}</option>)}
-            </select>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-display font-semibold text-muted-foreground">Product</label>
+              <button onClick={() => setShowNewProductInStock(!showNewProductInStock)}
+                className="text-xs font-display font-semibold text-primary hover:underline flex items-center gap-1">
+                <Plus className="w-3 h-3" /> {showNewProductInStock ? 'Select Existing' : 'New Product'}
+              </button>
+            </div>
+
+            {!showNewProductInStock ? (
+              <>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    value={stockSearch}
+                    onChange={e => setStockSearch(e.target.value)}
+                    placeholder="Search product by name, brand, model..."
+                    className="w-full h-10 pl-9 pr-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div className="max-h-40 overflow-y-auto rounded-xl border bg-background">
+                  {products
+                    .filter(p => !stockSearch || `${p.brand} ${p.model} ${p.variant} ${p.color}`.toLowerCase().includes(stockSearch.toLowerCase()))
+                    .map(product => (
+                      <button key={product.id} onClick={() => {
+                        setStockForm({ ...stockForm, product_id: product.id, unit_price: Number(product.purchase_price), hsn_code: (product as any).hsn_code || '' });
+                        setStockSearch(`${product.brand} ${product.model} ${product.variant}`);
+                      }}
+                        className={`w-full text-left px-3 py-2.5 border-b last:border-b-0 flex items-center justify-between hover:bg-accent transition-colors ${stockForm.product_id === product.id ? 'bg-accent/60' : ''}`}>
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="w-4 h-4 text-primary" />
+                          <div>
+                            <span className="font-display font-semibold text-sm">{product.brand} {product.model}</span>
+                            <span className="text-xs text-muted-foreground ml-2">{product.variant} {product.color}</span>
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground">Stock: {product.stock_quantity}</span>
+                      </button>
+                    ))}
+                  {products.filter(p => !stockSearch || `${p.brand} ${p.model} ${p.variant} ${p.color}`.toLowerCase().includes(stockSearch.toLowerCase())).length === 0 && (
+                    <div className="px-3 py-6 text-center text-muted-foreground text-sm">
+                      No products found. <button onClick={() => setShowNewProductInStock(true)} className="text-primary font-semibold hover:underline">Create new product</button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              /* Inline New Product Form */
+              <div className="rounded-xl border bg-accent/30 p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1 block flex items-center gap-1"><Tag className="w-3 h-3" /> Brand *</label>
+                    <Input value={newProductForm.brand} onChange={e => setNewProductForm({ ...newProductForm, brand: e.target.value })} placeholder="Samsung, Oppo..." className="h-9" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1 block flex items-center gap-1"><Smartphone className="w-3 h-3" /> Model *</label>
+                    <Input value={newProductForm.model} onChange={e => setNewProductForm({ ...newProductForm, model: e.target.value })} placeholder="Galaxy A54..." className="h-9" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1 block flex items-center gap-1"><HardDrive className="w-3 h-3" /> RAM/Storage</label>
+                    <Input value={newProductForm.variant} onChange={e => setNewProductForm({ ...newProductForm, variant: e.target.value })} placeholder="6GB/128GB" className="h-9" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1 block flex items-center gap-1"><Palette className="w-3 h-3" /> Color</label>
+                    <Input value={newProductForm.color} onChange={e => setNewProductForm({ ...newProductForm, color: e.target.value })} placeholder="Black, Blue..." className="h-9" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1 block">Sale Price (₹)</label>
+                    <Input type="number" value={newProductForm.sale_price || ''} onChange={e => setNewProductForm({ ...newProductForm, sale_price: Number(e.target.value) })} className="h-9" placeholder="0" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1 block">GST %</label>
+                    <Input type="number" value={newProductForm.gst_percent} onChange={e => setNewProductForm({ ...newProductForm, gst_percent: Number(e.target.value) })} className="h-9" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1 block">HSN Code</label>
+                    <Input value={newProductForm.hsn_code} onChange={e => setNewProductForm({ ...newProductForm, hsn_code: e.target.value })} className="h-9" placeholder="85171300" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1 block">Category</label>
+                    <select value={newProductForm.category} onChange={e => setNewProductForm({ ...newProductForm, category: e.target.value })}
+                      className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                      <option value="mobile">📱 Mobile</option>
+                      <option value="accessory">🎧 Accessory</option>
+                      <option value="other">📦 Other</option>
+                    </select>
+                  </div>
+                </div>
+                <Button size="sm" onClick={handleCreateProductInStock} className="gradient-primary border-0 text-primary-foreground w-full">
+                  <Plus className="w-4 h-4 mr-1" /> Create Product & Select
+                </Button>
+              </div>
+            )}
           </div>
+
+          {/* Cost Price & HSN */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Cost Price Per Unit (₹)</label>
+              <Input type="number" value={stockForm.unit_price || ''} onChange={e => setStockForm({ ...stockForm, unit_price: Number(e.target.value) })} />
+            </div>
+            <div>
+              <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">HSN Code</label>
+              <Input value={stockForm.hsn_code} onChange={e => setStockForm({ ...stockForm, hsn_code: e.target.value })} placeholder="85171300" />
+            </div>
+          </div>
+
+          {/* IMEIs */}
           <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Cost Price Per Unit</label>
-            <Input type="number" value={stockForm.unit_price || ''} onChange={e => setStockForm({ ...stockForm, unit_price: Number(e.target.value) })} />
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">IMEI Numbers (one per line)</label>
+            <Textarea rows={6} value={stockForm.imeis} onChange={e => setStockForm({ ...stockForm, imeis: e.target.value })} placeholder="Enter 15-digit IMEI numbers&#10;356789012345678&#10;356789012345679" className="font-mono" />
           </div>
-          <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">IMEIs</label>
-            <Textarea rows={6} value={stockForm.imeis} onChange={e => setStockForm({ ...stockForm, imeis: e.target.value })} placeholder="One IMEI per line" className="font-mono" />
-          </div>
-          <div className="rounded-xl border bg-accent/40 p-4 text-sm">
+
+          {/* Summary */}
+          <div className="rounded-xl border bg-accent/40 p-4 text-sm space-y-2">
             <div className="flex justify-between"><span className="text-muted-foreground">Units</span><span className="font-display font-bold">{stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length}</span></div>
-            <div className="flex justify-between mt-2"><span className="text-muted-foreground">Purchase Value</span><span className="font-display font-bold text-destructive">{fmt(stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length * stockForm.unit_price)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Cost Price / Unit</span><span className="font-display font-bold">{fmt(stockForm.unit_price)}</span></div>
+            <div className="flex justify-between border-t pt-2"><span className="text-muted-foreground font-semibold">Total Purchase Value</span><span className="font-display font-bold text-destructive">{fmt(stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length * stockForm.unit_price)}</span></div>
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-5">
-          <Button variant="outline" onClick={() => setShowStockEntry(false)}>Cancel</Button>
-          <Button onClick={handleStockEntry} className="gradient-primary border-0 text-primary-foreground">Save Purchase</Button>
+          <Button variant="outline" onClick={() => { setShowStockEntry(false); setShowNewProductInStock(false); }}>Cancel</Button>
+          <Button onClick={handleStockEntry} disabled={!stockForm.product_id} className="gradient-primary border-0 text-primary-foreground">Save Purchase</Button>
         </div>
       </Modal>
 
