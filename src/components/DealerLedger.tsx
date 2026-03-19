@@ -4,6 +4,7 @@ import { useShop } from '@/contexts/ShopContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, RotateCcw, FileText, ArrowDownLeft, ArrowUpRight, TrendingDown, CalendarDays, Filter, X, Smartphone, Tag, HardDrive, Palette, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -62,7 +63,9 @@ export const DealerLedger: React.FC = () => {
   const [showNewProductInStock, setShowNewProductInStock] = useState(false);
   const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
   const [returnForm, setReturnForm] = useState({ imei: '', reason: '' });
-  const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '' });
+  const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'opening_credit' as 'sold_cost' | 'opening_credit' | 'both', soldCostAmount: 0, openingCreditAmount: 0 });
+  const [showEditCredit, setShowEditCredit] = useState(false);
+  const [editCreditValue, setEditCreditValue] = useState(0);
 
   const fetchDealers = async () => {
     if (!activeShopId && !isAllShops) return;
@@ -134,12 +137,11 @@ export const DealerLedger: React.FC = () => {
     const payment = selectedTxns.filter(t => t.type === 'payment').reduce((s, t) => s + Number(t.amount), 0);
     const sold = selectedTxns.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
+    const openingAdj = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    // Opening = Current - Purchases + Payments + Sales + Returns
     const opening = current - purchase + payment + sold + returned;
-    // Net balance = Opening + Purchases - Payments - Sales - Returns = Current
     const totalSettled = payment + sold + returned;
-    return { purchase, payment, sold, returned, current, opening, totalSettled };
+    return { purchase, payment, sold, returned, current, opening, totalSettled, openingAdj };
   }, [selectedDealer, selectedTxns]);
 
   const totalOutstanding = dealers.reduce((sum, dealer) => sum + Number(dealer.total_credit), 0);
@@ -209,26 +211,66 @@ export const DealerLedger: React.FC = () => {
     fetchDealers();
   };
 
+  const handleEditOpeningCredit = async () => {
+    if (!selectedDealer || !activeShopId) return;
+    const oldOpening = totals.opening;
+    const diff = editCreditValue - oldOpening;
+    const newBalance = Number(selectedDealer.total_credit) + diff;
+    await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
+    await supabase.from('dealer_transactions').insert({
+      dealer_id: selectedDealer.id,
+      shop_id: activeShopId,
+      type: 'opening_adjustment',
+      amount: Math.abs(diff),
+      running_balance: newBalance,
+      description: `Opening credit adjusted from ₹${oldOpening.toLocaleString('en-IN')} to ₹${editCreditValue.toLocaleString('en-IN')}`,
+    });
+    setShowEditCredit(false);
+    toast.success('Opening credit updated');
+    fetchDealers();
+    fetchTransactions();
+  };
+
+  const defaultPaymentForm = { amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'opening_credit' as const, soldCostAmount: 0, openingCreditAmount: 0 };
+
   const handlePayment = async () => {
-    if (!selectedDealer || !activeShopId || paymentForm.amount <= 0) {
-      toast.error('Enter a valid payment amount');
-      return;
+    if (!selectedDealer || !activeShopId) return;
+
+    let totalAmount = 0;
+    if (paymentForm.settleFrom === 'both') {
+      totalAmount = paymentForm.soldCostAmount + paymentForm.openingCreditAmount;
+      if (totalAmount <= 0) { toast.error('Enter valid amounts'); return; }
+    } else {
+      totalAmount = paymentForm.amount;
+      if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
     }
 
-    const newBalance = Number(selectedDealer.total_credit) - paymentForm.amount;
+    const methods = paymentForm.paymentMethods.length > 0 ? paymentForm.paymentMethods.join(', ') : 'Not specified';
+    const settleLabel = paymentForm.settleFrom === 'sold_cost' ? 'Settled from Sold Cost' :
+      paymentForm.settleFrom === 'opening_credit' ? 'Settled from Opening Credit' :
+      `Sold Cost: ₹${paymentForm.soldCostAmount.toLocaleString('en-IN')}, Opening: ₹${paymentForm.openingCreditAmount.toLocaleString('en-IN')}`;
+
+    const desc = [
+      settleLabel,
+      `via ${methods}`,
+      paymentForm.notes ? `Notes: ${paymentForm.notes}` : '',
+      paymentForm.description || '',
+    ].filter(Boolean).join(' | ');
+
+    const newBalance = Number(selectedDealer.total_credit) - totalAmount;
     const { error: txnError } = await supabase.from('dealer_transactions').insert({
       dealer_id: selectedDealer.id,
       shop_id: activeShopId,
       type: 'payment',
-      amount: paymentForm.amount,
+      amount: totalAmount,
       running_balance: newBalance,
-      description: paymentForm.description || 'Payment made to dealer',
+      description: desc,
     });
     if (txnError) { toast.error('Failed: ' + txnError.message); return; }
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
 
     setShowPayment(false);
-    setPaymentForm({ amount: 0, description: '' });
+    setPaymentForm(defaultPaymentForm);
     toast.success('Payment recorded');
     fetchDealers();
     fetchTransactions();
@@ -461,7 +503,7 @@ export const DealerLedger: React.FC = () => {
               <div className="p-5 border-b space-y-4">
                 <div className="grid grid-cols-2 xl:grid-cols-6 gap-3">
                   {[
-                    { label: 'Opening Credit', value: totals.opening, tone: 'text-muted-foreground' },
+                    { label: 'Opening Credit', value: totals.opening, tone: 'text-muted-foreground', editable: true },
                     { label: 'Purchases', value: totals.purchase, tone: 'text-destructive' },
                     { label: 'Sold (Cost)', value: totals.sold, tone: 'text-primary' },
                     { label: 'Payments', value: totals.payment, tone: 'text-success' },
@@ -469,7 +511,14 @@ export const DealerLedger: React.FC = () => {
                     { label: 'Total Settled', value: totals.totalSettled, tone: 'text-success' },
                   ].map(card => (
                     <div key={card.label} className="rounded-2xl border bg-background p-4">
-                      <p className="text-xs font-display uppercase tracking-wider text-muted-foreground">{card.label}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-display uppercase tracking-wider text-muted-foreground">{card.label}</p>
+                        {'editable' in card && card.editable && (
+                          <button onClick={() => { setEditCreditValue(totals.opening); setShowEditCredit(true); }} className="text-xs text-primary hover:underline font-display font-semibold">
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                       <p className={`mt-2 font-display text-2xl font-extrabold ${card.tone}`}>{fmt(card.value)}</p>
                     </div>
                   ))}
@@ -746,24 +795,103 @@ export const DealerLedger: React.FC = () => {
         </div>
       </Modal>
 
-      <Modal open={showPayment} onClose={() => setShowPayment(false)} title="Record Payment" subtitle="Payment reduces dealer balance immediately">
-        <div className="space-y-3">
+      <Modal open={showPayment} onClose={() => setShowPayment(false)} title="Record Payment" subtitle="Settlement reduces dealer balance — choose what you're settling">
+        <div className="space-y-4">
+          {/* Settlement Type */}
           <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Amount</label>
-            <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: Number(e.target.value) })} />
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Settle From</label>
+            <select value={paymentForm.settleFrom} onChange={e => setPaymentForm({ ...paymentForm, settleFrom: e.target.value as any })}
+              className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <option value="opening_credit">Opening Credit</option>
+              <option value="sold_cost">Sold Cost</option>
+              <option value="both">Both (Custom Split)</option>
+            </select>
           </div>
+
+          {/* Amount inputs based on settleFrom */}
+          {paymentForm.settleFrom === 'both' ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Sold Cost Amount (₹)</label>
+                <Input type="number" value={paymentForm.soldCostAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, soldCostAmount: Number(e.target.value) })} />
+                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.sold - totals.payment)}</p>
+              </div>
+              <div>
+                <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Opening Credit Amount (₹)</label>
+                <Input type="number" value={paymentForm.openingCreditAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, openingCreditAmount: Number(e.target.value) })} />
+                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.opening)}</p>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Amount (₹)</label>
+              <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: Number(e.target.value) })} />
+            </div>
+          )}
+
+          {/* Payment Method Checkboxes */}
           <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Reference / Notes</label>
-            <Input value={paymentForm.description} onChange={e => setPaymentForm({ ...paymentForm, description: e.target.value })} placeholder="Cash, bank transfer, cheque..." />
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-2 block">Payment Method</label>
+            <div className="flex flex-wrap gap-3">
+              {['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Card'].map(method => (
+                <label key={method} className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={paymentForm.paymentMethods.includes(method)}
+                    onCheckedChange={(checked) => {
+                      setPaymentForm(prev => ({
+                        ...prev,
+                        paymentMethods: checked
+                          ? [...prev.paymentMethods, method]
+                          : prev.paymentMethods.filter(m => m !== method)
+                      }));
+                    }}
+                  />
+                  <span className="text-sm">{method}</span>
+                </label>
+              ))}
+            </div>
           </div>
-          <div className="rounded-xl border bg-accent/40 p-4 text-sm">
+
+          {/* Reference */}
+          <div>
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Reference / Description</label>
+            <Input value={paymentForm.description} onChange={e => setPaymentForm({ ...paymentForm, description: e.target.value })} placeholder="Transaction ref, cheque no..." />
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Notes</label>
+            <Textarea value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder="Additional notes..." rows={2} />
+          </div>
+
+          {/* Summary */}
+          <div className="rounded-xl border bg-accent/40 p-4 text-sm space-y-2">
             <div className="flex justify-between"><span className="text-muted-foreground">Current Balance</span><span className="font-display font-bold">{fmt(Number(selectedDealer?.total_credit || 0))}</span></div>
-            <div className="flex justify-between mt-2"><span className="text-muted-foreground">After Payment</span><span className="font-display font-bold text-success">{fmt(Number(selectedDealer?.total_credit || 0) - paymentForm.amount)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Payment Amount</span><span className="font-display font-bold text-success">{fmt(paymentForm.settleFrom === 'both' ? paymentForm.soldCostAmount + paymentForm.openingCreditAmount : paymentForm.amount)}</span></div>
+            <div className="flex justify-between border-t pt-2"><span className="text-muted-foreground font-semibold">After Payment</span><span className="font-display font-bold text-success">{fmt(Number(selectedDealer?.total_credit || 0) - (paymentForm.settleFrom === 'both' ? paymentForm.soldCostAmount + paymentForm.openingCreditAmount : paymentForm.amount))}</span></div>
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-5">
           <Button variant="outline" onClick={() => setShowPayment(false)}>Cancel</Button>
           <Button onClick={handlePayment} className="bg-success hover:bg-success/90 text-success-foreground">Save Payment</Button>
+        </div>
+      </Modal>
+
+      {/* Edit Opening Credit Modal */}
+      <Modal open={showEditCredit} onClose={() => setShowEditCredit(false)} title="Edit Opening Credit" subtitle="Adjust the opening balance for this dealer">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Current Opening Credit</label>
+            <p className="font-display text-xl font-bold">{fmt(totals.opening)}</p>
+          </div>
+          <div>
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">New Opening Credit (₹)</label>
+            <Input type="number" value={editCreditValue || ''} onChange={e => setEditCreditValue(Number(e.target.value))} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-5">
+          <Button variant="outline" onClick={() => setShowEditCredit(false)}>Cancel</Button>
+          <Button onClick={handleEditOpeningCredit} className="gradient-primary border-0 text-primary-foreground">Update</Button>
         </div>
       </Modal>
 
