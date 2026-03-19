@@ -415,6 +415,8 @@ export const POSBilling: React.FC = () => {
       sgst: gstCalc.sgst,
       grand_total: grandTotal,
       payment_method: paymentMethod,
+      payment_details: paymentMethod === 'mixed' ? mixedPayment : null,
+      customer_address: customerAddress,
       is_gst_bill: isGSTBill,
       gst_bearer: gstBearer,
       print_type: settings?.default_print_type || 'thermal',
