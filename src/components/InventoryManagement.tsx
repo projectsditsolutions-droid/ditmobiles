@@ -85,7 +85,15 @@ export const InventoryManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from('products').delete().eq('id', id);
+    if (!confirm('Delete this product? Related IMEI records will also be removed.')) return;
+    // Delete related records first to avoid foreign key constraint errors
+    await supabase.from('invoice_items').delete().eq('product_id', id);
+    await supabase.from('imei_records').delete().eq('product_id', id);
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) {
+      toast.error('Failed to delete: ' + error.message);
+      return;
+    }
     toast.success('Product deleted');
     fetchProducts();
   };
