@@ -70,6 +70,8 @@ export interface InvoiceData {
   billing_phone?: string;
   billing_gst_number?: string;
   profile_type?: string;
+  warranty_mobile?: string;
+  warranty_accessories?: string;
 }
 
 // ─── GST Profile Card Selector ───────────────────────────────────────────────
