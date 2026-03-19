@@ -341,6 +341,7 @@ export type Database = {
           color: string
           created_at: string
           gst_percent: number
+          hsn_code: string
           id: string
           low_stock_threshold: number
           model: string
@@ -357,6 +358,7 @@ export type Database = {
           color?: string
           created_at?: string
           gst_percent?: number
+          hsn_code?: string
           id?: string
           low_stock_threshold?: number
           model: string
@@ -373,6 +375,7 @@ export type Database = {
           color?: string
           created_at?: string
           gst_percent?: number
+          hsn_code?: string
           id?: string
           low_stock_threshold?: number
           model?: string
