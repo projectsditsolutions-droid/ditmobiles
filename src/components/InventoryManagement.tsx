@@ -67,11 +67,7 @@ export const InventoryManagement: React.FC = () => {
         p.color.toLowerCase() === (form.color || '').toLowerCase()
       );
       if (existing) {
-        toast.info(`Product already exists: ${existing.brand} ${existing.model}. Use Stock Entry to add units.`);
-        setTab('stock_entry');
-        setStockProduct(existing);
-        setStockSearch(`${existing.brand} ${existing.model} ${existing.variant}`);
-        setStockUnitPrice(Number(existing.purchase_price));
+        toast.info(`Product already exists: ${existing.brand} ${existing.model}. Use Dealer Ledger → Purchase Stock to add units.`);
         setShowForm(false);
         return;
       }
