@@ -431,6 +431,8 @@ export const POSBilling: React.FC = () => {
       billing_address: selectedProfile?.address || activeShop.address,
       billing_phone: selectedProfile?.phone || activeShop.phone,
       billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
+      warranty_mobile: warrantyMobile || '',
+      warranty_accessories: warrantyAccessories || '',
     } as any).select().single();
 
     if (invError || !invoice) {
