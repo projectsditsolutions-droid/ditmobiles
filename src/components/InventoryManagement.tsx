@@ -196,7 +196,6 @@ export const InventoryManagement: React.FC = () => {
         <div className="flex bg-secondary rounded-xl p-1 gap-0.5">
           {([
             ['products', Package, 'Products'],
-            ['stock_entry', BoxIcon, 'Stock Entry'],
             ['imei', ScanLine, 'IMEI Records'],
             ['bulk', Upload, 'Bulk Update'],
           ] as const).map(([t, Icon, label]) => (
