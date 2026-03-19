@@ -48,6 +48,7 @@ export const DealerLedger: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedDealerId, setSelectedDealerId] = useState<string | null>(null);
   const [showDealerForm, setShowDealerForm] = useState(false);
+  const [editingDealerId, setEditingDealerId] = useState<string | null>(null);
   const [showStockEntry, setShowStockEntry] = useState(false);
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
