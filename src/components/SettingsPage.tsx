@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShop } from '@/contexts/ShopContext';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Plus, Trash2, Save, LogOut, Users, Shield, Store,
-  Settings2, KeyRound, Printer, Building2, Tag, Hash, Star, FileText
+  Settings2, KeyRound, Printer, Building2, Tag, Hash, Star, FileText, Upload, Image
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -39,6 +39,8 @@ export const SettingsPage: React.FC = () => {
   const [gstProfiles, setGstProfiles] = useState<GSTProfile[]>([]);
   const [editTerms, setEditTerms] = useState<string[]>([]);
   const [editingTermsShopId, setEditingTermsShopId] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState<string | null>(null); // shop id or profile id being uploaded
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setLocalShops(shops); }, [shops]);
   useEffect(() => { setLocalSettings(settings); }, [settings]);
@@ -66,10 +68,47 @@ export const SettingsPage: React.FC = () => {
         name: shop.name, address: shop.address, phone: shop.phone,
         gst_number: shop.gst_number, invoice_prefix: shop.invoice_prefix,
         sub_heading: (shop as any).sub_heading || '',
+        logo_url: shop.logo_url || null,
       } as any).eq('id', shop.id);
     }
     toast.success('Shop profiles saved');
     refreshShops();
+  };
+
+  const handleUploadLogo = async (file: File, targetType: 'shop' | 'gst_profile', targetId: string) => {
+    if (!file || !file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be under 2MB');
+      return;
+    }
+    setUploadingLogo(targetId);
+    const ext = file.name.split('.').pop();
+    const path = `${targetType}/${targetId}/logo.${ext}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('shop-logos')
+      .upload(path, file, { upsert: true });
+    
+    if (uploadError) {
+      toast.error('Upload failed: ' + uploadError.message);
+      setUploadingLogo(null);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('shop-logos').getPublicUrl(path);
+
+    if (targetType === 'shop') {
+      await supabase.from('shops').update({ logo_url: publicUrl } as any).eq('id', targetId);
+      setLocalShops(prev => prev.map(s => s.id === targetId ? { ...s, logo_url: publicUrl } : s));
+      refreshShops();
+    }
+    // For GST profiles we'll store the URL externally if needed
+    
+    setUploadingLogo(null);
+    toast.success('Logo uploaded');
   };
 
   const addShop = async () => {
@@ -204,6 +243,22 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto overflow-y-auto h-full">
+      <input
+        ref={logoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (file && uploadingLogo) {
+            // Determine type from context
+            const isShop = localShops.some(s => s.id === uploadingLogo);
+            handleUploadLogo(file, isShop ? 'shop' : 'gst_profile', uploadingLogo);
+          }
+          e.target.value = '';
+        }}
+      />
+
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-extrabold">Settings</h1>
@@ -239,6 +294,44 @@ export const SettingsPage: React.FC = () => {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+
+              {/* Logo Upload */}
+              <div className="mb-4">
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Shop Logo</label>
+                <div className="flex items-center gap-4">
+                  {shop.logo_url ? (
+                    <img src={shop.logo_url} alt="Shop logo" className="h-14 max-w-[140px] object-contain rounded-lg border p-1" />
+                  ) : (
+                    <div className="h-14 w-14 rounded-lg border-2 border-dashed border-border flex items-center justify-center">
+                      <Image className="w-5 h-5 text-muted-foreground/40" />
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setUploadingLogo(shop.id);
+                      logoInputRef.current?.click();
+                    }}
+                  >
+                    <Upload className="w-3.5 h-3.5 mr-1" /> {shop.logo_url ? 'Change' : 'Upload'} Logo
+                  </Button>
+                  {shop.logo_url && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        handleSaveShop(idx, 'logo_url', '');
+                      }}
+                      className="text-destructive"
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">Max 2MB, appears on invoices</p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[['name', 'Shop Name'], ['sub_heading', 'Sub Heading (shown below name)'], ['address', 'Address'], ['phone', 'Phone'], ['gst_number', 'GST Number'], ['invoice_prefix', 'Invoice Prefix']].map(([field, label]) => (
                   <div key={field} className={field === 'sub_heading' || field === 'address' ? 'sm:col-span-2' : ''}>
@@ -419,7 +512,7 @@ export const SettingsPage: React.FC = () => {
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Default GST %</label>
-            <Input type="number" value={localSettings.default_gst_percent} onChange={e => setLocalSettings({...localSettings, default_gst_percent: Number(e.target.value)})} className="w-28 h-10" />
+            <Input type="number" value={localSettings.default_gst_percent} onChange={e => setLocalSettings({...localSettings, default_gst_percent: parseFloat(e.target.value) || 0})} className="w-28 h-10" />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Thermal Printer Width</label>

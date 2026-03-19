@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, RotateCcw, FileText, ArrowDownLeft, ArrowUpRight, TrendingDown, CalendarDays, Filter, X, Smartphone, Tag, HardDrive, Palette, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, RotateCcw, FileText, ArrowDownLeft, ArrowUpRight, TrendingDown, CalendarDays, Filter, X, Smartphone, Tag, HardDrive, Palette, Edit2, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -66,6 +66,7 @@ export const DealerLedger: React.FC = () => {
   const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'opening_credit' as 'sold_cost' | 'opening_credit' | 'both', soldCostAmount: 0, openingCreditAmount: 0 });
   const [showEditCredit, setShowEditCredit] = useState(false);
   const [editCreditValue, setEditCreditValue] = useState(0);
+  const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
 
   const fetchDealers = async () => {
     if (!activeShopId && !isAllShops) return;
@@ -139,14 +140,28 @@ export const DealerLedger: React.FC = () => {
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
     const openingAdj = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    // Balance = Opening + Purchases - Payments - Returns (sold cost is informational only)
+    // Balance = Opening + Purchases - Payments - Returns
     const opening = current - purchase + payment + returned;
     // Only manual payments count as settled
     const totalSettled = payment;
     // Track how much sold cost has been settled via payments
-    const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => s + Number(t.amount), 0);
-    const openingCreditSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Opening Credit')).reduce((s, t) => s + Number(t.amount), 0);
-    return { purchase, payment, sold, returned, current, opening, totalSettled, openingAdj, soldCostSettled, openingCreditSettled };
+    const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => {
+      // Parse sold cost amount from description for 'both' type
+      const bothMatch = t.description.match(/Sold Cost: ₹([\d,]+)/);
+      if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
+      if (t.description.includes('Settled from Sold Cost')) return s + Number(t.amount);
+      return s;
+    }, 0);
+    const openingCreditSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Opening Credit')).reduce((s, t) => {
+      const bothMatch = t.description.match(/Opening: ₹([\d,]+)/);
+      if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
+      if (t.description.includes('Settled from Opening Credit')) return s + Number(t.amount);
+      return s;
+    }, 0);
+    // Remaining available amounts
+    const availableSoldCost = Math.max(0, sold - soldCostSettled);
+    const availableOpeningCredit = Math.max(0, opening - openingCreditSettled);
+    return { purchase, payment, sold, returned, current, opening, totalSettled, openingAdj, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit };
   }, [selectedDealer, selectedTxns]);
 
   const totalOutstanding = dealers.reduce((sum, dealer) => sum + Number(dealer.total_credit), 0);
@@ -245,9 +260,16 @@ export const DealerLedger: React.FC = () => {
     if (paymentForm.settleFrom === 'both') {
       totalAmount = paymentForm.soldCostAmount + paymentForm.openingCreditAmount;
       if (totalAmount <= 0) { toast.error('Enter valid amounts'); return; }
+      if (paymentForm.soldCostAmount > totals.availableSoldCost) { toast.error(`Sold cost amount exceeds available (${fmt(totals.availableSoldCost)})`); return; }
+      if (paymentForm.openingCreditAmount > totals.availableOpeningCredit) { toast.error(`Opening credit amount exceeds available (${fmt(totals.availableOpeningCredit)})`); return; }
+    } else if (paymentForm.settleFrom === 'sold_cost') {
+      totalAmount = paymentForm.amount;
+      if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
+      if (totalAmount > totals.availableSoldCost) { toast.error(`Amount exceeds available sold cost (${fmt(totals.availableSoldCost)})`); return; }
     } else {
       totalAmount = paymentForm.amount;
       if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
+      if (totalAmount > totals.availableOpeningCredit) { toast.error(`Amount exceeds available opening credit (${fmt(totals.availableOpeningCredit)})`); return; }
     }
 
     const methods = paymentForm.paymentMethods.length > 0 ? paymentForm.paymentMethods.join(', ') : 'Not specified';
@@ -506,25 +528,26 @@ export const DealerLedger: React.FC = () => {
               </div>
 
               <div className="p-5 border-b space-y-4">
-                <div className="grid grid-cols-2 xl:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 xl:grid-cols-7 gap-3">
                   {[
                     { label: 'Opening Credit', value: totals.opening, tone: 'text-muted-foreground', editable: true },
                     { label: 'Purchases', value: totals.purchase, tone: 'text-destructive' },
                     { label: 'Sold (Cost)', value: totals.sold, tone: 'text-primary' },
+                    { label: 'Avail. Sold Cost', value: totals.availableSoldCost, tone: 'text-primary' },
                     { label: 'Payments', value: totals.payment, tone: 'text-success' },
                     { label: 'Returns', value: totals.returned, tone: 'text-warning' },
-                    { label: 'Total Settled', value: totals.totalSettled, tone: 'text-success' },
+                    { label: 'Avail. Opening', value: totals.availableOpeningCredit, tone: 'text-muted-foreground' },
                   ].map(card => (
                     <div key={card.label} className="rounded-2xl border bg-background p-4">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-display uppercase tracking-wider text-muted-foreground">{card.label}</p>
+                        <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">{card.label}</p>
                         {'editable' in card && card.editable && (
                           <button onClick={() => { setEditCreditValue(totals.opening); setShowEditCredit(true); }} className="text-xs text-primary hover:underline font-display font-semibold">
                             <Edit2 className="w-3 h-3" />
                           </button>
                         )}
                       </div>
-                      <p className={`mt-2 font-display text-2xl font-extrabold ${card.tone}`}>{fmt(card.value)}</p>
+                      <p className={`mt-2 font-display text-xl font-extrabold ${card.tone}`}>{fmt(card.value)}</p>
                     </div>
                   ))}
                 </div>
@@ -564,7 +587,7 @@ export const DealerLedger: React.FC = () => {
                 <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
                   <div>
                     <h3 className="font-display font-bold text-lg">Transaction History</h3>
-                    <p className="text-xs text-muted-foreground">Every movement updates balance live</p>
+                    <p className="text-xs text-muted-foreground">Click a row to expand details</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Filter className="w-4 h-4 text-muted-foreground" />
@@ -588,33 +611,55 @@ export const DealerLedger: React.FC = () => {
                         <th className="px-4 py-3 text-center">Qty</th>
                         <th className="px-4 py-3 text-right">Cost Value</th>
                         <th className="px-4 py-3 text-right">Balance After</th>
+                        <th className="px-4 py-3 w-8"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {visibleTxns.map(txn => (
-                        <tr key={txn.id} className="border-t hover:bg-accent/30 transition-colors">
-                          <td className="px-4 py-3 text-muted-foreground">{new Date(txn.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-display font-bold ${
-                              txn.type === 'purchase' ? 'bg-destructive/10 text-destructive' :
-                              txn.type === 'payment' ? 'bg-success/10 text-success' :
-                              txn.type === 'stock_return' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'
-                            }`}>
-                              {txn.type === 'sale_deduction' ? 'Sale' : txn.type === 'stock_return' ? 'Return' : txn.type}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="font-display font-semibold text-foreground">{txn.invoice_ref || txn.imei_ref || 'Manual entry'}</div>
-                            <div className="text-[11px] text-muted-foreground truncate max-w-[260px]">{txn.description}</div>
-                          </td>
-                          <td className="px-4 py-3 text-center">{getQuantityFromTxn(txn)}</td>
-                          <td className="px-4 py-3 text-right font-display font-bold">{txn.type === 'purchase' ? '+' : '-'}{fmt(Number(txn.amount))}</td>
-                          <td className="px-4 py-3 text-right font-display font-extrabold">{fmt(Number(txn.running_balance))}</td>
-                        </tr>
+                        <React.Fragment key={txn.id}>
+                          <tr
+                            onClick={() => setExpandedTxnId(expandedTxnId === txn.id ? null : txn.id)}
+                            className="border-t hover:bg-accent/30 transition-colors cursor-pointer"
+                          >
+                            <td className="px-4 py-3 text-muted-foreground">{new Date(txn.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-display font-bold ${
+                                txn.type === 'purchase' ? 'bg-destructive/10 text-destructive' :
+                                txn.type === 'payment' ? 'bg-success/10 text-success' :
+                                txn.type === 'stock_return' ? 'bg-warning/10 text-warning' :
+                                txn.type === 'opening_adjustment' ? 'bg-accent text-accent-foreground' :
+                                'bg-primary/10 text-primary'
+                              }`}>
+                                {txn.type === 'sale_deduction' ? 'Sale' : txn.type === 'stock_return' ? 'Return' : txn.type === 'opening_adjustment' ? 'Adj.' : txn.type}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-display font-semibold text-foreground">{txn.invoice_ref || txn.imei_ref || 'Manual entry'}</div>
+                            </td>
+                            <td className="px-4 py-3 text-center">{getQuantityFromTxn(txn)}</td>
+                            <td className="px-4 py-3 text-right font-display font-bold">{txn.type === 'purchase' ? '+' : '-'}{fmt(Number(txn.amount))}</td>
+                            <td className="px-4 py-3 text-right font-display font-extrabold">{fmt(Number(txn.running_balance))}</td>
+                            <td className="px-4 py-3">
+                              {expandedTxnId === txn.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                            </td>
+                          </tr>
+                          {expandedTxnId === txn.id && (
+                            <tr className="border-t bg-accent/20">
+                              <td colSpan={7} className="px-6 py-4">
+                                <div className="text-sm space-y-2">
+                                  <p className="text-muted-foreground"><span className="font-display font-semibold text-foreground">Description:</span> {txn.description}</p>
+                                  {txn.imei_ref && <p className="text-muted-foreground"><span className="font-display font-semibold text-foreground">IMEI:</span> <span className="font-mono">{txn.imei_ref}</span></p>}
+                                  {txn.invoice_ref && <p className="text-muted-foreground"><span className="font-display font-semibold text-foreground">Invoice:</span> {txn.invoice_ref}</p>}
+                                  <p className="text-muted-foreground"><span className="font-display font-semibold text-foreground">Recorded:</span> {new Date(txn.created_at).toLocaleString('en-IN')}</p>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       ))}
                       {visibleTxns.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                          <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                             <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
                             No transactions found
                           </td>
@@ -661,7 +706,7 @@ export const DealerLedger: React.FC = () => {
           {!editingDealerId && (
             <div className="sm:col-span-2">
               <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Opening Credit</label>
-              <Input type="number" value={dealerForm.total_credit || ''} onChange={e => setDealerForm({ ...dealerForm, total_credit: Number(e.target.value) })} placeholder="Amount payable at start" />
+              <Input type="number" value={dealerForm.total_credit || ''} onChange={e => setDealerForm({ ...dealerForm, total_credit: parseFloat(e.target.value) || 0 })} placeholder="Amount payable at start" />
             </div>
           )}
         </div>
@@ -673,7 +718,6 @@ export const DealerLedger: React.FC = () => {
 
       <Modal open={showStockEntry} onClose={() => { setShowStockEntry(false); setShowNewProductInStock(false); }} title="Purchase Stock" subtitle={`Adds inventory for ${selectedDealer?.dealer_name || 'dealer'} and increases payable balance`}>
         <div className="space-y-4">
-          {/* Product Selection */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-display font-semibold text-muted-foreground">Product</label>
@@ -721,7 +765,6 @@ export const DealerLedger: React.FC = () => {
                 </div>
               </>
             ) : (
-              /* Inline New Product Form */
               <div className="rounded-xl border bg-accent/30 p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -742,11 +785,11 @@ export const DealerLedger: React.FC = () => {
                   </div>
                   <div>
                     <label className="text-[11px] text-muted-foreground mb-1 block">Sale Price (₹)</label>
-                    <Input type="number" value={newProductForm.sale_price || ''} onChange={e => setNewProductForm({ ...newProductForm, sale_price: Number(e.target.value) })} className="h-9" placeholder="0" />
+                    <Input type="number" value={newProductForm.sale_price || ''} onChange={e => setNewProductForm({ ...newProductForm, sale_price: parseFloat(e.target.value) || 0 })} className="h-9" placeholder="0" />
                   </div>
                   <div>
                     <label className="text-[11px] text-muted-foreground mb-1 block">GST %</label>
-                    <Input type="number" value={newProductForm.gst_percent} onChange={e => setNewProductForm({ ...newProductForm, gst_percent: Number(e.target.value) })} className="h-9" />
+                    <Input type="number" value={newProductForm.gst_percent} onChange={e => setNewProductForm({ ...newProductForm, gst_percent: parseFloat(e.target.value) || 0 })} className="h-9" />
                   </div>
                   <div>
                     <label className="text-[11px] text-muted-foreground mb-1 block">HSN Code</label>
@@ -769,11 +812,10 @@ export const DealerLedger: React.FC = () => {
             )}
           </div>
 
-          {/* Cost Price & HSN */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Cost Price Per Unit (₹)</label>
-              <Input type="number" value={stockForm.unit_price || ''} onChange={e => setStockForm({ ...stockForm, unit_price: Number(e.target.value) })} />
+              <Input type="number" value={stockForm.unit_price || ''} onChange={e => setStockForm({ ...stockForm, unit_price: parseFloat(e.target.value) || 0 })} />
             </div>
             <div>
               <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">HSN Code</label>
@@ -781,13 +823,11 @@ export const DealerLedger: React.FC = () => {
             </div>
           </div>
 
-          {/* IMEIs */}
           <div>
             <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">IMEI Numbers (one per line)</label>
             <Textarea rows={6} value={stockForm.imeis} onChange={e => setStockForm({ ...stockForm, imeis: e.target.value })} placeholder="Enter 15-digit IMEI numbers&#10;356789012345678&#10;356789012345679" className="font-mono" />
           </div>
 
-          {/* Summary */}
           <div className="rounded-xl border bg-accent/40 p-4 text-sm space-y-2">
             <div className="flex justify-between"><span className="text-muted-foreground">Units</span><span className="font-display font-bold">{stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Cost Price / Unit</span><span className="font-display font-bold">{fmt(stockForm.unit_price)}</span></div>
@@ -802,39 +842,39 @@ export const DealerLedger: React.FC = () => {
 
       <Modal open={showPayment} onClose={() => setShowPayment(false)} title="Record Payment" subtitle="Settlement reduces dealer balance — choose what you're settling">
         <div className="space-y-4">
-          {/* Settlement Type */}
           <div>
             <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Settle From</label>
             <select value={paymentForm.settleFrom} onChange={e => setPaymentForm({ ...paymentForm, settleFrom: e.target.value as any })}
               className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="opening_credit">Opening Credit</option>
-              <option value="sold_cost">Sold Cost</option>
+              <option value="opening_credit">Opening Credit (Available: {fmt(totals.availableOpeningCredit)})</option>
+              <option value="sold_cost">Sold Cost (Available: {fmt(totals.availableSoldCost)})</option>
               <option value="both">Both (Custom Split)</option>
             </select>
           </div>
 
-          {/* Amount inputs based on settleFrom */}
           {paymentForm.settleFrom === 'both' ? (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Sold Cost Amount (₹)</label>
-                <Input type="number" value={paymentForm.soldCostAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, soldCostAmount: Number(e.target.value) })} />
-                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.sold - totals.soldCostSettled)}</p>
+                <Input type="number" value={paymentForm.soldCostAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, soldCostAmount: parseFloat(e.target.value) || 0 })} />
+                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.availableSoldCost)}</p>
               </div>
               <div>
                 <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Opening Credit Amount (₹)</label>
-                <Input type="number" value={paymentForm.openingCreditAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, openingCreditAmount: Number(e.target.value) })} />
-                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.opening - totals.openingCreditSettled)}</p>
+                <Input type="number" value={paymentForm.openingCreditAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, openingCreditAmount: parseFloat(e.target.value) || 0 })} />
+                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.availableOpeningCredit)}</p>
               </div>
             </div>
           ) : (
             <div>
               <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Amount (₹)</label>
-              <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: Number(e.target.value) })} />
+              <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Available: {fmt(paymentForm.settleFrom === 'sold_cost' ? totals.availableSoldCost : totals.availableOpeningCredit)}
+              </p>
             </div>
           )}
 
-          {/* Payment Method Checkboxes */}
           <div>
             <label className="text-xs font-display font-semibold text-muted-foreground mb-2 block">Payment Method</label>
             <div className="flex flex-wrap gap-3">
@@ -857,19 +897,16 @@ export const DealerLedger: React.FC = () => {
             </div>
           </div>
 
-          {/* Reference */}
           <div>
             <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Reference / Description</label>
             <Input value={paymentForm.description} onChange={e => setPaymentForm({ ...paymentForm, description: e.target.value })} placeholder="Transaction ref, cheque no..." />
           </div>
 
-          {/* Notes */}
           <div>
             <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Notes</label>
             <Textarea value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder="Additional notes..." rows={2} />
           </div>
 
-          {/* Summary */}
           <div className="rounded-xl border bg-accent/40 p-4 text-sm space-y-2">
             <div className="flex justify-between"><span className="text-muted-foreground">Current Balance</span><span className="font-display font-bold">{fmt(Number(selectedDealer?.total_credit || 0))}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Payment Amount</span><span className="font-display font-bold text-success">{fmt(paymentForm.settleFrom === 'both' ? paymentForm.soldCostAmount + paymentForm.openingCreditAmount : paymentForm.amount)}</span></div>
@@ -882,7 +919,6 @@ export const DealerLedger: React.FC = () => {
         </div>
       </Modal>
 
-      {/* Edit Opening Credit Modal */}
       <Modal open={showEditCredit} onClose={() => setShowEditCredit(false)} title="Edit Opening Credit" subtitle="Adjust the opening balance for this dealer">
         <div className="space-y-3">
           <div>
@@ -891,7 +927,7 @@ export const DealerLedger: React.FC = () => {
           </div>
           <div>
             <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">New Opening Credit (₹)</label>
-            <Input type="number" value={editCreditValue || ''} onChange={e => setEditCreditValue(Number(e.target.value))} />
+            <Input type="number" value={editCreditValue || ''} onChange={e => setEditCreditValue(parseFloat(e.target.value) || 0)} />
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-5">

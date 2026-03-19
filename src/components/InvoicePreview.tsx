@@ -32,6 +32,7 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
   const businessPhone = invoice.billing_phone || shop.phone;
   const businessGST = invoice.billing_gst_number || shop.gst_number;
   const subHeading = invoice.billing_sub_heading || (shop as any).sub_heading || '';
+  const logoUrl = (invoice as any).billing_logo_url || shop.logo_url;
 
   const terms = (shop.terms_and_conditions && shop.terms_and_conditions.length > 0)
     ? shop.terms_and_conditions
@@ -56,6 +57,11 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
           <div className="max-w-[600px] mx-auto font-body text-sm text-foreground">
             {/* Header */}
             <div className="text-center mb-4 border-b pb-4">
+              {logoUrl && (
+                <div className="mb-2 flex justify-center">
+                  <img src={logoUrl} alt="Business Logo" className="h-16 max-w-[200px] object-contain" />
+                </div>
+              )}
               <h1 className="font-display text-2xl font-extrabold">{businessName}</h1>
               {subHeading && (
                 <p className="text-muted-foreground text-xs mt-0.5 font-display font-semibold">{subHeading}</p>
@@ -122,10 +128,20 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
                       </td>
                       <td className="py-1.5 font-mono text-[10px]">{item.product.hsn_code || '—'}</td>
                       <td className="py-1.5 font-mono text-[10px]">{item.imei || '—'}</td>
-                      <td className="py-1.5 text-right">₹{item.unitPrice.toLocaleString('en-IN')}</td>
+                      <td className="py-1.5 text-right">
+                        <div>₹{item.unitPrice.toLocaleString('en-IN')}</div>
+                        {invoice.is_gst_bill && gst && (
+                          <div className="text-[9px] text-muted-foreground">
+                            Base: ₹{gst.taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </div>
+                        )}
+                      </td>
                       <td className="py-1.5 text-right">{item.discount > 0 ? `₹${item.discount}` : '—'}</td>
                       {invoice.is_gst_bill && gst && (
-                        <td className="py-1.5 text-right text-muted-foreground">₹{gst.totalGST}</td>
+                        <td className="py-1.5 text-right text-muted-foreground">
+                          <div>₹{gst.totalGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                          <div className="text-[9px]">C:{gst.cgst.toFixed(2)} S:{gst.sgst.toFixed(2)}</div>
+                        </td>
                       )}
                       <td className="py-1.5 text-right font-semibold">₹{item.total.toLocaleString('en-IN')}</td>
                     </tr>
@@ -136,17 +152,17 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
 
             {/* Summary */}
             <div className="flex justify-end mb-4">
-              <div className="w-60 space-y-1 text-xs">
+              <div className="w-64 space-y-1 text-xs">
                 <div className="flex justify-between"><span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString('en-IN')}</span></div>
                 {invoice.total_discount > 0 && (
                   <div className="flex justify-between text-warning"><span>Discount</span><span>-₹{invoice.total_discount.toLocaleString('en-IN')}</span></div>
                 )}
                 {invoice.is_gst_bill && (
                   <>
-                    <div className="flex justify-between text-muted-foreground"><span>Taxable Amount</span><span>₹{(invoice.grand_total - invoice.cgst - invoice.sgst).toLocaleString('en-IN')}</span></div>
-                    <div className="flex justify-between text-muted-foreground"><span>CGST</span><span>₹{invoice.cgst.toLocaleString('en-IN')}</span></div>
-                    <div className="flex justify-between text-muted-foreground"><span>SGST</span><span>₹{invoice.sgst.toLocaleString('en-IN')}</span></div>
-                    <div className="flex justify-between text-muted-foreground"><span>GST Total</span><span className="font-semibold text-primary">₹{(invoice.cgst + invoice.sgst).toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between text-muted-foreground"><span>Taxable Amount</span><span>₹{(invoice.grand_total - invoice.cgst - invoice.sgst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                    <div className="flex justify-between text-muted-foreground"><span>CGST</span><span>₹{invoice.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                    <div className="flex justify-between text-muted-foreground"><span>SGST</span><span>₹{invoice.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                    <div className="flex justify-between text-muted-foreground"><span>GST Total</span><span className="font-semibold text-primary">₹{(invoice.cgst + invoice.sgst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
                   </>
                 )}
                 <div className="flex justify-between font-display font-bold text-base pt-1 border-t">
@@ -156,6 +172,23 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
             </div>
 
             <p className="text-xs italic text-muted-foreground mb-4">{amountInWords(invoice.grand_total)}</p>
+
+            {/* Payment Breakdown */}
+            {invoice.payment_method === 'mixed' && (invoice as any).payment_details && (
+              <div className="border-t pt-3 mb-4">
+                <p className="font-display text-xs font-semibold mb-2">💰 Payment Breakdown:</p>
+                <div className="text-[11px] grid grid-cols-2 gap-1">
+                  {Object.entries((invoice as any).payment_details as Record<string, number>).map(([key, val]) =>
+                    val > 0 ? (
+                      <div key={key} className="flex justify-between px-2 py-1 rounded bg-secondary/30">
+                        <span className="capitalize font-semibold">{key}</span>
+                        <span>₹{Number(val).toLocaleString('en-IN')}</span>
+                      </div>
+                    ) : null
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Warranty Details */}
             {(invoice.warranty_mobile || invoice.warranty_accessories) && (
