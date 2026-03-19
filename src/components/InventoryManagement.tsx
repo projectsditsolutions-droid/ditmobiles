@@ -95,7 +95,7 @@ export const InventoryManagement: React.FC = () => {
   };
 
   const handleEdit = (p: Product) => {
-    setForm({ brand: p.brand, model: p.model, variant: p.variant, color: p.color, purchase_price: Number(p.purchase_price), sale_price: Number(p.sale_price), gst_percent: Number(p.gst_percent), category: p.category });
+    setForm({ brand: p.brand, model: p.model, variant: p.variant, color: p.color, purchase_price: Number(p.purchase_price), sale_price: Number(p.sale_price), gst_percent: Number(p.gst_percent), category: p.category, hsn_code: (p as any).hsn_code || '' });
     setEditingId(p.id); setShowForm(true);
   };
 
