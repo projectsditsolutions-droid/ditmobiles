@@ -502,7 +502,7 @@ export const DealerLedger: React.FC = () => {
               <div className="p-5 border-b space-y-4">
                 <div className="grid grid-cols-2 xl:grid-cols-6 gap-3">
                   {[
-                    { label: 'Opening Credit', value: totals.opening, tone: 'text-muted-foreground' },
+                    { label: 'Opening Credit', value: totals.opening, tone: 'text-muted-foreground', editable: true },
                     { label: 'Purchases', value: totals.purchase, tone: 'text-destructive' },
                     { label: 'Sold (Cost)', value: totals.sold, tone: 'text-primary' },
                     { label: 'Payments', value: totals.payment, tone: 'text-success' },
@@ -510,7 +510,14 @@ export const DealerLedger: React.FC = () => {
                     { label: 'Total Settled', value: totals.totalSettled, tone: 'text-success' },
                   ].map(card => (
                     <div key={card.label} className="rounded-2xl border bg-background p-4">
-                      <p className="text-xs font-display uppercase tracking-wider text-muted-foreground">{card.label}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-display uppercase tracking-wider text-muted-foreground">{card.label}</p>
+                        {'editable' in card && card.editable && (
+                          <button onClick={() => { setEditCreditValue(totals.opening); setShowEditCredit(true); }} className="text-xs text-primary hover:underline font-display font-semibold">
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                       <p className={`mt-2 font-display text-2xl font-extrabold ${card.tone}`}>{fmt(card.value)}</p>
                     </div>
                   ))}
