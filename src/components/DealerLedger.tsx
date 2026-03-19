@@ -459,13 +459,14 @@ export const DealerLedger: React.FC = () => {
               </div>
 
               <div className="p-5 border-b space-y-4">
-                <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 xl:grid-cols-6 gap-3">
                   {[
                     { label: 'Opening Credit', value: totals.opening, tone: 'text-muted-foreground' },
                     { label: 'Purchases', value: totals.purchase, tone: 'text-destructive' },
                     { label: 'Sold (Cost)', value: totals.sold, tone: 'text-primary' },
                     { label: 'Payments', value: totals.payment, tone: 'text-success' },
                     { label: 'Returns', value: totals.returned, tone: 'text-warning' },
+                    { label: 'Total Settled', value: totals.totalSettled, tone: 'text-success' },
                   ].map(card => (
                     <div key={card.label} className="rounded-2xl border bg-background p-4">
                       <p className="text-xs font-display uppercase tracking-wider text-muted-foreground">{card.label}</p>
@@ -478,9 +479,11 @@ export const DealerLedger: React.FC = () => {
                   <p className="font-display font-bold text-foreground mb-2">Ledger Rules</p>
                   <div className="grid md:grid-cols-2 gap-2">
                     <p>• Purchase adds cost price to dealer credit</p>
-                    <p>• Sale deducts only cost price</p>
-                    <p>• Payment reduces dealer credit</p>
-                    <p>• Stock return reduces dealer credit</p>
+                    <p>• Sale deducts cost price from balance</p>
+                    <p>• Payment reduces dealer credit directly</p>
+                    <p>• Stock return reduces balance &amp; removes from purchases</p>
+                    <p>• Opening credit is settled via payments</p>
+                    <p>• Balance = Opening + Purchases - Sales - Payments - Returns</p>
                   </div>
                 </div>
 
