@@ -22,18 +22,11 @@ export const InventoryManagement: React.FC = () => {
   const [form, setForm] = useState(emptyProduct);
   const [newIMEI, setNewIMEI] = useState('');
   const [addingIMEIFor, setAddingIMEIFor] = useState<string | null>(null);
-  const [tab, setTab] = useState<'products' | 'imei' | 'stock_entry' | 'bulk'>('products');
+  const [tab, setTab] = useState<'products' | 'imei' | 'bulk'>('products');
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [bulkField, setBulkField] = useState<'sale_price' | 'purchase_price' | 'gst_percent'>('sale_price');
   const [bulkValue, setBulkValue] = useState('');
   const [imeiFilter, setImeiFilter] = useState<'all' | 'in_stock' | 'sold'>('all');
-  
-  // Stock entry state
-  const [stockSearch, setStockSearch] = useState('');
-  const [stockProduct, setStockProduct] = useState<Product | null>(null);
-  const [stockIMEIs, setStockIMEIs] = useState('');
-  const [stockUnitPrice, setStockUnitPrice] = useState(0);
-  const [stockSearchResults, setStockSearchResults] = useState<Product[]>([]);
 
   const fetchProducts = async () => {
     if (!activeShopId && !isAllShops) return;
