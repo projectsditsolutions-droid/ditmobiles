@@ -313,6 +313,8 @@ export type Database = {
           subtotal: number
           total_discount: number
           user_id: string
+          warranty_accessories: string
+          warranty_mobile: string
         }
         Insert: {
           bill_discount?: number
@@ -344,6 +346,8 @@ export type Database = {
           subtotal?: number
           total_discount?: number
           user_id: string
+          warranty_accessories?: string
+          warranty_mobile?: string
         }
         Update: {
           bill_discount?: number
@@ -375,6 +379,8 @@ export type Database = {
           subtotal?: number
           total_discount?: number
           user_id?: string
+          warranty_accessories?: string
+          warranty_mobile?: string
         }
         Relationships: [
           {
@@ -630,6 +636,7 @@ export type Database = {
           logo_url: string | null
           name: string
           phone: string
+          sub_heading: string
           terms_and_conditions: string[] | null
           updated_at: string
         }
@@ -644,6 +651,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           phone?: string
+          sub_heading?: string
           terms_and_conditions?: string[] | null
           updated_at?: string
         }
@@ -658,6 +666,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           phone?: string
+          sub_heading?: string
           terms_and_conditions?: string[] | null
           updated_at?: string
         }

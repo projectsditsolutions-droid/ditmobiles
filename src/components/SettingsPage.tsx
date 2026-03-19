@@ -62,7 +62,8 @@ export const SettingsPage: React.FC = () => {
       await supabase.from('shops').update({
         name: shop.name, address: shop.address, phone: shop.phone,
         gst_number: shop.gst_number, invoice_prefix: shop.invoice_prefix,
-      }).eq('id', shop.id);
+        sub_heading: (shop as any).sub_heading || '',
+      } as any).eq('id', shop.id);
     }
     toast.success('Shop profiles saved');
     refreshShops();
@@ -219,8 +220,8 @@ export const SettingsPage: React.FC = () => {
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                {[['name', 'Shop Name'], ['address', 'Address'], ['phone', 'Phone'], ['gst_number', 'GST Number'], ['invoice_prefix', 'Invoice Prefix']].map(([field, label]) => (
-                  <div key={field}>
+                {[['name', 'Shop Name'], ['sub_heading', 'Sub Heading (shown below name)'], ['address', 'Address'], ['phone', 'Phone'], ['gst_number', 'GST Number'], ['invoice_prefix', 'Invoice Prefix']].map(([field, label]) => (
+                  <div key={field} className={field === 'sub_heading' ? 'col-span-2' : ''}>
                     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</label>
                     <Input value={String((shop as any)[field] || '')} onChange={e => handleSaveShop(idx, field, e.target.value)} className="h-10" />
                   </div>

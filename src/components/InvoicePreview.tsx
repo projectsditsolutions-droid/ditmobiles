@@ -10,6 +10,15 @@ interface Props {
   onClose: () => void;
 }
 
+const DEFAULT_TERMS = [
+  '★ கண்டிப்பாக பொருட்கள் திரும்ப பெறவோ / மாற்றி தரவோ இயலாது.',
+  '★ கம்பெனி சர்வீஸ் என்பது வாடிக்கையாளர்களே நேரில் சென்று செய்து கொள்ள வேண்டும்.',
+  '★ கம்பெனி சர்வீஸ் என்பது அதிகபட்சம் 30 நாள் வரை ஆகலாம்.',
+  '★ தண்ணீர் படுதல்/கீழே விழுந்து உடைதல்/பேனல் உடைதல் ஆகியவற்றிற்கு வாரண்டி/கேரண்டி கிடையாது.',
+  '★ பேட்டரி உப்பி இருந்தால் வாரண்டி கிடையாது.',
+  '★ வாரண்டி முடிந்த பிறகு, கம்பெனி செல்போன்களுக்கு உதிரிபாகங்கள் எதிர்காலத்தில் கிடைக்காமல் போனால் நிர்வாகம் பொறுப்பல்ல.',
+];
+
 export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
   const { activeShop } = useShop();
   const shop = activeShop;
@@ -18,11 +27,15 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
 
   if (!shop) return null;
 
-  // Use billing profile details if available, otherwise fall back to shop details
   const businessName = invoice.billing_business_name || shop.name;
   const businessAddress = invoice.billing_address || shop.address;
   const businessPhone = invoice.billing_phone || shop.phone;
   const businessGST = invoice.billing_gst_number || shop.gst_number;
+  const subHeading = (shop as any).sub_heading || '';
+
+  const terms = (shop.terms_and_conditions && shop.terms_and_conditions.length > 0)
+    ? shop.terms_and_conditions
+    : DEFAULT_TERMS;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-sm">
@@ -41,9 +54,12 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
 
         <div className="flex-1 overflow-y-auto p-6 print-area">
           <div className="max-w-[600px] mx-auto font-body text-sm text-foreground">
-            {/* Header - uses selected GST profile details */}
+            {/* Header */}
             <div className="text-center mb-4 border-b pb-4">
               <h1 className="font-display text-2xl font-extrabold">{businessName}</h1>
+              {subHeading && (
+                <p className="text-muted-foreground text-xs mt-0.5 font-display font-semibold">{subHeading}</p>
+              )}
               <p className="text-muted-foreground text-xs mt-1">{businessAddress}</p>
               <p className="text-muted-foreground text-xs">Phone: {businessPhone}</p>
               <p className="font-display text-xs font-semibold mt-1">GSTIN: {businessGST}</p>
@@ -70,6 +86,11 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
               {invoice.gst_bearer === 'seller' && (
                 <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-xs font-display bg-warning/10 text-warning font-semibold">
                   GST Borne by Seller
+                </span>
+              )}
+              {invoice.payment_method === 'emi' && (
+                <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-xs font-display bg-accent text-accent-foreground font-semibold">
+                  EMI
                 </span>
               )}
             </div>
@@ -119,8 +140,10 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
                 )}
                 {invoice.is_gst_bill && (
                   <>
+                    <div className="flex justify-between text-muted-foreground"><span>Taxable Amount</span><span>₹{(invoice.grand_total - invoice.cgst - invoice.sgst).toLocaleString('en-IN')}</span></div>
                     <div className="flex justify-between text-muted-foreground"><span>CGST</span><span>₹{invoice.cgst.toLocaleString('en-IN')}</span></div>
                     <div className="flex justify-between text-muted-foreground"><span>SGST</span><span>₹{invoice.sgst.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between text-muted-foreground"><span>GST Total</span><span className="font-semibold text-primary">₹{(invoice.cgst + invoice.sgst).toLocaleString('en-IN')}</span></div>
                   </>
                 )}
                 <div className="flex justify-between font-display font-bold text-base pt-1 border-t">
@@ -131,14 +154,35 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
 
             <p className="text-xs italic text-muted-foreground mb-4">{amountInWords(invoice.grand_total)}</p>
 
-            {/* Tamil Terms & Conditions */}
+            {/* Warranty Details */}
+            {(invoice.warranty_mobile || invoice.warranty_accessories) && (
+              <div className="border-t pt-3 mb-4">
+                <p className="font-display text-xs font-semibold mb-2">🛡️ Warranty Details:</p>
+                <div className="text-[11px] space-y-1">
+                  {invoice.warranty_mobile && (
+                    <div className="flex items-start gap-2">
+                      <span className="font-semibold min-w-[100px]">📱 Mobile:</span>
+                      <span>{invoice.warranty_mobile}</span>
+                    </div>
+                  )}
+                  {invoice.warranty_accessories && (
+                    <div className="flex items-start gap-2">
+                      <span className="font-semibold min-w-[100px]">🎧 Accessories:</span>
+                      <span>{invoice.warranty_accessories}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Terms & Conditions */}
             <div className="border-t pt-3 mb-4">
               <p className="font-display text-xs font-semibold mb-1">நிபந்தனைகள் / Terms & Conditions:</p>
-              <ol className="text-[10px] text-muted-foreground space-y-0.5 list-decimal list-inside">
-                {(shop.terms_and_conditions || []).map((t: string, i: number) => (
-                  <li key={i}>{t}</li>
+              <div className="text-[10px] text-muted-foreground space-y-0.5">
+                {terms.map((t: string, i: number) => (
+                  <p key={i}>{t}</p>
                 ))}
-              </ol>
+              </div>
             </div>
 
             <div className="flex justify-between pt-8 text-xs text-muted-foreground">

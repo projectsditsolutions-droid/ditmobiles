@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Banknote, Smartphone, Shuffle, Printer, ShoppingBag, User, Phone, Hash, Receipt, Building2, MapPin, AlertCircle } from 'lucide-react';
+import { CreditCard, Banknote, Smartphone, Shuffle, Printer, ShoppingBag, User, Phone, Hash, Receipt, Building2, MapPin, AlertCircle, Calendar, Shield } from 'lucide-react';
 
 interface Props {
   items: any[];
@@ -14,20 +14,24 @@ interface Props {
   isGSTBill: boolean;
   gstBearer: string;
   customerType: 'B2B' | 'B2C';
-  paymentMethod: 'cash' | 'upi' | 'card' | 'mixed';
+  paymentMethod: 'cash' | 'upi' | 'card' | 'mixed' | 'emi';
   customerName: string;
   customerPhone: string;
   customerGST: string;
   customerAddress: string;
   mixedPayment: { cash: number; upi: number; card: number };
+  warrantyMobile: string;
+  warrantyAccessories: string;
   onBillDiscountChange: (v: number) => void;
   onBillDiscountTypeChange: (v: 'percentage' | 'flat') => void;
-  onPaymentMethodChange: (v: 'cash' | 'upi' | 'card' | 'mixed') => void;
+  onPaymentMethodChange: (v: 'cash' | 'upi' | 'card' | 'mixed' | 'emi') => void;
   onCustomerNameChange: (v: string) => void;
   onCustomerPhoneChange: (v: string) => void;
   onCustomerGSTChange: (v: string) => void;
   onCustomerAddressChange: (v: string) => void;
   onMixedPaymentChange: (v: { cash: number; upi: number; card: number }) => void;
+  onWarrantyMobileChange: (v: string) => void;
+  onWarrantyAccessoriesChange: (v: string) => void;
   onCompleteSale: () => void;
   discountEnabled: boolean;
 }
@@ -36,10 +40,10 @@ export const CheckoutPanel: React.FC<Props> = ({
   items, subtotal, itemDiscountTotal, billDiscount, billDiscountType, billDiscountAmount,
   gstCalc, grandTotal, isGSTBill, gstBearer, customerType, paymentMethod,
   customerName, customerPhone, customerGST, customerAddress,
-  mixedPayment,
+  mixedPayment, warrantyMobile, warrantyAccessories,
   onBillDiscountChange, onBillDiscountTypeChange, onPaymentMethodChange,
   onCustomerNameChange, onCustomerPhoneChange, onCustomerGSTChange, onCustomerAddressChange,
-  onMixedPaymentChange,
+  onMixedPaymentChange, onWarrantyMobileChange, onWarrantyAccessoriesChange,
   onCompleteSale, discountEnabled,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -48,6 +52,7 @@ export const CheckoutPanel: React.FC<Props> = ({
     { key: 'cash' as const, icon: Banknote, label: 'Cash' },
     { key: 'upi' as const, icon: Smartphone, label: 'UPI' },
     { key: 'card' as const, icon: CreditCard, label: 'Card' },
+    { key: 'emi' as const, icon: Calendar, label: 'EMI' },
     { key: 'mixed' as const, icon: Shuffle, label: 'Mixed' },
   ];
 
@@ -200,44 +205,70 @@ export const CheckoutPanel: React.FC<Props> = ({
             <div className="flex justify-between items-center">
               <span className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">GST Details</span>
               <span className="text-[10px] capitalize font-display font-semibold px-2 py-0.5 rounded-full bg-primary/20 text-primary-foreground">
-                {gstBearer === 'customer' ? 'Customer pays' : 'Seller absorbs'}
+                {gstBearer === 'customer' ? 'Customer Pays' : 'Seller Absorbs'}
               </span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-checkout-foreground/45">Taxable Amount</span>
-              <span className="font-mono">{fmt(gstCalc.taxableAmount)}</span>
+              <span className="font-mono font-semibold">{fmt(gstCalc.taxableAmount)}</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-checkout-foreground/45">CGST</span>
-              <span className="font-mono">{fmt(gstCalc.cgst)}</span>
+              <span className="font-mono font-semibold">{fmt(gstCalc.cgst)}</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-checkout-foreground/45">SGST</span>
-              <span className="font-mono">{fmt(gstCalc.sgst)}</span>
+              <span className="font-mono font-semibold">{fmt(gstCalc.sgst)}</span>
             </div>
             <div className="flex justify-between text-xs border-t border-checkout-foreground/10 pt-2">
-              <span className="text-checkout-foreground/45">GST Total</span>
-              <span className="font-display font-semibold">{fmt(gstCalc.totalGST)}</span>
+              <span className="font-display font-semibold text-checkout-foreground/60">GST Total</span>
+              <span className="font-display font-bold text-primary">{fmt(gstCalc.totalGST)}</span>
             </div>
           </div>
         )}
+
+        {/* ── Warranty Details ────────────────────────────────────── */}
+        <div className="p-3 rounded-xl bg-checkout-foreground/5 border border-checkout-foreground/8 space-y-2">
+          <div className="flex items-center gap-1.5">
+            <Shield className="w-3.5 h-3.5 text-checkout-foreground/40" />
+            <span className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">Warranty Details</span>
+          </div>
+          <div>
+            <label className="text-[9px] text-checkout-foreground/45 mb-1 block">Mobile Warranty</label>
+            <input
+              value={warrantyMobile}
+              onChange={e => onWarrantyMobileChange(e.target.value)}
+              placeholder="e.g. 1 Year Manufacturer Warranty"
+              className="checkout-input w-full h-9 px-3 rounded-lg text-xs"
+            />
+          </div>
+          <div>
+            <label className="text-[9px] text-checkout-foreground/45 mb-1 block">Accessories Warranty</label>
+            <input
+              value={warrantyAccessories}
+              onChange={e => onWarrantyAccessoriesChange(e.target.value)}
+              placeholder="e.g. 6 Months Warranty"
+              className="checkout-input w-full h-9 px-3 rounded-lg text-xs"
+            />
+          </div>
+        </div>
       </div>
 
       {/* ── Payment Method ────────────────────────────────────────── */}
       <div className="px-4 py-3 border-t border-checkout-foreground/8 flex-shrink-0">
         <label className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold mb-2.5 block">Payment Method</label>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-5 gap-1.5">
           {paymentMethods.map(m => (
             <button
               key={m.key}
               onClick={() => onPaymentMethodChange(m.key)}
-              className={`flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-[10px] font-display font-semibold transition-all ${
+              className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[9px] font-display font-semibold transition-all ${
                 paymentMethod === m.key
                   ? 'gradient-primary text-primary-foreground shadow-lg scale-[1.02]'
                   : 'bg-checkout-foreground/8 text-checkout-foreground/55 hover:bg-checkout-foreground/15 hover:text-checkout-foreground/80'
               }`}
             >
-              <m.icon className="w-4 h-4" />{m.label}
+              <m.icon className="w-3.5 h-3.5" />{m.label}
             </button>
           ))}
         </div>

@@ -70,6 +70,8 @@ export interface InvoiceData {
   billing_phone?: string;
   billing_gst_number?: string;
   profile_type?: string;
+  warranty_mobile?: string;
+  warranty_accessories?: string;
 }
 
 // ─── GST Profile Card Selector ───────────────────────────────────────────────
@@ -183,12 +185,15 @@ export const POSBilling: React.FC = () => {
   const [isGSTBill, setIsGSTBill] = useState(true);
   const [customerType, setCustomerType] = useState<'B2C' | 'B2B'>('B2C');
   const [gstBearer, setGstBearer] = useState<'customer' | 'seller'>('customer');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'mixed'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'mixed' | 'emi'>('cash');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerGST, setCustomerGST] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [mixedPayment, setMixedPayment] = useState({ cash: 0, upi: 0, card: 0 });
+  const [warrantyMobile, setWarrantyMobile] = useState('');
+  const [warrantyAccessories, setWarrantyAccessories] = useState('');
+
   const [billDiscount, setBillDiscount] = useState(0);
   const [billDiscountType, setBillDiscountType] = useState<'percentage' | 'flat'>('flat');
   const [showSearch, setShowSearch] = useState(false);
@@ -426,6 +431,8 @@ export const POSBilling: React.FC = () => {
       billing_address: selectedProfile?.address || activeShop.address,
       billing_phone: selectedProfile?.phone || activeShop.phone,
       billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
+      warranty_mobile: warrantyMobile || '',
+      warranty_accessories: warrantyAccessories || '',
     } as any).select().single();
 
     if (invError || !invoice) {
@@ -514,6 +521,8 @@ export const POSBilling: React.FC = () => {
       billing_phone: selectedProfile?.phone || activeShop.phone,
       billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
       profile_type: selectedProfile?.profile_type,
+      warranty_mobile: warrantyMobile || undefined,
+      warranty_accessories: warrantyAccessories || undefined,
     };
 
     setShowInvoice(invoiceData);
@@ -526,7 +535,9 @@ export const POSBilling: React.FC = () => {
     setCustomerAddress('');
     setMixedPayment({ cash: 0, upi: 0, card: 0 });
     setBillDiscount(0);
-  }, [items, customerName, customerPhone, customerGST, customerType, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile]);
+    setWarrantyMobile('');
+    setWarrantyAccessories('');
+  }, [items, customerName, customerPhone, customerGST, customerType, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories]);
 
   return (
     <div className="flex h-full">
@@ -752,6 +763,10 @@ export const POSBilling: React.FC = () => {
         onCustomerAddressChange={setCustomerAddress}
         mixedPayment={mixedPayment}
         onMixedPaymentChange={setMixedPayment}
+        warrantyMobile={warrantyMobile}
+        warrantyAccessories={warrantyAccessories}
+        onWarrantyMobileChange={setWarrantyMobile}
+        onWarrantyAccessoriesChange={setWarrantyAccessories}
         onCompleteSale={handleCompleteSale}
         discountEnabled={settings?.discount_enabled ?? true}
       />
