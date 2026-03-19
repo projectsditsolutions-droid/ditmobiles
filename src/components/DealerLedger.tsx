@@ -139,9 +139,14 @@ export const DealerLedger: React.FC = () => {
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
     const openingAdj = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    const opening = current - purchase + payment + sold + returned;
-    const totalSettled = payment + sold + returned;
-    return { purchase, payment, sold, returned, current, opening, totalSettled, openingAdj };
+    // Balance = Opening + Purchases - Payments - Returns (sold cost is informational only)
+    const opening = current - purchase + payment + returned;
+    // Only manual payments count as settled
+    const totalSettled = payment;
+    // Track how much sold cost has been settled via payments
+    const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => s + Number(t.amount), 0);
+    const openingCreditSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Opening Credit')).reduce((s, t) => s + Number(t.amount), 0);
+    return { purchase, payment, sold, returned, current, opening, totalSettled, openingAdj, soldCostSettled, openingCreditSettled };
   }, [selectedDealer, selectedTxns]);
 
   const totalOutstanding = dealers.reduce((sum, dealer) => sum + Number(dealer.total_credit), 0);
@@ -528,11 +533,11 @@ export const DealerLedger: React.FC = () => {
                   <p className="font-display font-bold text-foreground mb-2">Ledger Rules</p>
                   <div className="grid md:grid-cols-2 gap-2">
                     <p>• Purchase adds cost price to dealer credit</p>
-                    <p>• Sale deducts cost price from balance</p>
-                    <p>• Payment reduces dealer credit directly</p>
-                    <p>• Stock return reduces balance &amp; removes from purchases</p>
-                    <p>• Opening credit is settled via payments</p>
-                    <p>• Balance = Opening + Purchases - Sales - Payments - Returns</p>
+                    <p>• Sold cost is tracked but does NOT auto-settle</p>
+                    <p>• Settlement happens ONLY via Record Payment</p>
+                    <p>• Stock return reduces balance &amp; removes from inventory</p>
+                    <p>• Record Payment: settle from Sold Cost / Opening Credit / Both</p>
+                    <p>• Balance = Opening + Purchases - Payments - Returns</p>
                   </div>
                 </div>
 
@@ -814,12 +819,12 @@ export const DealerLedger: React.FC = () => {
               <div>
                 <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Sold Cost Amount (₹)</label>
                 <Input type="number" value={paymentForm.soldCostAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, soldCostAmount: Number(e.target.value) })} />
-                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.sold - totals.payment)}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.sold - totals.soldCostSettled)}</p>
               </div>
               <div>
                 <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Opening Credit Amount (₹)</label>
                 <Input type="number" value={paymentForm.openingCreditAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, openingCreditAmount: Number(e.target.value) })} />
-                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.opening)}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.opening - totals.openingCreditSettled)}</p>
               </div>
             </div>
           ) : (

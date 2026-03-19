@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Search, Phone, User, MapPin, Hash, Mail, Edit2, Trash2, X,
-  ShoppingBag, CalendarDays, FileText, ChevronRight, Users
+  ShoppingBag, CalendarDays, FileText, ChevronRight, Users, Printer, Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { InvoicePreview } from './InvoicePreview';
+import type { InvoiceData } from './POSBilling';
 
 interface Customer {
   id: string;
@@ -61,10 +63,12 @@ export const CustomerManagement: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQ, setSearchQ] = useState('');
+  const [invoiceSearchQ, setInvoiceSearchQ] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [customerHistory, setCustomerHistory] = useState<Invoice[]>([]);
   const [form, setForm] = useState({ name: '', phone: '', address: '', gstin: '', email: '', notes: '' });
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
 
   const fetchCustomers = async () => {
     if (!activeShopId && !isAllShops) return;
@@ -98,6 +102,11 @@ export const CustomerManagement: React.FC = () => {
     customers.filter(c =>
       !searchQ || `${c.name} ${c.phone} ${c.address} ${c.gstin}`.toLowerCase().includes(searchQ.toLowerCase())
     ), [customers, searchQ]);
+
+  const filteredHistory = useMemo(() =>
+    customerHistory.filter(inv =>
+      !invoiceSearchQ || `${inv.invoice_number} ${inv.payment_method} ${inv.status}`.toLowerCase().includes(invoiceSearchQ.toLowerCase())
+    ), [customerHistory, invoiceSearchQ]);
 
   const resetForm = () => {
     setForm({ name: '', phone: '', address: '', gstin: '', email: '', notes: '' });
@@ -150,6 +159,65 @@ export const CustomerManagement: React.FC = () => {
     if (selectedId === id) setSelectedId(null);
     toast.success('Customer deleted');
     fetchCustomers();
+  };
+
+  const openInvoice = async (invoice: Invoice, autoPrint = false) => {
+    const { data: fullInvoice } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('id', invoice.id)
+      .single();
+    if (!fullInvoice) { toast.error('Invoice not found'); return; }
+
+    const { data: items } = await supabase
+      .from('invoice_items')
+      .select('*, products(*)')
+      .eq('invoice_id', invoice.id);
+
+    const invoiceData: InvoiceData = {
+      id: fullInvoice.id,
+      invoice_number: fullInvoice.invoice_number,
+      shop_id: fullInvoice.shop_id,
+      date: fullInvoice.date,
+      customer_name: fullInvoice.customer_name,
+      customer_phone: fullInvoice.customer_phone,
+      customer_gst: fullInvoice.customer_gst || undefined,
+      items: (items || []).map((item: any) => ({
+        id: item.id,
+        productId: item.product_id,
+        product: item.products,
+        imei: item.imei || '',
+        quantity: item.quantity,
+        unitPrice: Number(item.unit_price),
+        discount: Number(item.discount),
+        discountType: item.discount_type,
+        discountValue: Number(item.discount_value),
+        total: Number(item.total),
+      })),
+      subtotal: Number(fullInvoice.subtotal),
+      total_discount: Number(fullInvoice.total_discount),
+      bill_discount: Number(fullInvoice.bill_discount),
+      bill_discount_type: fullInvoice.bill_discount_type,
+      cgst: Number(fullInvoice.cgst),
+      sgst: Number(fullInvoice.sgst),
+      grand_total: Number(fullInvoice.grand_total),
+      payment_method: fullInvoice.payment_method,
+      is_gst_bill: fullInvoice.is_gst_bill,
+      gst_bearer: fullInvoice.gst_bearer,
+      print_type: fullInvoice.print_type,
+      status: fullInvoice.status,
+      billing_business_name: fullInvoice.billing_business_name || undefined,
+      billing_address: fullInvoice.billing_address || undefined,
+      billing_phone: fullInvoice.billing_phone || undefined,
+      billing_gst_number: fullInvoice.billing_gst_number || undefined,
+      warranty_mobile: fullInvoice.warranty_mobile || undefined,
+      warranty_accessories: fullInvoice.warranty_accessories || undefined,
+    };
+
+    setSelectedInvoice(invoiceData);
+    if (autoPrint) {
+      setTimeout(() => window.print(), 500);
+    }
   };
 
   const totalCustomers = customers.length;
@@ -256,7 +324,18 @@ export const CustomerManagement: React.FC = () => {
 
               {/* Purchase History */}
               <div className="p-5 flex-1 overflow-auto pos-scrollable">
-                <h3 className="font-display font-bold text-lg mb-3">Purchase History</h3>
+                <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+                  <h3 className="font-display font-bold text-lg">Purchase History</h3>
+                  <div className="relative w-full max-w-[260px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={invoiceSearchQ}
+                      onChange={e => setInvoiceSearchQ(e.target.value)}
+                      className="h-9 pl-9 text-sm"
+                      placeholder="Search invoice number..."
+                    />
+                  </div>
+                </div>
                 <div className="rounded-2xl border overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -267,10 +346,11 @@ export const CustomerManagement: React.FC = () => {
                           <th className="px-4 py-3">Payment</th>
                           <th className="px-4 py-3 text-right">Amount</th>
                           <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3 text-center">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {customerHistory.map(inv => (
+                        {filteredHistory.map(inv => (
                           <tr key={inv.id} className="border-t hover:bg-accent/30 transition-colors">
                             <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{new Date(inv.date).toLocaleDateString('en-IN')}</td>
                             <td className="px-4 py-3 font-display font-semibold whitespace-nowrap">{inv.invoice_number}</td>
@@ -285,13 +365,31 @@ export const CustomerManagement: React.FC = () => {
                                 inv.status === 'completed' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
                               }`}>{inv.status}</span>
                             </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => openInvoice(inv)}
+                                  className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
+                                  title="View Invoice"
+                                >
+                                  <Eye className="w-4 h-4 text-primary" />
+                                </button>
+                                <button
+                                  onClick={() => openInvoice(inv, true)}
+                                  className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center hover:bg-success/20 transition-colors"
+                                  title="Reprint Invoice"
+                                >
+                                  <Printer className="w-4 h-4 text-success" />
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
-                        {customerHistory.length === 0 && (
+                        {filteredHistory.length === 0 && (
                           <tr>
-                            <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                            <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                               <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                              No purchase history
+                              {invoiceSearchQ ? 'No invoices match your search' : 'No purchase history'}
                             </td>
                           </tr>
                         )}
@@ -347,6 +445,11 @@ export const CustomerManagement: React.FC = () => {
           </Button>
         </div>
       </Modal>
+
+      {/* Invoice Preview */}
+      {selectedInvoice && (
+        <InvoicePreview invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
+      )}
     </div>
   );
 };
