@@ -54,66 +54,6 @@ export const InventoryManagement: React.FC = () => {
 
   const filteredIMEIs = imeis.filter(r => imeiFilter === 'all' || r.status === imeiFilter);
 
-  // Auto-filter for stock entry
-  const handleStockSearch = useCallback((q: string) => {
-    setStockSearch(q);
-    if (!q.trim()) { setStockSearchResults([]); return; }
-    const lower = q.toLowerCase();
-    // Check if it's an IMEI (numeric, 15 digits)
-    if (/^\d+$/.test(q.trim()) && q.trim().length <= 15) {
-      // Search by IMEI in existing records
-      const matchingIMEI = imeis.find(r => r.imei.includes(q.trim()));
-      if (matchingIMEI?.products) {
-        setStockSearchResults([matchingIMEI.products as Product]);
-        return;
-      }
-    }
-    const results = products.filter(p =>
-      `${p.brand} ${p.model} ${p.variant} ${p.color}`.toLowerCase().includes(lower)
-    );
-    setStockSearchResults(results);
-  }, [products, imeis]);
-
-  const selectStockProduct = (p: Product) => {
-    setStockProduct(p);
-    setStockSearch(`${p.brand} ${p.model} ${p.variant}`);
-    setStockUnitPrice(Number(p.purchase_price));
-    setStockSearchResults([]);
-  };
-
-  const handleStockEntry = async () => {
-    if (!stockProduct || !activeShopId) { toast.error('Select a product first'); return; }
-    const imeiList = stockIMEIs.split('\n').map(s => s.trim()).filter(s => s.length === 15 && /^\d+$/.test(s));
-    if (imeiList.length === 0) { toast.error('Enter valid 15-digit IMEI numbers'); return; }
-
-    let added = 0;
-    for (const imei of imeiList) {
-      const { error } = await supabase.from('imei_records').insert({
-        imei, product_id: stockProduct.id, shop_id: activeShopId,
-        status: 'in_stock', purchase_price: stockUnitPrice,
-      });
-      if (error) {
-        if (error.code === '23505') toast.error(`Duplicate IMEI: ${imei}`);
-        else toast.error(error.message);
-      } else {
-        added++;
-      }
-    }
-
-    if (added > 0) {
-      // If product already exists, increase qty
-      await supabase.from('products').update({
-        stock_quantity: stockProduct.stock_quantity + added,
-      }).eq('id', stockProduct.id);
-      toast.success(`${added} units added to ${stockProduct.brand} ${stockProduct.model}`);
-    }
-
-    setStockIMEIs('');
-    setStockProduct(null);
-    setStockSearch('');
-    setStockUnitPrice(0);
-    fetchProducts(); fetchIMEIs();
-  };
 
   const handleSaveProduct = async () => {
     if (!form.brand || !form.model || !activeShopId) { toast.error('Brand and Model are required'); return; }
