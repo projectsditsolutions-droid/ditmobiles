@@ -532,14 +532,14 @@ export const POSBilling: React.FC = () => {
 
           if (dealer) {
             const costValue = Number(imeiRecord.purchase_price || 0);
-            const newBalance = Number(dealer.total_credit) - costValue;
-            await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', imeiRecord.dealer_id);
+            // Record sale_deduction as informational only — don't change dealer balance
+            // Settlement happens only via manual Record Payment
             await supabase.from('dealer_transactions').insert({
               dealer_id: imeiRecord.dealer_id,
               shop_id: activeShopId,
               type: 'sale_deduction',
               amount: costValue,
-              running_balance: newBalance,
+              running_balance: Number(dealer.total_credit),
               description: `Sale deduction for ${item.product.brand} ${item.product.model} (IMEI: ${item.imei})`,
               invoice_ref: invoiceNumber,
               imei_ref: item.imei,

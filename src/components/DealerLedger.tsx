@@ -139,9 +139,14 @@ export const DealerLedger: React.FC = () => {
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
     const openingAdj = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    const opening = current - purchase + payment + sold + returned;
-    const totalSettled = payment + sold + returned;
-    return { purchase, payment, sold, returned, current, opening, totalSettled, openingAdj };
+    // Balance = Opening + Purchases - Payments - Returns (sold cost is informational only)
+    const opening = current - purchase + payment + returned;
+    // Only manual payments count as settled
+    const totalSettled = payment;
+    // Track how much sold cost has been settled via payments
+    const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => s + Number(t.amount), 0);
+    const openingCreditSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Opening Credit')).reduce((s, t) => s + Number(t.amount), 0);
+    return { purchase, payment, sold, returned, current, opening, totalSettled, openingAdj, soldCostSettled, openingCreditSettled };
   }, [selectedDealer, selectedTxns]);
 
   const totalOutstanding = dealers.reduce((sum, dealer) => sum + Number(dealer.total_credit), 0);
