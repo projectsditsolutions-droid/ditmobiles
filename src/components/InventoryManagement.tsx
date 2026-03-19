@@ -10,7 +10,7 @@ import type { Database } from '@/integrations/supabase/types';
 type Product = Database['public']['Tables']['products']['Row'];
 type IMEIRecord = Database['public']['Tables']['imei_records']['Row'];
 
-const emptyProduct = { brand: '', model: '', variant: '', color: '', purchase_price: 0, sale_price: 0, gst_percent: 18, category: 'mobile' };
+const emptyProduct = { brand: '', model: '', variant: '', color: '', purchase_price: 0, sale_price: 0, gst_percent: 18, category: 'mobile', hsn_code: '' };
 
 export const InventoryManagement: React.FC = () => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
