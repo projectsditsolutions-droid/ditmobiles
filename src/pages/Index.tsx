@@ -134,6 +134,7 @@ const Index = () => {
         {activeModule === 'billing' && <POSBilling />}
         {activeModule === 'inventory' && <InventoryManagement />}
         {activeModule === 'dealers' && <DealerLedger />}
+        {activeModule === 'customers' && <CustomerManagement />}
         {activeModule === 'reports' && <ReportsPage />}
         {activeModule === 'settings' && <SettingsPage />}
       </main>
