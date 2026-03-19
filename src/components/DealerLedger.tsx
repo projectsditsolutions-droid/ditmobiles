@@ -576,8 +576,8 @@ export const DealerLedger: React.FC = () => {
         </div>
       </div>
 
-      <Modal open={showDealerForm} onClose={() => setShowDealerForm(false)} title="Add Dealer" subtitle="Create dealer master with opening credit">
-        <div className="grid grid-cols-2 gap-3">
+      <Modal open={showDealerForm} onClose={() => { setShowDealerForm(false); setEditingDealerId(null); }} title={editingDealerId ? 'Edit Dealer' : 'Add Dealer'} subtitle={editingDealerId ? 'Update dealer details' : 'Create dealer master with opening credit'}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Brand Name</label>
             <Input value={dealerForm.brand_name} onChange={e => setDealerForm({ ...dealerForm, brand_name: e.target.value })} placeholder="OPPO, Vivo" />
@@ -594,18 +594,20 @@ export const DealerLedger: React.FC = () => {
             <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">GSTIN</label>
             <Input value={dealerForm.gstin} onChange={e => setDealerForm({ ...dealerForm, gstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15) })} placeholder="Optional" />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Address</label>
             <Input value={dealerForm.address} onChange={e => setDealerForm({ ...dealerForm, address: e.target.value })} placeholder="Dealer address" />
           </div>
-          <div className="col-span-2">
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Opening Credit</label>
-            <Input type="number" value={dealerForm.total_credit || ''} onChange={e => setDealerForm({ ...dealerForm, total_credit: Number(e.target.value) })} placeholder="Amount payable at start" />
-          </div>
+          {!editingDealerId && (
+            <div className="sm:col-span-2">
+              <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Opening Credit</label>
+              <Input type="number" value={dealerForm.total_credit || ''} onChange={e => setDealerForm({ ...dealerForm, total_credit: Number(e.target.value) })} placeholder="Amount payable at start" />
+            </div>
+          )}
         </div>
         <div className="flex justify-end gap-3 mt-5">
-          <Button variant="outline" onClick={() => setShowDealerForm(false)}>Cancel</Button>
-          <Button onClick={handleAddDealer} className="gradient-primary border-0 text-primary-foreground">Save Dealer</Button>
+          <Button variant="outline" onClick={() => { setShowDealerForm(false); setEditingDealerId(null); }}>Cancel</Button>
+          <Button onClick={handleAddDealer} className="gradient-primary border-0 text-primary-foreground">{editingDealerId ? 'Update Dealer' : 'Save Dealer'}</Button>
         </div>
       </Modal>
 
