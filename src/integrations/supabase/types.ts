@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      customers: {
+        Row: {
+          address: string
+          created_at: string
+          email: string
+          gstin: string
+          id: string
+          last_purchase_date: string | null
+          name: string
+          notes: string
+          phone: string
+          shop_id: string
+          total_purchases: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          created_at?: string
+          email?: string
+          gstin?: string
+          id?: string
+          last_purchase_date?: string | null
+          name?: string
+          notes?: string
+          phone?: string
+          shop_id: string
+          total_purchases?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          email?: string
+          gstin?: string
+          id?: string
+          last_purchase_date?: string | null
+          name?: string
+          notes?: string
+          phone?: string
+          shop_id?: string
+          total_purchases?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dealer_transactions: {
         Row: {
           amount: number
@@ -239,7 +292,9 @@ export type Database = {
           billing_phone: string | null
           cgst: number
           created_at: string
+          customer_address: string | null
           customer_gst: string | null
+          customer_id: string | null
           customer_name: string
           customer_phone: string
           date: string
@@ -268,7 +323,9 @@ export type Database = {
           billing_phone?: string | null
           cgst?: number
           created_at?: string
+          customer_address?: string | null
           customer_gst?: string | null
+          customer_id?: string | null
           customer_name?: string
           customer_phone?: string
           date?: string
@@ -297,7 +354,9 @@ export type Database = {
           billing_phone?: string | null
           cgst?: number
           created_at?: string
+          customer_address?: string | null
           customer_gst?: string | null
+          customer_id?: string | null
           customer_name?: string
           customer_phone?: string
           date?: string
@@ -318,6 +377,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_gst_profile_id_fkey"
             columns: ["gst_profile_id"]
