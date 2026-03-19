@@ -6,22 +6,24 @@ import Onboarding from './Onboarding';
 import { POSBilling } from '@/components/POSBilling';
 import { InventoryManagement } from '@/components/InventoryManagement';
 import { DealerLedger } from '@/components/DealerLedger';
+import { CustomerManagement } from '@/components/CustomerManagement';
 import { ReportsPage } from '@/components/ReportsPage';
 import { SettingsPage } from '@/components/SettingsPage';
 import { PinModal } from '@/components/PinModal';
 import { usePinLock } from '@/hooks/use-pin-lock';
 import {
   Receipt, Package, Users, BarChart3, Settings, Lock, Unlock,
-  ChevronLeft, ChevronRight, Loader2, LogOut, Zap,
+  ChevronLeft, ChevronRight, Loader2, LogOut, Zap, UserCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-type AppModule = 'billing' | 'inventory' | 'dealers' | 'reports' | 'settings';
+type AppModule = 'billing' | 'inventory' | 'dealers' | 'customers' | 'reports' | 'settings';
 
 const MODULES: { key: AppModule; label: string; icon: React.ElementType; protected: boolean; color: string }[] = [
   { key: 'billing', label: 'Billing', icon: Receipt, protected: false, color: 'text-primary' },
   { key: 'inventory', label: 'Inventory', icon: Package, protected: true, color: 'text-warning' },
   { key: 'dealers', label: 'Dealers', icon: Users, protected: true, color: 'text-success' },
+  { key: 'customers', label: 'Customers', icon: UserCircle, protected: false, color: 'text-primary' },
   { key: 'reports', label: 'Reports', icon: BarChart3, protected: true, color: 'text-destructive' },
   { key: 'settings', label: 'Settings', icon: Settings, protected: true, color: 'text-muted-foreground' },
 ];
