@@ -10,7 +10,7 @@ import { BillItemRow } from '@/components/BillItemRow';
 import { InvoicePreview } from '@/components/InvoicePreview';
 import {
   Search, Barcode, Keyboard, Receipt, ScanLine,
-  Building2, ChevronDown, Store, Tag, CheckCircle2
+  Building2, ChevronDown, Store, Tag, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -27,6 +27,7 @@ export interface GSTProfile {
   profile_type: 'retail' | 'wholesale';
   invoice_prefix: string;
   last_invoice_number: number;
+  sub_heading: string;
 }
 
 type Product = Database['public']['Tables']['products']['Row'];
@@ -69,6 +70,7 @@ export interface InvoiceData {
   billing_address?: string;
   billing_phone?: string;
   billing_gst_number?: string;
+  billing_sub_heading?: string;
   profile_type?: string;
   warranty_mobile?: string;
   warranty_accessories?: string;
@@ -190,9 +192,9 @@ export const POSBilling: React.FC = () => {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerGST, setCustomerGST] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
-  const [mixedPayment, setMixedPayment] = useState({ cash: 0, upi: 0, card: 0 });
-  const [warrantyMobile, setWarrantyMobile] = useState('');
-  const [warrantyAccessories, setWarrantyAccessories] = useState('');
+  const [mixedPayment, setMixedPayment] = useState({ cash: 0, upi: 0, card: 0, emi: 0 });
+  const [warrantyMobile, setWarrantyMobile] = useState('1 Year Manufacturer Warranty');
+  const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
 
   const [billDiscount, setBillDiscount] = useState(0);
   const [billDiscountType, setBillDiscountType] = useState<'percentage' | 'flat'>('flat');
@@ -237,6 +239,13 @@ export const POSBilling: React.FC = () => {
   };
 
   const addNewItem = (product: Product, imei?: string) => {
+    // Stock availability check
+    const currentQtyInBill = items.filter(i => i.productId === product.id).reduce((sum, i) => sum + i.quantity, 0);
+    if (product.stock_quantity <= currentQtyInBill) {
+      toast.error(`Out of stock: ${product.brand} ${product.model} (Available: ${product.stock_quantity})`);
+      return null;
+    }
+
     const newItem: BillItem = {
       id: crypto.randomUUID(),
       productId: product.id,
@@ -255,6 +264,14 @@ export const POSBilling: React.FC = () => {
   };
 
   const incrementExistingItem = (itemId: string) => {
+    const item = items.find(i => i.id === itemId);
+    if (item) {
+      const currentQtyInBill = items.filter(i => i.productId === item.productId).reduce((sum, i) => sum + i.quantity, 0);
+      if (item.product.stock_quantity <= currentQtyInBill) {
+        toast.error(`Out of stock: ${item.product.brand} ${item.product.model} (Available: ${item.product.stock_quantity})`);
+        return;
+      }
+    }
     setItems(prev => prev.map(item => {
       if (item.id !== itemId) return item;
       const nextQuantity = item.quantity + 1;
@@ -331,6 +348,13 @@ export const POSBilling: React.FC = () => {
   }, [searchInput, showSearch, activeShopId]);
 
   const addProductManually = async (product: Product) => {
+    // Stock check
+    const currentQtyInBill = items.filter(i => i.productId === product.id).reduce((sum, i) => sum + i.quantity, 0);
+    if (product.stock_quantity <= currentQtyInBill) {
+      toast.error(`Out of stock: ${product.brand} ${product.model}`);
+      return;
+    }
+
     const existing = items.find(i => i.productId === product.id && !i.imei);
     if (existing) {
       incrementExistingItem(existing.id);
@@ -390,12 +414,10 @@ export const POSBilling: React.FC = () => {
         selectedProfile.profile_type === 'wholesale' ? 'INV-W' : 'INV-R'
       );
       invoiceNumber = `${prefix}-${String(nextNum).padStart(4, '0')}`;
-      // Increment the profile's invoice counter
       await supabase
         .from('shop_gst_profiles')
         .update({ last_invoice_number: nextNum } as any)
         .eq('id', selectedProfile.id);
-      // Update local state
       setGstProfiles(prev => prev.map(p =>
         p.id === selectedProfile.id ? { ...p, last_invoice_number: nextNum } : p
       ));
@@ -405,6 +427,39 @@ export const POSBilling: React.FC = () => {
       await supabase.from('shops').update({ last_invoice_number: nextNum }).eq('id', activeShopId);
     }
 
+    // Auto-save / link customer
+    let customerId: string | null = null;
+    if (customerPhone.length >= 10) {
+      const { data: existing } = await supabase
+        .from('customers')
+        .select('id, total_purchases')
+        .eq('shop_id', activeShopId)
+        .eq('phone', customerPhone)
+        .maybeSingle();
+
+      if (existing) {
+        customerId = existing.id;
+        await supabase.from('customers').update({
+          name: customerName || existing.id,
+          address: customerAddress || '',
+          gstin: customerGST || '',
+          total_purchases: Number(existing.total_purchases) + grandTotal,
+          last_purchase_date: new Date().toISOString(),
+        }).eq('id', existing.id);
+      } else {
+        const { data: newCust } = await supabase.from('customers').insert({
+          shop_id: activeShopId,
+          name: customerName || 'Walk-in Customer',
+          phone: customerPhone,
+          address: customerAddress || '',
+          gstin: customerGST || '',
+          total_purchases: grandTotal,
+          last_purchase_date: new Date().toISOString(),
+        }).select('id').single();
+        if (newCust) customerId = newCust.id;
+      }
+    }
+
     const { data: invoice, error: invError } = await supabase.from('invoices').insert({
       invoice_number: invoiceNumber,
       shop_id: activeShopId,
@@ -412,6 +467,7 @@ export const POSBilling: React.FC = () => {
       customer_name: customerName || 'Walk-in Customer',
       customer_phone: customerPhone,
       customer_gst: customerType === 'B2B' ? (customerGST || null) : null,
+      customer_id: customerId,
       subtotal,
       total_discount: itemDiscountTotal + billDiscountAmount,
       bill_discount: billDiscountAmount,
@@ -520,6 +576,7 @@ export const POSBilling: React.FC = () => {
       billing_address: selectedProfile?.address || activeShop.address,
       billing_phone: selectedProfile?.phone || activeShop.phone,
       billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
+      billing_sub_heading: selectedProfile?.sub_heading || (activeShop as any).sub_heading || '',
       profile_type: selectedProfile?.profile_type,
       warranty_mobile: warrantyMobile || undefined,
       warranty_accessories: warrantyAccessories || undefined,
@@ -533,26 +590,24 @@ export const POSBilling: React.FC = () => {
     setCustomerPhone('');
     setCustomerGST('');
     setCustomerAddress('');
-    setMixedPayment({ cash: 0, upi: 0, card: 0 });
+    setMixedPayment({ cash: 0, upi: 0, card: 0, emi: 0 });
     setBillDiscount(0);
-    setWarrantyMobile('');
-    setWarrantyAccessories('');
-  }, [items, customerName, customerPhone, customerGST, customerType, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories]);
+    setWarrantyMobile('1 Year Manufacturer Warranty');
+    setWarrantyAccessories('6 Months Warranty');
+  }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories, mixedPayment]);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col md:flex-row">
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* ── Top Bar ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 h-14 bg-card border-b flex-wrap">
-          {/* GST Profile Selector */}
           <ProfileSelector
             profiles={gstProfiles}
             selectedId={selectedProfileId}
             onSelect={setSelectedProfileId}
           />
 
-          {/* Profile active indicator */}
           {selectedProfile && (
             <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary/60 border border-border">
               <Tag className="w-3 h-3 text-muted-foreground" />
@@ -562,8 +617,7 @@ export const POSBilling: React.FC = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-2 ml-auto">
-            {/* GST / Non-GST toggle */}
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
             <div className="flex bg-secondary rounded-lg p-0.5">
               <button
                 onClick={() => setIsGSTBill(true)}
@@ -579,7 +633,6 @@ export const POSBilling: React.FC = () => {
               </button>
             </div>
 
-            {/* B2B / B2C Toggle */}
             {isGSTBill && (
               <div className="flex bg-secondary rounded-lg p-0.5">
                 <button
@@ -597,7 +650,6 @@ export const POSBilling: React.FC = () => {
               </div>
             )}
 
-            {/* GST Bearer */}
             {isGSTBill && (
               <select
                 value={gstBearer}
@@ -652,10 +704,16 @@ export const POSBilling: React.FC = () => {
                 <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border bg-card">
                   {searchResults.map(p => (
                     <button key={p.id} onClick={() => addProductManually(p)}
-                      className="w-full text-left px-4 py-3 hover:bg-accent text-sm border-b last:border-b-0 flex justify-between items-center transition-colors">
+                      className={`w-full text-left px-4 py-3 hover:bg-accent text-sm border-b last:border-b-0 flex justify-between items-center transition-colors ${p.stock_quantity <= 0 ? 'opacity-50' : ''}`}>
                       <div>
                         <span className="font-display font-semibold">{p.brand} {p.model}</span>
-                        <div className="text-muted-foreground text-xs mt-0.5">{p.variant || 'Standard'} · {p.color || 'Default'} · Stock {p.stock_quantity}</div>
+                        <div className="text-muted-foreground text-xs mt-0.5">
+                          {p.variant || 'Standard'} · {p.color || 'Default'} · 
+                          <span className={p.stock_quantity <= 0 ? 'text-destructive font-semibold' : ''}>
+                            Stock {p.stock_quantity}
+                          </span>
+                          {p.stock_quantity <= 0 && <AlertTriangle className="w-3 h-3 inline ml-1 text-destructive" />}
+                        </div>
                       </div>
                       <span className="price-text text-primary">₹{Number(p.sale_price).toLocaleString('en-IN')}</span>
                     </button>
@@ -670,7 +728,7 @@ export const POSBilling: React.FC = () => {
         </div>
 
         {/* ── Keyboard shortcuts ───────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-4 py-1.5 bg-secondary/30 text-[11px] text-muted-foreground font-display font-medium">
+        <div className="flex items-center gap-3 px-4 py-1.5 bg-secondary/30 text-[11px] text-muted-foreground font-display font-medium flex-wrap">
           <Keyboard className="w-3.5 h-3.5" />
           <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">F2</span> GST
           <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px]">F3</span> Non-GST
@@ -707,32 +765,34 @@ export const POSBilling: React.FC = () => {
               </div>
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-secondary/40 sticky top-0 z-10">
-                <tr className="text-left font-display text-[11px] text-muted-foreground uppercase tracking-wider">
-                  <th className="px-4 py-2.5 w-8">#</th>
-                  <th className="px-4 py-2.5">Product</th>
-                  <th className="px-4 py-2.5">IMEI</th>
-                  <th className="px-4 py-2.5 text-right">Price</th>
-                  <th className="px-4 py-2.5 text-right">Disc.</th>
-                  <th className="px-4 py-2.5 text-right">Total</th>
-                  <th className="px-4 py-2.5 w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, idx) => (
-                  <BillItemRow
-                    key={item.id}
-                    item={item}
-                    index={idx}
-                    flash={flashId === item.id}
-                    onRemove={() => removeItem(item.id)}
-                    onUpdateDiscount={(val, type) => updateItemDiscount(item.id, val, type)}
-                    discountEnabled={settings?.discount_enabled ?? true}
-                  />
-                ))}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[600px]">
+                <thead className="bg-secondary/40 sticky top-0 z-10">
+                  <tr className="text-left font-display text-[11px] text-muted-foreground uppercase tracking-wider">
+                    <th className="px-4 py-2.5 w-8">#</th>
+                    <th className="px-4 py-2.5">Product</th>
+                    <th className="px-4 py-2.5">IMEI</th>
+                    <th className="px-4 py-2.5 text-right">Price</th>
+                    <th className="px-4 py-2.5 text-right">Disc.</th>
+                    <th className="px-4 py-2.5 text-right">Total</th>
+                    <th className="px-4 py-2.5 w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item, idx) => (
+                    <BillItemRow
+                      key={item.id}
+                      item={item}
+                      index={idx}
+                      flash={flashId === item.id}
+                      onRemove={() => removeItem(item.id)}
+                      onUpdateDiscount={(val, type) => updateItemDiscount(item.id, val, type)}
+                      discountEnabled={settings?.discount_enabled ?? true}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

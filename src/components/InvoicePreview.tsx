@@ -31,7 +31,7 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
   const businessAddress = invoice.billing_address || shop.address;
   const businessPhone = invoice.billing_phone || shop.phone;
   const businessGST = invoice.billing_gst_number || shop.gst_number;
-  const subHeading = (shop as any).sub_heading || '';
+  const subHeading = invoice.billing_sub_heading || (shop as any).sub_heading || '';
 
   const terms = (shop.terms_and_conditions && shop.terms_and_conditions.length > 0)
     ? shop.terms_and_conditions
@@ -88,9 +88,9 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
                   GST Borne by Seller
                 </span>
               )}
-              {invoice.payment_method === 'emi' && (
+              {(invoice.payment_method === 'emi' || (invoice.payment_method === 'mixed')) && (
                 <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-xs font-display bg-accent text-accent-foreground font-semibold">
-                  EMI
+                  {invoice.payment_method === 'emi' ? 'EMI' : 'Mixed Payment'}
                 </span>
               )}
             </div>
@@ -101,6 +101,7 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
                 <tr className="border-t border-b font-display text-muted-foreground uppercase">
                   <th className="py-2 text-left">S.No</th>
                   <th className="py-2 text-left">Product</th>
+                  <th className="py-2 text-left">HSN</th>
                   <th className="py-2 text-left">IMEI</th>
                   <th className="py-2 text-right">Price</th>
                   <th className="py-2 text-right">Disc.</th>
@@ -117,7 +118,9 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
                       <td className="py-1.5">
                         <div className="font-medium">{item.product.brand} {item.product.model}</div>
                         <div className="text-muted-foreground">{item.product.variant} · {item.product.color}</div>
+                        <div className="text-muted-foreground text-[10px]">{item.product.category}</div>
                       </td>
+                      <td className="py-1.5 font-mono text-[10px]">{item.product.hsn_code || '—'}</td>
                       <td className="py-1.5 font-mono text-[10px]">{item.imei || '—'}</td>
                       <td className="py-1.5 text-right">₹{item.unitPrice.toLocaleString('en-IN')}</td>
                       <td className="py-1.5 text-right">{item.discount > 0 ? `₹${item.discount}` : '—'}</td>
