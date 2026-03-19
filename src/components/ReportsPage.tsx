@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useShop } from '@/contexts/ShopContext';
-import { TrendingUp, Package, FileText, Calendar, DollarSign, Eye, Printer, IndianRupee, ShoppingBag } from 'lucide-react';
+import { TrendingUp, Package, FileText, Calendar, DollarSign, Eye, Printer, IndianRupee, ShoppingBag, Download, Trash2, CheckSquare, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { InvoicePreview } from './InvoicePreview';
+import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import type { InvoiceData } from './POSBilling';
 
@@ -15,6 +18,12 @@ export const ReportsPage: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stockData, setStockData] = useState<any[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showFilters, setShowFilters] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [modeFilter, setModeFilter] = useState('all');
 
   useEffect(() => {
     if (!activeShopId && !isAllShops) return;
@@ -46,6 +55,15 @@ export const ReportsPage: React.FC = () => {
     };
     fetchData();
   }, [activeShopId]);
+
+  const filteredInvoices = invoices.filter(inv => {
+    if (dateFrom && inv.date < dateFrom) return false;
+    if (dateTo && inv.date > dateTo + 'T23:59:59') return false;
+    if (paymentFilter !== 'all' && inv.payment_method !== paymentFilter) return false;
+    if (modeFilter === 'gst' && !inv.is_gst_bill) return false;
+    if (modeFilter === 'non-gst' && inv.is_gst_bill) return false;
+    return true;
+  });
 
   const openInvoice = async (invoice: Invoice, autoPrint = false) => {
     const { data: invoiceItems } = await supabase
@@ -98,6 +116,80 @@ export const ReportsPage: React.FC = () => {
     if (autoPrint) window.setTimeout(() => window.print(), 250);
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredInvoices.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredInvoices.map(i => i.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} invoice(s)? This cannot be undone.`)) return;
+    for (const id of selectedIds) {
+      await supabase.from('invoice_items').delete().eq('invoice_id', id);
+      await supabase.from('invoices').delete().eq('id', id);
+    }
+    toast.success(`Deleted ${selectedIds.size} invoices`);
+    setSelectedIds(new Set());
+    setInvoices(prev => prev.filter(i => !selectedIds.has(i.id)));
+  };
+
+  const downloadCSV = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]);
+    const csv = [headers.join(','), ...data.map(row => headers.map(h => `"${String(row[h] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadInvoicesCSV = () => {
+    const data = (selectedIds.size > 0 ? filteredInvoices.filter(i => selectedIds.has(i.id)) : filteredInvoices).map(inv => ({
+      Invoice: inv.invoice_number,
+      Date: new Date(inv.date).toLocaleString('en-IN'),
+      Customer: inv.customer_name,
+      Phone: inv.customer_phone,
+      Payment: inv.payment_method,
+      GST: inv.is_gst_bill ? 'Yes' : 'No',
+      Subtotal: inv.subtotal,
+      CGST: inv.cgst,
+      SGST: inv.sgst,
+      Total: inv.grand_total,
+    }));
+    downloadCSV(data, `invoices_${new Date().toISOString().slice(0, 10)}.csv`);
+    toast.success('Invoices downloaded');
+  };
+
+  const downloadBackup = () => {
+    const backup = {
+      exportDate: new Date().toISOString(),
+      invoices: filteredInvoices,
+      stock: stockData,
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Backup downloaded');
+  };
+
   const today = new Date().toDateString();
   const todaySales = invoices.filter(i => new Date(i.date).toDateString() === today);
   const todayTotal = todaySales.reduce((s, i) => s + Number(i.grand_total), 0);
@@ -123,10 +215,18 @@ export const ReportsPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto overflow-y-auto h-full">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-extrabold">Reports</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Sales, GST, stock and invoice reprints</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={downloadBackup}>
+            <Download className="w-3.5 h-3.5 mr-1" /> Backup
+          </Button>
+          <Button variant="outline" size="sm" onClick={downloadInvoicesCSV}>
+            <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+          </Button>
         </div>
       </div>
 
@@ -150,19 +250,73 @@ export const ReportsPage: React.FC = () => {
         ))}
       </div>
 
-      <div className="flex bg-secondary rounded-lg p-0.5 mb-5 w-fit">
-        {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${tab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-            <t.icon className="w-3.5 h-3.5" />{t.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
+        <div className="flex bg-secondary rounded-lg p-0.5 w-fit">
+          {tabs.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${tab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+              <t.icon className="w-3.5 h-3.5" />{t.label}
+            </button>
+          ))}
+        </div>
+        {tab === 'daily' && (
+          <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
+                <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete ({selectedIds.size})
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="w-3.5 h-3.5 mr-1" /> Filters
+            </Button>
+          </div>
+        )}
       </div>
+
+      {tab === 'daily' && showFilters && (
+        <div className="bg-card rounded-xl border p-4 mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">From Date</label>
+            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-9" />
+          </div>
+          <div>
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">To Date</label>
+            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-9" />
+          </div>
+          <div>
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">Payment</label>
+            <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm">
+              <option value="all">All</option>
+              <option value="cash">Cash</option>
+              <option value="upi">UPI</option>
+              <option value="card">Card</option>
+              <option value="emi">EMI</option>
+              <option value="mixed">Mixed</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">Mode</label>
+            <select value={modeFilter} onChange={e => setModeFilter(e.target.value)} className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm">
+              <option value="all">All</option>
+              <option value="gst">GST</option>
+              <option value="non-gst">Non-GST</option>
+            </select>
+          </div>
+          <div className="col-span-full flex justify-end">
+            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(''); setDateTo(''); setPaymentFilter('all'); setModeFilter('all'); }}>
+              <X className="w-3.5 h-3.5 mr-1" /> Clear Filters
+            </Button>
+          </div>
+        </div>
+      )}
 
       {tab === 'daily' && (
         <div className="bg-card rounded-xl border overflow-hidden shadow-sm">
           <table className="w-full text-sm">
             <thead className="bg-secondary/40">
               <tr className="text-left font-display text-[11px] text-muted-foreground uppercase tracking-wider">
+                <th className="px-3 py-3 w-10">
+                  <Checkbox checked={selectedIds.size === filteredInvoices.length && filteredInvoices.length > 0} onCheckedChange={toggleSelectAll} />
+                </th>
                 <th className="px-4 py-3">Invoice</th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Customer</th>
@@ -173,8 +327,11 @@ export const ReportsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {invoices.slice(0, 100).map(inv => (
-                <tr key={inv.id} className="border-t border-border/50 hover:bg-accent/30 transition-colors">
+              {filteredInvoices.slice(0, 200).map(inv => (
+                <tr key={inv.id} className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${selectedIds.has(inv.id) ? 'bg-accent/40' : ''}`}>
+                  <td className="px-3 py-2.5">
+                    <Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} />
+                  </td>
                   <td className="px-4 py-2.5 font-display font-semibold text-primary text-xs">{inv.invoice_number}</td>
                   <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                   <td className="px-4 py-2.5 font-display text-sm">{inv.customer_name}</td>
