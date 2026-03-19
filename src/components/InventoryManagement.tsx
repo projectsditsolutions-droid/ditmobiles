@@ -135,7 +135,7 @@ export const InventoryManagement: React.FC = () => {
   const getStockCount = (productId: string) => imeis.filter(r => r.product_id === productId && r.status === 'in_stock').length;
   const lowStockProducts = products.filter(p => getStockCount(p.id) <= p.low_stock_threshold);
   const totalStockValue = products.reduce((s, p) => s + Number(p.purchase_price) * getStockCount(p.id), 0);
-  const validIMEICount = stockIMEIs.split('\n').filter(s => s.trim().length === 15 && /^\d+$/.test(s.trim())).length;
+  
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto overflow-y-auto h-full">
