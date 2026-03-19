@@ -523,6 +523,8 @@ export const POSBilling: React.FC = () => {
     setCustomerName('');
     setCustomerPhone('');
     setCustomerGST('');
+    setCustomerAddress('');
+    setMixedPayment({ cash: 0, upi: 0, card: 0 });
     setBillDiscount(0);
   }, [items, customerName, customerPhone, customerGST, customerType, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile]);
 
