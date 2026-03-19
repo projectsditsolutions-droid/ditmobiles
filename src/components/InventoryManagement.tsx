@@ -359,7 +359,7 @@ export const InventoryManagement: React.FC = () => {
                     <tr key={p.id} className="border-t border-border/50 hover:bg-accent/30 transition-colors">
                       <td className="px-4 py-3">
                         <div className="font-display font-semibold">{p.brand} {p.model}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{p.color} · GST {Number(p.gst_percent)}% · {p.category}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{p.color} · GST {Number(p.gst_percent)}%{(p as any).hsn_code ? ` · HSN: ${(p as any).hsn_code}` : ''} · {p.category}</div>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{p.variant || '—'}</td>
                       <td className="px-4 py-3 text-right price-text text-xs">₹{Number(p.purchase_price).toLocaleString('en-IN')}</td>
