@@ -824,7 +824,7 @@ export const DealerLedger: React.FC = () => {
               <div>
                 <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Opening Credit Amount (₹)</label>
                 <Input type="number" value={paymentForm.openingCreditAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, openingCreditAmount: Number(e.target.value) })} />
-                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.opening)}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.opening - totals.openingCreditSettled)}</p>
               </div>
             </div>
           ) : (
