@@ -211,26 +211,66 @@ export const DealerLedger: React.FC = () => {
     fetchDealers();
   };
 
+  const handleEditOpeningCredit = async () => {
+    if (!selectedDealer || !activeShopId) return;
+    const oldOpening = totals.opening;
+    const diff = editCreditValue - oldOpening;
+    const newBalance = Number(selectedDealer.total_credit) + diff;
+    await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
+    await supabase.from('dealer_transactions').insert({
+      dealer_id: selectedDealer.id,
+      shop_id: activeShopId,
+      type: 'opening_adjustment',
+      amount: Math.abs(diff),
+      running_balance: newBalance,
+      description: `Opening credit adjusted from ₹${oldOpening.toLocaleString('en-IN')} to ₹${editCreditValue.toLocaleString('en-IN')}`,
+    });
+    setShowEditCredit(false);
+    toast.success('Opening credit updated');
+    fetchDealers();
+    fetchTransactions();
+  };
+
+  const defaultPaymentForm = { amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'opening_credit' as const, soldCostAmount: 0, openingCreditAmount: 0 };
+
   const handlePayment = async () => {
-    if (!selectedDealer || !activeShopId || paymentForm.amount <= 0) {
-      toast.error('Enter a valid payment amount');
-      return;
+    if (!selectedDealer || !activeShopId) return;
+
+    let totalAmount = 0;
+    if (paymentForm.settleFrom === 'both') {
+      totalAmount = paymentForm.soldCostAmount + paymentForm.openingCreditAmount;
+      if (totalAmount <= 0) { toast.error('Enter valid amounts'); return; }
+    } else {
+      totalAmount = paymentForm.amount;
+      if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
     }
 
-    const newBalance = Number(selectedDealer.total_credit) - paymentForm.amount;
+    const methods = paymentForm.paymentMethods.length > 0 ? paymentForm.paymentMethods.join(', ') : 'Not specified';
+    const settleLabel = paymentForm.settleFrom === 'sold_cost' ? 'Settled from Sold Cost' :
+      paymentForm.settleFrom === 'opening_credit' ? 'Settled from Opening Credit' :
+      `Sold Cost: ₹${paymentForm.soldCostAmount.toLocaleString('en-IN')}, Opening: ₹${paymentForm.openingCreditAmount.toLocaleString('en-IN')}`;
+
+    const desc = [
+      settleLabel,
+      `via ${methods}`,
+      paymentForm.notes ? `Notes: ${paymentForm.notes}` : '',
+      paymentForm.description || '',
+    ].filter(Boolean).join(' | ');
+
+    const newBalance = Number(selectedDealer.total_credit) - totalAmount;
     const { error: txnError } = await supabase.from('dealer_transactions').insert({
       dealer_id: selectedDealer.id,
       shop_id: activeShopId,
       type: 'payment',
-      amount: paymentForm.amount,
+      amount: totalAmount,
       running_balance: newBalance,
-      description: paymentForm.description || 'Payment made to dealer',
+      description: desc,
     });
     if (txnError) { toast.error('Failed: ' + txnError.message); return; }
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
 
     setShowPayment(false);
-    setPaymentForm({ amount: 0, description: '' });
+    setPaymentForm(defaultPaymentForm);
     toast.success('Payment recorded');
     fetchDealers();
     fetchTransactions();
