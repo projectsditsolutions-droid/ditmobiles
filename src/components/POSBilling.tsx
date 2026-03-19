@@ -185,7 +185,7 @@ export const POSBilling: React.FC = () => {
   const [isGSTBill, setIsGSTBill] = useState(true);
   const [customerType, setCustomerType] = useState<'B2C' | 'B2B'>('B2C');
   const [gstBearer, setGstBearer] = useState<'customer' | 'seller'>('customer');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'mixed'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'mixed' | 'emi'>('cash');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerGST, setCustomerGST] = useState('');
