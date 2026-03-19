@@ -187,6 +187,8 @@ export const POSBilling: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerGST, setCustomerGST] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [mixedPayment, setMixedPayment] = useState({ cash: 0, upi: 0, card: 0 });
   const [billDiscount, setBillDiscount] = useState(0);
   const [billDiscountType, setBillDiscountType] = useState<'percentage' | 'flat'>('flat');
   const [showSearch, setShowSearch] = useState(false);
