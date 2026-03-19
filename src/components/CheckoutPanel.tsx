@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { CreditCard, Banknote, Smartphone, Shuffle, Printer, ShoppingBag, User, Phone, Hash, Receipt, Building2, MapPin, AlertCircle, Calendar, Shield } from 'lucide-react';
 
@@ -19,7 +19,7 @@ interface Props {
   customerPhone: string;
   customerGST: string;
   customerAddress: string;
-  mixedPayment: { cash: number; upi: number; card: number };
+  mixedPayment: { cash: number; upi: number; card: number; emi: number };
   warrantyMobile: string;
   warrantyAccessories: string;
   onBillDiscountChange: (v: number) => void;
@@ -29,7 +29,7 @@ interface Props {
   onCustomerPhoneChange: (v: string) => void;
   onCustomerGSTChange: (v: string) => void;
   onCustomerAddressChange: (v: string) => void;
-  onMixedPaymentChange: (v: { cash: number; upi: number; card: number }) => void;
+  onMixedPaymentChange: (v: { cash: number; upi: number; card: number; emi: number }) => void;
   onWarrantyMobileChange: (v: string) => void;
   onWarrantyAccessoriesChange: (v: string) => void;
   onCompleteSale: () => void;
@@ -56,7 +56,7 @@ export const CheckoutPanel: React.FC<Props> = ({
     { key: 'mixed' as const, icon: Shuffle, label: 'Mixed' },
   ];
 
-  const mixedTotal = mixedPayment.cash + mixedPayment.upi + mixedPayment.card;
+  const mixedTotal = mixedPayment.cash + mixedPayment.upi + mixedPayment.card + mixedPayment.emi;
   const mixedDiff = grandTotal - mixedTotal;
   const mixedValid = paymentMethod !== 'mixed' || Math.abs(mixedDiff) < 0.01;
 
@@ -234,7 +234,7 @@ export const CheckoutPanel: React.FC<Props> = ({
             <span className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">Warranty Details</span>
           </div>
           <div>
-            <label className="text-[9px] text-checkout-foreground/45 mb-1 block">Mobile Warranty</label>
+            <label className="text-[9px] text-checkout-foreground/45 mb-1 block">📱 Mobile Warranty</label>
             <input
               value={warrantyMobile}
               onChange={e => onWarrantyMobileChange(e.target.value)}
@@ -243,7 +243,7 @@ export const CheckoutPanel: React.FC<Props> = ({
             />
           </div>
           <div>
-            <label className="text-[9px] text-checkout-foreground/45 mb-1 block">Accessories Warranty</label>
+            <label className="text-[9px] text-checkout-foreground/45 mb-1 block">🎧 Accessories Warranty</label>
             <input
               value={warrantyAccessories}
               onChange={e => onWarrantyAccessoriesChange(e.target.value)}
@@ -276,10 +276,10 @@ export const CheckoutPanel: React.FC<Props> = ({
         {/* Mixed Payment Split */}
         {paymentMethod === 'mixed' && (
           <div className="mt-3 p-3 rounded-xl bg-checkout-foreground/5 border border-checkout-foreground/8 space-y-2">
-            <p className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">Split Payment</p>
-            <div className="grid grid-cols-3 gap-2">
+            <p className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">Split Payment (Cash + UPI + Card + EMI)</p>
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[9px] text-checkout-foreground/45 mb-1 block">Cash</label>
+                <label className="text-[9px] text-checkout-foreground/45 mb-1 block">💵 Cash</label>
                 <input
                   type="number"
                   value={mixedPayment.cash || ''}
@@ -289,7 +289,7 @@ export const CheckoutPanel: React.FC<Props> = ({
                 />
               </div>
               <div>
-                <label className="text-[9px] text-checkout-foreground/45 mb-1 block">UPI</label>
+                <label className="text-[9px] text-checkout-foreground/45 mb-1 block">📱 UPI</label>
                 <input
                   type="number"
                   value={mixedPayment.upi || ''}
@@ -299,11 +299,21 @@ export const CheckoutPanel: React.FC<Props> = ({
                 />
               </div>
               <div>
-                <label className="text-[9px] text-checkout-foreground/45 mb-1 block">Card</label>
+                <label className="text-[9px] text-checkout-foreground/45 mb-1 block">💳 Card</label>
                 <input
                   type="number"
                   value={mixedPayment.card || ''}
                   onChange={e => onMixedPaymentChange({ ...mixedPayment, card: Number(e.target.value) || 0 })}
+                  className="checkout-input w-full h-9 px-2 rounded-lg text-sm text-center"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] text-checkout-foreground/45 mb-1 block">📅 EMI</label>
+                <input
+                  type="number"
+                  value={mixedPayment.emi || ''}
+                  onChange={e => onMixedPaymentChange({ ...mixedPayment, emi: Number(e.target.value) || 0 })}
                   className="checkout-input w-full h-9 px-2 rounded-lg text-sm text-center"
                   placeholder="0"
                 />

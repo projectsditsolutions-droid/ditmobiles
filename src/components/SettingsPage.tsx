@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Plus, Trash2, Save, LogOut, Users, Shield, Store,
-  Settings2, KeyRound, Printer, Building2, Tag, Hash, Star
+  Settings2, KeyRound, Printer, Building2, Tag, Hash, Star, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -25,6 +25,7 @@ interface GSTProfile {
   profile_type: 'retail' | 'wholesale';
   invoice_prefix: string;
   last_invoice_number: number;
+  sub_heading: string;
 }
 
 export const SettingsPage: React.FC = () => {
@@ -33,9 +34,11 @@ export const SettingsPage: React.FC = () => {
   const [localShops, setLocalShops] = useState<Shop[]>(shops);
   const [localSettings, setLocalSettings] = useState(settings);
   const [newPin, setNewPin] = useState('');
-  const [tab, setTab] = useState<'shops' | 'gst_profiles' | 'general' | 'pin' | 'users'>('shops');
+  const [tab, setTab] = useState<'shops' | 'gst_profiles' | 'general' | 'invoice' | 'pin' | 'users'>('shops');
   const [members, setMembers] = useState<any[]>([]);
   const [gstProfiles, setGstProfiles] = useState<GSTProfile[]>([]);
+  const [editTerms, setEditTerms] = useState<string[]>([]);
+  const [editingTermsShopId, setEditingTermsShopId] = useState<string | null>(null);
 
   useEffect(() => { setLocalShops(shops); }, [shops]);
   useEffect(() => { setLocalSettings(settings); }, [settings]);
@@ -133,6 +136,7 @@ export const SettingsPage: React.FC = () => {
       gst_number: '',
       address: '',
       phone: '',
+      sub_heading: '',
       is_default: isFirst,
       profile_type: type,
       invoice_prefix: prefix,
@@ -155,6 +159,7 @@ export const SettingsPage: React.FC = () => {
         gst_number: p.gst_number,
         address: p.address,
         phone: p.phone,
+        sub_heading: p.sub_heading || '',
         is_default: p.is_default,
         profile_type: p.profile_type,
         invoice_prefix: p.invoice_prefix,
@@ -174,17 +179,32 @@ export const SettingsPage: React.FC = () => {
     setGstProfiles(prev => prev.map((p, i) => ({ ...p, is_default: i === idx })));
   };
 
+  // Terms & Conditions
+  const openTermsEditor = (shop: Shop) => {
+    setEditingTermsShopId(shop.id);
+    setEditTerms(shop.terms_and_conditions || []);
+  };
+
+  const saveTerms = async () => {
+    if (!editingTermsShopId) return;
+    await supabase.from('shops').update({ terms_and_conditions: editTerms } as any).eq('id', editingTermsShopId);
+    toast.success('Terms & Conditions saved');
+    setEditingTermsShopId(null);
+    refreshShops();
+  };
+
   const tabItems = [
     { key: 'shops', icon: Store, label: 'Shop Profiles' },
     { key: 'gst_profiles', icon: Building2, label: 'GST Profiles' },
     { key: 'general', icon: Settings2, label: 'General' },
+    { key: 'invoice', icon: FileText, label: 'Invoice' },
     { key: 'pin', icon: KeyRound, label: 'PIN Security' },
     { key: 'users', icon: Users, label: 'Team' },
   ] as const;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto overflow-y-auto h-full">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto overflow-y-auto h-full">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-extrabold">Settings</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Manage your shop configuration</p>
@@ -194,10 +214,10 @@ export const SettingsPage: React.FC = () => {
         </Button>
       </div>
 
-      <div className="flex bg-secondary rounded-lg p-0.5 mb-6 w-fit">
+      <div className="flex bg-secondary rounded-lg p-0.5 mb-6 w-fit overflow-x-auto">
         {tabItems.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${tab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all whitespace-nowrap ${tab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
             <t.icon className="w-3.5 h-3.5" />{t.label}
           </button>
         ))}
@@ -219,9 +239,9 @@ export const SettingsPage: React.FC = () => {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[['name', 'Shop Name'], ['sub_heading', 'Sub Heading (shown below name)'], ['address', 'Address'], ['phone', 'Phone'], ['gst_number', 'GST Number'], ['invoice_prefix', 'Invoice Prefix']].map(([field, label]) => (
-                  <div key={field} className={field === 'sub_heading' ? 'col-span-2' : ''}>
+                  <div key={field} className={field === 'sub_heading' || field === 'address' ? 'sm:col-span-2' : ''}>
                     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</label>
                     <Input value={String((shop as any)[field] || '')} onChange={e => handleSaveShop(idx, field, e.target.value)} className="h-10" />
                   </div>
@@ -229,7 +249,7 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
           ))}
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Button variant="outline" onClick={addShop}><Plus className="w-4 h-4 mr-1.5" /> Add Shop</Button>
             <Button onClick={handleSaveAllShops} className="gradient-primary border-0 text-primary-foreground"><Save className="w-4 h-4 mr-1.5" /> Save All</Button>
           </div>
@@ -239,7 +259,7 @@ export const SettingsPage: React.FC = () => {
       {/* ── GST Profiles ───────────────────────────────────────── */}
       {tab === 'gst_profiles' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Building2 className="w-5 h-5 text-primary" />
@@ -266,7 +286,7 @@ export const SettingsPage: React.FC = () => {
               <Building2 className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
               <p className="font-display font-semibold text-muted-foreground">No GST profiles yet</p>
               <p className="text-xs text-muted-foreground mt-1">Add Retail or Wholesale profiles to bill under different GST numbers with separate invoice sequences.</p>
-              <div className="flex gap-2 justify-center mt-4">
+              <div className="flex gap-2 justify-center mt-4 flex-wrap">
                 <Button size="sm" onClick={() => addGstProfile('retail')} className="gradient-primary border-0 text-primary-foreground">
                   <Building2 className="w-3.5 h-3.5 mr-1.5" /> Add Retail Profile
                 </Button>
@@ -281,7 +301,7 @@ export const SettingsPage: React.FC = () => {
             <div key={profile.id} className={`bg-card rounded-xl border p-5 shadow-sm ${
               profile.is_default ? 'border-primary/30 ring-1 ring-primary/15' : ''
             }`}>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
                     profile.profile_type === 'wholesale' ? 'bg-warning/15' : 'bg-primary/15'
@@ -292,7 +312,7 @@ export const SettingsPage: React.FC = () => {
                     }
                   </div>
                   <div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <h3 className="font-display font-bold text-sm">{profile.profile_name || 'Unnamed Profile'}</h3>
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-display font-bold ${
                         profile.profile_type === 'wholesale' ? 'bg-warning/15 text-warning' : 'bg-primary/10 text-primary'
@@ -310,13 +330,12 @@ export const SettingsPage: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {!profile.is_default && (
                     <button onClick={() => setDefaultProfile(idx)} className="text-[10px] font-display font-semibold text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-primary/10 flex items-center gap-1">
                       <Star className="w-3 h-3" /> Set Default
                     </button>
                   )}
-                  {/* Profile type toggle */}
                   <button
                     onClick={() => updateGstProfile(idx, 'profile_type', profile.profile_type === 'retail' ? 'wholesale' : 'retail')}
                     className="text-[10px] font-display font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-secondary"
@@ -329,7 +348,7 @@ export const SettingsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Profile Label</label>
                   <Input value={profile.profile_name || ''} onChange={e => updateGstProfile(idx, 'profile_name', e.target.value)} className="h-10" placeholder="e.g. Main Retail" />
@@ -337,6 +356,10 @@ export const SettingsPage: React.FC = () => {
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Business Name (on Invoice)</label>
                   <Input value={profile.business_name || ''} onChange={e => updateGstProfile(idx, 'business_name', e.target.value)} className="h-10" placeholder="Legal business name" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Sub Heading (shown below business name)</label>
+                  <Input value={profile.sub_heading || ''} onChange={e => updateGstProfile(idx, 'sub_heading', e.target.value)} className="h-10" placeholder="e.g. Mobile & Accessories" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
@@ -348,7 +371,7 @@ export const SettingsPage: React.FC = () => {
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Phone</label>
                   <Input value={profile.phone || ''} onChange={e => updateGstProfile(idx, 'phone', e.target.value)} className="h-10" placeholder="Phone number" />
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Address</label>
                   <Input value={profile.address || ''} onChange={e => updateGstProfile(idx, 'address', e.target.value)} className="h-10" placeholder="Full business address" />
                 </div>
@@ -421,6 +444,78 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
           <Button onClick={handleSaveSettings} className="gradient-primary border-0 text-primary-foreground"><Save className="w-4 h-4 mr-1.5" /> Save Settings</Button>
+        </div>
+      )}
+
+      {/* ── Invoice Customization ──────────────────────────────── */}
+      {tab === 'invoice' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-display font-bold">Invoice Customization</h3>
+              <p className="text-xs text-muted-foreground">Customize terms & conditions shown on invoices</p>
+            </div>
+          </div>
+
+          {localShops.map(shop => (
+            <div key={shop.id} className="bg-card rounded-xl border p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-display font-semibold text-sm">{shop.name} — Terms & Conditions</h4>
+                {editingTermsShopId !== shop.id ? (
+                  <Button variant="outline" size="sm" onClick={() => openTermsEditor(shop)}>
+                    Edit Terms
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={saveTerms} className="gradient-primary border-0 text-primary-foreground">
+                      <Save className="w-3.5 h-3.5 mr-1" /> Save
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setEditingTermsShopId(null)}>Cancel</Button>
+                  </div>
+                )}
+              </div>
+
+              {editingTermsShopId === shop.id ? (
+                <div className="space-y-2">
+                  {editTerms.map((term, i) => (
+                    <div key={i} className="flex gap-2 items-start">
+                      <span className="text-xs text-muted-foreground mt-2.5 w-6 flex-shrink-0">{i + 1}.</span>
+                      <Input
+                        value={term}
+                        onChange={e => {
+                          const updated = [...editTerms];
+                          updated[i] = e.target.value;
+                          setEditTerms(updated);
+                        }}
+                        className="h-9 text-xs flex-1"
+                      />
+                      <button
+                        onClick={() => setEditTerms(prev => prev.filter((_, idx) => idx !== i))}
+                        className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all mt-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={() => setEditTerms(prev => [...prev, ''])}>
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Term
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground space-y-1">
+                  {(shop.terms_and_conditions || []).map((t, i) => (
+                    <p key={i}>{t}</p>
+                  ))}
+                  {(!shop.terms_and_conditions || shop.terms_and_conditions.length === 0) && (
+                    <p className="italic">Using default Tamil terms & conditions</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
