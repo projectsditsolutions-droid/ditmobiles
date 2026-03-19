@@ -62,7 +62,8 @@ export const SettingsPage: React.FC = () => {
       await supabase.from('shops').update({
         name: shop.name, address: shop.address, phone: shop.phone,
         gst_number: shop.gst_number, invoice_prefix: shop.invoice_prefix,
-      }).eq('id', shop.id);
+        sub_heading: (shop as any).sub_heading || '',
+      } as any).eq('id', shop.id);
     }
     toast.success('Shop profiles saved');
     refreshShops();
