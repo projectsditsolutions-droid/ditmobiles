@@ -286,7 +286,7 @@ export const InventoryManagement: React.FC = () => {
                     <p className="text-xs font-display font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
                       <IndianRupee className="w-3 h-3" /> Pricing
                     </p>
-                    <div className="grid grid-cols-3 gap-3">
+                     <div className="grid grid-cols-4 gap-3">
                       <div>
                         <label className="text-[11px] text-muted-foreground mb-1 block">Purchase Price (₹)</label>
                         <Input type="number" value={form.purchase_price || ''} onChange={e => setForm({...form, purchase_price: Number(e.target.value)})} className="h-10" placeholder="0" />
@@ -298,6 +298,10 @@ export const InventoryManagement: React.FC = () => {
                       <div>
                         <label className="text-[11px] text-muted-foreground mb-1 block">GST %</label>
                         <Input type="number" value={form.gst_percent} onChange={e => setForm({...form, gst_percent: Number(e.target.value)})} className="h-10" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-1 block">HSN Code</label>
+                        <Input value={form.hsn_code} onChange={e => setForm({...form, hsn_code: e.target.value})} className="h-10" placeholder="85171300" />
                       </div>
                     </div>
                     {form.purchase_price > 0 && form.sale_price > 0 && (
