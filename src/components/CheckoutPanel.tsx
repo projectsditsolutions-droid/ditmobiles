@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Banknote, Smartphone, Shuffle, Printer, ShoppingBag, User, Phone, Hash, Receipt, Building2 } from 'lucide-react';
+import { CreditCard, Banknote, Smartphone, Shuffle, Printer, ShoppingBag, User, Phone, Hash, Receipt, Building2, MapPin, AlertCircle } from 'lucide-react';
 
 interface Props {
   items: any[];
@@ -18,12 +18,16 @@ interface Props {
   customerName: string;
   customerPhone: string;
   customerGST: string;
+  customerAddress: string;
+  mixedPayment: { cash: number; upi: number; card: number };
   onBillDiscountChange: (v: number) => void;
   onBillDiscountTypeChange: (v: 'percentage' | 'flat') => void;
   onPaymentMethodChange: (v: 'cash' | 'upi' | 'card' | 'mixed') => void;
   onCustomerNameChange: (v: string) => void;
   onCustomerPhoneChange: (v: string) => void;
   onCustomerGSTChange: (v: string) => void;
+  onCustomerAddressChange: (v: string) => void;
+  onMixedPaymentChange: (v: { cash: number; upi: number; card: number }) => void;
   onCompleteSale: () => void;
   discountEnabled: boolean;
 }
@@ -31,9 +35,11 @@ interface Props {
 export const CheckoutPanel: React.FC<Props> = ({
   items, subtotal, itemDiscountTotal, billDiscount, billDiscountType, billDiscountAmount,
   gstCalc, grandTotal, isGSTBill, gstBearer, customerType, paymentMethod,
-  customerName, customerPhone, customerGST,
+  customerName, customerPhone, customerGST, customerAddress,
+  mixedPayment,
   onBillDiscountChange, onBillDiscountTypeChange, onPaymentMethodChange,
-  onCustomerNameChange, onCustomerPhoneChange, onCustomerGSTChange,
+  onCustomerNameChange, onCustomerPhoneChange, onCustomerGSTChange, onCustomerAddressChange,
+  onMixedPaymentChange,
   onCompleteSale, discountEnabled,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -45,10 +51,14 @@ export const CheckoutPanel: React.FC<Props> = ({
     { key: 'mixed' as const, icon: Shuffle, label: 'Mixed' },
   ];
 
+  const mixedTotal = mixedPayment.cash + mixedPayment.upi + mixedPayment.card;
+  const mixedDiff = grandTotal - mixedTotal;
+  const mixedValid = paymentMethod !== 'mixed' || Math.abs(mixedDiff) < 0.01;
+
   return (
-    <div className="w-[360px] bg-checkout text-checkout-foreground flex flex-col border-l border-checkout-foreground/10">
+    <div className="w-full md:w-[360px] bg-checkout text-checkout-foreground flex flex-col border-l border-checkout-foreground/10 max-h-screen overflow-hidden">
       {/* ── Customer Details ───────────────────────────────────────── */}
-      <div className="p-4 border-b border-checkout-foreground/10">
+      <div className="p-4 border-b border-checkout-foreground/10 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-checkout-foreground/10 flex items-center justify-center">
@@ -67,40 +77,53 @@ export const CheckoutPanel: React.FC<Props> = ({
           )}
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <div>
-            <label className="text-[10px] text-checkout-foreground/45 font-medium mb-1.5 block">Customer Name</label>
+            <label className="text-[10px] text-checkout-foreground/45 font-medium mb-1 block">Customer Name</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
               <input
                 value={customerName}
                 onChange={e => onCustomerNameChange(e.target.value)}
                 placeholder="Walk-in Customer"
-                className="checkout-input w-full h-11 pl-10 pr-3 rounded-xl text-sm"
+                className="checkout-input w-full h-10 pl-10 pr-3 rounded-xl text-sm"
               />
             </div>
           </div>
 
-          <div>
-            <label className="text-[10px] text-checkout-foreground/45 font-medium mb-1.5 block">Phone Number</label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
-              <input
-                value={customerPhone}
-                onChange={e => onCustomerPhoneChange(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="9876543210"
-                type="tel"
-                inputMode="numeric"
-                maxLength={10}
-                className="checkout-input w-full h-11 pl-10 pr-3 rounded-xl text-sm font-mono"
-              />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-checkout-foreground/45 font-medium mb-1 block">Phone</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
+                <input
+                  value={customerPhone}
+                  onChange={e => onCustomerPhoneChange(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="9876543210"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  className="checkout-input w-full h-10 pl-10 pr-3 rounded-xl text-sm font-mono"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] text-checkout-foreground/45 font-medium mb-1 block">Address</label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
+                <input
+                  value={customerAddress}
+                  onChange={e => onCustomerAddressChange(e.target.value)}
+                  placeholder="Address"
+                  className="checkout-input w-full h-10 pl-10 pr-3 rounded-xl text-sm"
+                />
+              </div>
             </div>
           </div>
 
-          {/* GSTIN only for B2B */}
           {isGSTBill && customerType === 'B2B' && (
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-1">
                 <label className="text-[10px] text-checkout-foreground/45 font-medium block">Customer GSTIN</label>
                 <span className="text-[10px] text-warning font-display font-semibold">B2B Required</span>
               </div>
@@ -111,7 +134,7 @@ export const CheckoutPanel: React.FC<Props> = ({
                   onChange={e => onCustomerGSTChange(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15))}
                   placeholder="22AAAAA0000A1Z5"
                   maxLength={15}
-                  className="checkout-input w-full h-11 pl-10 pr-10 rounded-xl text-sm font-mono tracking-wider"
+                  className="checkout-input w-full h-10 pl-10 pr-10 rounded-xl text-sm font-mono tracking-wider"
                 />
                 <Hash className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
               </div>
@@ -121,7 +144,7 @@ export const CheckoutPanel: React.FC<Props> = ({
       </div>
 
       {/* ── Order Summary ─────────────────────────────────────────── */}
-      <div className="flex-1 p-4 space-y-3 text-sm pos-scrollable">
+      <div className="flex-1 p-4 space-y-3 text-sm overflow-y-auto pos-scrollable">
         <div className="flex items-center gap-2 mb-1">
           <Receipt className="w-3.5 h-3.5 text-checkout-foreground/40" />
           <p className="text-[10px] font-display font-semibold uppercase tracking-widest text-checkout-foreground/40">Order Summary</p>
@@ -201,7 +224,7 @@ export const CheckoutPanel: React.FC<Props> = ({
       </div>
 
       {/* ── Payment Method ────────────────────────────────────────── */}
-      <div className="px-4 py-3 border-t border-checkout-foreground/8">
+      <div className="px-4 py-3 border-t border-checkout-foreground/8 flex-shrink-0">
         <label className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold mb-2.5 block">Payment Method</label>
         <div className="grid grid-cols-4 gap-2">
           {paymentMethods.map(m => (
@@ -218,10 +241,58 @@ export const CheckoutPanel: React.FC<Props> = ({
             </button>
           ))}
         </div>
+
+        {/* Mixed Payment Split */}
+        {paymentMethod === 'mixed' && (
+          <div className="mt-3 p-3 rounded-xl bg-checkout-foreground/5 border border-checkout-foreground/8 space-y-2">
+            <p className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">Split Payment</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[9px] text-checkout-foreground/45 mb-1 block">Cash</label>
+                <input
+                  type="number"
+                  value={mixedPayment.cash || ''}
+                  onChange={e => onMixedPaymentChange({ ...mixedPayment, cash: Number(e.target.value) || 0 })}
+                  className="checkout-input w-full h-9 px-2 rounded-lg text-sm text-center"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] text-checkout-foreground/45 mb-1 block">UPI</label>
+                <input
+                  type="number"
+                  value={mixedPayment.upi || ''}
+                  onChange={e => onMixedPaymentChange({ ...mixedPayment, upi: Number(e.target.value) || 0 })}
+                  className="checkout-input w-full h-9 px-2 rounded-lg text-sm text-center"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] text-checkout-foreground/45 mb-1 block">Card</label>
+                <input
+                  type="number"
+                  value={mixedPayment.card || ''}
+                  onChange={e => onMixedPaymentChange({ ...mixedPayment, card: Number(e.target.value) || 0 })}
+                  className="checkout-input w-full h-9 px-2 rounded-lg text-sm text-center"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div className={`flex items-center justify-between text-xs pt-1 ${
+              Math.abs(mixedDiff) < 0.01 ? 'text-success' : 'text-destructive'
+            }`}>
+              <span className="flex items-center gap-1">
+                {Math.abs(mixedDiff) >= 0.01 && <AlertCircle className="w-3 h-3" />}
+                {Math.abs(mixedDiff) < 0.01 ? '✓ Balanced' : mixedDiff > 0 ? `₹${mixedDiff.toFixed(0)} remaining` : `₹${Math.abs(mixedDiff).toFixed(0)} excess`}
+              </span>
+              <span className="font-display font-bold">{fmt(mixedTotal)} / {fmt(grandTotal)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Grand Total + Complete ────────────────────────────────── */}
-      <div className="p-4 border-t border-checkout-foreground/8 bg-checkout-foreground/5">
+      <div className="p-4 border-t border-checkout-foreground/8 bg-checkout-foreground/5 flex-shrink-0">
         <div className="flex justify-between items-baseline mb-4">
           <span className="text-checkout-foreground/50 font-display text-xs uppercase tracking-wider">Grand Total</span>
           <span className="font-display text-3xl font-extrabold tracking-tight">{fmt(grandTotal)}</span>
@@ -230,7 +301,7 @@ export const CheckoutPanel: React.FC<Props> = ({
           size="lg"
           className="w-full h-12 bg-success hover:bg-success/90 text-success-foreground font-display font-bold text-base shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
           onClick={onCompleteSale}
-          disabled={items.length === 0}
+          disabled={items.length === 0 || !mixedValid}
         >
           <Printer className="w-5 h-5 mr-2" />
           Print & Save

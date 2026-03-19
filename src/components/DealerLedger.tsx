@@ -4,7 +4,7 @@ import { useShop } from '@/contexts/ShopContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, RotateCcw, FileText, ArrowDownLeft, ArrowUpRight, TrendingDown, CalendarDays, Filter, X, Smartphone, Tag, HardDrive, Palette } from 'lucide-react';
+import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, RotateCcw, FileText, ArrowDownLeft, ArrowUpRight, TrendingDown, CalendarDays, Filter, X, Smartphone, Tag, HardDrive, Palette, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -17,9 +17,9 @@ const fmt = (n: number) => `₹${Math.abs(n).toLocaleString('en-IN')}`;
 const Modal: React.FC<{ open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode }> = ({ open, onClose, title, subtitle, children }) => {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-card rounded-2xl shadow-2xl w-[560px] max-w-[calc(100vw-2rem)] animate-scale-in border overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-primary/5 to-transparent">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-[560px] animate-scale-in border overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-primary/5 to-transparent flex-shrink-0">
           <div>
             <h2 className="font-display font-bold text-lg">{title}</h2>
             {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
@@ -28,7 +28,7 @@ const Modal: React.FC<{ open: boolean; onClose: () => void; title: string; subti
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-5 overflow-y-auto pos-scrollable">{children}</div>
       </div>
     </div>
   );
@@ -48,6 +48,7 @@ export const DealerLedger: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedDealerId, setSelectedDealerId] = useState<string | null>(null);
   const [showDealerForm, setShowDealerForm] = useState(false);
+  const [editingDealerId, setEditingDealerId] = useState<string | null>(null);
   const [showStockEntry, setShowStockEntry] = useState(false);
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
@@ -146,31 +147,62 @@ export const DealerLedger: React.FC = () => {
     return 'text-success';
   };
 
+  const openEditDealer = (dealer: Dealer) => {
+    setDealerForm({
+      brand_name: dealer.brand_name,
+      dealer_name: dealer.dealer_name,
+      phone: dealer.phone,
+      address: dealer.address,
+      gstin: dealer.gstin,
+      total_credit: Number(dealer.total_credit),
+    });
+    setEditingDealerId(dealer.id);
+    setShowDealerForm(true);
+  };
+
+  const handleDeleteDealer = async (id: string) => {
+    if (!confirm('Delete this dealer? All transactions will also be deleted.')) return;
+    await supabase.from('dealer_transactions').delete().eq('dealer_id', id);
+    await supabase.from('dealers').delete().eq('id', id);
+    if (selectedDealerId === id) setSelectedDealerId(null);
+    toast.success('Dealer deleted');
+    fetchDealers();
+    fetchTransactions();
+  };
+
   const handleAddDealer = async () => {
     if (!activeShopId || !dealerForm.dealer_name.trim()) {
       toast.error('Dealer name is required');
       return;
     }
 
-    const { error } = await supabase.from('dealers').insert({
-      shop_id: activeShopId,
-      brand_name: dealerForm.brand_name.trim(),
-      dealer_name: dealerForm.dealer_name.trim(),
-      phone: dealerForm.phone.trim(),
-      address: dealerForm.address.trim(),
-      gstin: dealerForm.gstin.trim(),
-      total_credit: dealerForm.total_credit || 0,
-    });
-
-    if (error) {
-      console.error('Dealer insert error:', error);
-      toast.error('Failed to add dealer: ' + error.message);
-      return;
+    if (editingDealerId) {
+      const { error } = await supabase.from('dealers').update({
+        brand_name: dealerForm.brand_name.trim(),
+        dealer_name: dealerForm.dealer_name.trim(),
+        phone: dealerForm.phone.trim(),
+        address: dealerForm.address.trim(),
+        gstin: dealerForm.gstin.trim(),
+      }).eq('id', editingDealerId);
+      if (error) { toast.error('Failed: ' + error.message); return; }
+      toast.success('Dealer updated');
+    } else {
+      const { error } = await supabase.from('dealers').insert({
+        shop_id: activeShopId,
+        brand_name: dealerForm.brand_name.trim(),
+        dealer_name: dealerForm.dealer_name.trim(),
+        phone: dealerForm.phone.trim(),
+        address: dealerForm.address.trim(),
+        gstin: dealerForm.gstin.trim(),
+        total_credit: dealerForm.total_credit || 0,
+      });
+      if (error) { toast.error('Failed: ' + error.message); return; }
+      toast.success('Dealer added');
     }
 
     setShowDealerForm(false);
+    setEditingDealerId(null);
     setDealerForm({ brand_name: '', dealer_name: '', phone: '', address: '', gstin: '', total_credit: 0 });
-    toast.success('Dealer added successfully');
     fetchDealers();
   };
 
@@ -408,6 +440,14 @@ export const DealerLedger: React.FC = () => {
                       <span className="flex items-center gap-1"><Hash className="w-4 h-4" /> {selectedDealer.gstin || 'No GSTIN'}</span>
                     </div>
                   </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => openEditDealer(selectedDealer)}>
+                      <Edit2 className="w-4 h-4 mr-1" /> Edit
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleDeleteDealer(selectedDealer.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                   <div className="text-right">
                     <p className="text-xs font-display uppercase tracking-widest text-muted-foreground">Current Balance</p>
                     <p className={`font-display text-4xl font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
@@ -536,8 +576,8 @@ export const DealerLedger: React.FC = () => {
         </div>
       </div>
 
-      <Modal open={showDealerForm} onClose={() => setShowDealerForm(false)} title="Add Dealer" subtitle="Create dealer master with opening credit">
-        <div className="grid grid-cols-2 gap-3">
+      <Modal open={showDealerForm} onClose={() => { setShowDealerForm(false); setEditingDealerId(null); }} title={editingDealerId ? 'Edit Dealer' : 'Add Dealer'} subtitle={editingDealerId ? 'Update dealer details' : 'Create dealer master with opening credit'}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Brand Name</label>
             <Input value={dealerForm.brand_name} onChange={e => setDealerForm({ ...dealerForm, brand_name: e.target.value })} placeholder="OPPO, Vivo" />
@@ -554,18 +594,20 @@ export const DealerLedger: React.FC = () => {
             <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">GSTIN</label>
             <Input value={dealerForm.gstin} onChange={e => setDealerForm({ ...dealerForm, gstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15) })} placeholder="Optional" />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Address</label>
             <Input value={dealerForm.address} onChange={e => setDealerForm({ ...dealerForm, address: e.target.value })} placeholder="Dealer address" />
           </div>
-          <div className="col-span-2">
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Opening Credit</label>
-            <Input type="number" value={dealerForm.total_credit || ''} onChange={e => setDealerForm({ ...dealerForm, total_credit: Number(e.target.value) })} placeholder="Amount payable at start" />
-          </div>
+          {!editingDealerId && (
+            <div className="sm:col-span-2">
+              <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Opening Credit</label>
+              <Input type="number" value={dealerForm.total_credit || ''} onChange={e => setDealerForm({ ...dealerForm, total_credit: Number(e.target.value) })} placeholder="Amount payable at start" />
+            </div>
+          )}
         </div>
         <div className="flex justify-end gap-3 mt-5">
-          <Button variant="outline" onClick={() => setShowDealerForm(false)}>Cancel</Button>
-          <Button onClick={handleAddDealer} className="gradient-primary border-0 text-primary-foreground">Save Dealer</Button>
+          <Button variant="outline" onClick={() => { setShowDealerForm(false); setEditingDealerId(null); }}>Cancel</Button>
+          <Button onClick={handleAddDealer} className="gradient-primary border-0 text-primary-foreground">{editingDealerId ? 'Update Dealer' : 'Save Dealer'}</Button>
         </div>
       </Modal>
 

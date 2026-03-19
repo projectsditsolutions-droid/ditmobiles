@@ -187,6 +187,8 @@ export const POSBilling: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerGST, setCustomerGST] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [mixedPayment, setMixedPayment] = useState({ cash: 0, upi: 0, card: 0 });
   const [billDiscount, setBillDiscount] = useState(0);
   const [billDiscountType, setBillDiscountType] = useState<'percentage' | 'flat'>('flat');
   const [showSearch, setShowSearch] = useState(false);
@@ -413,6 +415,8 @@ export const POSBilling: React.FC = () => {
       sgst: gstCalc.sgst,
       grand_total: grandTotal,
       payment_method: paymentMethod,
+      payment_details: paymentMethod === 'mixed' ? mixedPayment : null,
+      customer_address: customerAddress,
       is_gst_bill: isGSTBill,
       gst_bearer: gstBearer,
       print_type: settings?.default_print_type || 'thermal',
@@ -519,6 +523,8 @@ export const POSBilling: React.FC = () => {
     setCustomerName('');
     setCustomerPhone('');
     setCustomerGST('');
+    setCustomerAddress('');
+    setMixedPayment({ cash: 0, upi: 0, card: 0 });
     setBillDiscount(0);
   }, [items, customerName, customerPhone, customerGST, customerType, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile]);
 
@@ -742,6 +748,10 @@ export const POSBilling: React.FC = () => {
         onCustomerNameChange={setCustomerName}
         onCustomerPhoneChange={setCustomerPhone}
         onCustomerGSTChange={setCustomerGST}
+        customerAddress={customerAddress}
+        onCustomerAddressChange={setCustomerAddress}
+        mixedPayment={mixedPayment}
+        onMixedPaymentChange={setMixedPayment}
         onCompleteSale={handleCompleteSale}
         discountEnabled={settings?.discount_enabled ?? true}
       />
