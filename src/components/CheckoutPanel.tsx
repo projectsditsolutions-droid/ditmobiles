@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Banknote, Smartphone, Shuffle, Printer, ShoppingBag, User, Phone, Hash, Receipt, Building2, MapPin, AlertCircle, Calendar, Shield } from 'lucide-react';
+import { CreditCard, Banknote, Smartphone, Shuffle, Printer, ShoppingBag, User, Phone, Hash, Receipt, Building2, MapPin, AlertCircle, Calendar, Shield, Eye } from 'lucide-react';
 
 interface Props {
   items: any[];
