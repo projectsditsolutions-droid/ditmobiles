@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useShop } from '@/contexts/ShopContext';
 import { amountInWords, calculateGST } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import { X, Printer, Download } from 'lucide-react';
+import { X, Printer, Download, CheckCircle2 } from 'lucide-react';
 import { usePrint, triggerPrint } from '@/components/PrintPortal';
 import { ModernInvoiceBody } from './invoice-templates/ModernInvoiceBody';
 import { CompactInvoiceBody } from './invoice-templates/CompactInvoiceBody';
