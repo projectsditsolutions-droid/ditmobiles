@@ -405,6 +405,43 @@ export const POSBilling: React.FC = () => {
   const gstCalc = isGSTBill ? calculateGST(totalAfterDiscount, avgGST) : { cgst: 0, sgst: 0, taxableAmount: totalAfterDiscount, totalGST: 0 };
   const grandTotal = Math.round(totalAfterDiscount);
 
+  const handlePreviewBill = useCallback(() => {
+    if (items.length === 0) { toast.error('Add items to bill first'); return; }
+    if (!activeShop || !activeShopId) return;
+    const preview: InvoiceData = {
+      id: 'preview',
+      invoice_number: 'PREVIEW',
+      shop_id: activeShopId,
+      date: new Date().toISOString(),
+      customer_name: customerName || 'Walk-in Customer',
+      customer_phone: customerPhone,
+      customer_gst: customerType === 'B2B' ? (customerGST || undefined) : undefined,
+      items,
+      subtotal,
+      total_discount: itemDiscountTotal + billDiscountAmount,
+      bill_discount: billDiscountAmount,
+      bill_discount_type: billDiscountType,
+      cgst: gstCalc.cgst,
+      sgst: gstCalc.sgst,
+      grand_total: grandTotal,
+      payment_method: paymentMethod,
+      is_gst_bill: isGSTBill,
+      gst_bearer: gstBearer,
+      print_type: settings?.default_print_type || 'thermal',
+      status: 'preview',
+      billing_business_name: selectedProfile?.business_name || activeShop.name,
+      billing_address: selectedProfile?.address || activeShop.address,
+      billing_phone: selectedProfile?.phone || activeShop.phone,
+      billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
+      billing_sub_heading: selectedProfile?.sub_heading || (activeShop as any).sub_heading || '',
+      billing_logo_url: selectedProfile?.logo_url || activeShop.logo_url || '',
+      profile_type: selectedProfile?.profile_type,
+      warranty_mobile: warrantyMobile || undefined,
+      warranty_accessories: warrantyAccessories || undefined,
+    };
+    setPreviewInvoice(preview);
+  }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, selectedProfile, warrantyMobile, warrantyAccessories]);
+
   const handleCompleteSale = useCallback(async () => {
     if (items.length === 0) { toast.error('Add items to bill first'); return; }
     if (!activeShop || !activeShopId || !user) return;
