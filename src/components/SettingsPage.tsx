@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Plus, Trash2, Save, LogOut, Users, Shield, Store,
-  Settings2, KeyRound, Printer, Building2, Tag, Hash, Star, FileText, Upload, Image
+  Settings2, KeyRound, Printer, Building2, Tag, Hash, Star, FileText, Upload, Image, Layout
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -26,7 +26,14 @@ interface GSTProfile {
   invoice_prefix: string;
   last_invoice_number: number;
   sub_heading: string;
+  logo_url?: string | null;
 }
+
+const BILL_TEMPLATES = [
+  { id: 'classic', label: 'Classic', description: 'Traditional layout with header, table, and footer' },
+  { id: 'modern', label: 'Modern', description: 'Clean design with highlighted totals and bold typography' },
+  { id: 'compact', label: 'Compact', description: 'Space-efficient layout for thermal printers' },
+] as const;
 
 export const SettingsPage: React.FC = () => {
   const { user, isAdmin, signOut } = useAuth();
@@ -39,7 +46,9 @@ export const SettingsPage: React.FC = () => {
   const [gstProfiles, setGstProfiles] = useState<GSTProfile[]>([]);
   const [editTerms, setEditTerms] = useState<string[]>([]);
   const [editingTermsShopId, setEditingTermsShopId] = useState<string | null>(null);
-  const [uploadingLogo, setUploadingLogo] = useState<string | null>(null); // shop id or profile id being uploaded
+  const [uploadingLogo, setUploadingLogo] = useState<string | null>(null);
+  const [uploadContext, setUploadContext] = useState<'shop' | 'gst_profile'>('shop');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('classic');
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setLocalShops(shops); }, [shops]);
@@ -47,10 +56,7 @@ export const SettingsPage: React.FC = () => {
 
   const fetchMembers = async () => {
     if (!activeShopId) return;
-    const { data } = await supabase
-      .from('shop_memberships')
-      .select('*, profiles(email, full_name)')
-      .eq('shop_id', activeShopId);
+    const { data } = await supabase.from('shop_memberships').select('*, profiles(email, full_name)').eq('shop_id', activeShopId);
     if (data) setMembers(data);
   };
 
@@ -76,46 +82,34 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleUploadLogo = async (file: File, targetType: 'shop' | 'gst_profile', targetId: string) => {
-    if (!file || !file.type.startsWith('image/')) {
-      toast.error('Please select a valid image file');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image must be under 2MB');
-      return;
-    }
+    if (!file || !file.type.startsWith('image/')) { toast.error('Please select a valid image file'); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error('Image must be under 2MB'); return; }
     setUploadingLogo(targetId);
     const ext = file.name.split('.').pop();
-    const path = `${targetType}/${targetId}/logo.${ext}`;
-    
-    const { error: uploadError } = await supabase.storage
-      .from('shop-logos')
-      .upload(path, file, { upsert: true });
-    
-    if (uploadError) {
-      toast.error('Upload failed: ' + uploadError.message);
-      setUploadingLogo(null);
-      return;
-    }
+    const path = `${targetType}/${targetId}/logo.${ext}?t=${Date.now()}`;
 
-    const { data: { publicUrl } } = supabase.storage.from('shop-logos').getPublicUrl(path);
+    const { error: uploadError } = await supabase.storage.from('shop-logos').upload(path.split('?')[0], file, { upsert: true });
+    if (uploadError) { toast.error('Upload failed: ' + uploadError.message); setUploadingLogo(null); return; }
+
+    const { data: { publicUrl } } = supabase.storage.from('shop-logos').getPublicUrl(path.split('?')[0]);
+    const urlWithBust = `${publicUrl}?t=${Date.now()}`;
 
     if (targetType === 'shop') {
-      await supabase.from('shops').update({ logo_url: publicUrl } as any).eq('id', targetId);
-      setLocalShops(prev => prev.map(s => s.id === targetId ? { ...s, logo_url: publicUrl } : s));
+      await supabase.from('shops').update({ logo_url: urlWithBust } as any).eq('id', targetId);
+      setLocalShops(prev => prev.map(s => s.id === targetId ? { ...s, logo_url: urlWithBust } : s));
       refreshShops();
+    } else {
+      await supabase.from('shop_gst_profiles').update({ logo_url: urlWithBust } as any).eq('id', targetId);
+      setGstProfiles(prev => prev.map(p => p.id === targetId ? { ...p, logo_url: urlWithBust } : p));
     }
-    // For GST profiles we'll store the URL externally if needed
-    
+
     setUploadingLogo(null);
-    toast.success('Logo uploaded');
+    toast.success('Logo uploaded successfully');
   };
 
   const addShop = async () => {
     if (!user) return;
-    const { data: shop } = await supabase.from('shops').insert({
-      name: 'New Shop', created_by: user.id,
-    }).select().single();
+    const { data: shop } = await supabase.from('shops').insert({ name: 'New Shop', created_by: user.id }).select().single();
     if (shop) {
       await supabase.from('shop_memberships').insert({ user_id: user.id, shop_id: shop.id, role: 'admin' as const });
       await supabase.from('shop_settings').insert({ shop_id: shop.id });
@@ -154,11 +148,7 @@ export const SettingsPage: React.FC = () => {
 
   const fetchGstProfiles = async () => {
     if (!activeShopId) return;
-    const { data } = await supabase
-      .from('shop_gst_profiles')
-      .select('*')
-      .eq('shop_id', activeShopId)
-      .order('is_default', { ascending: false });
+    const { data } = await supabase.from('shop_gst_profiles').select('*').eq('shop_id', activeShopId).order('is_default', { ascending: false });
     if (data) setGstProfiles(data as unknown as GSTProfile[]);
   };
 
@@ -168,19 +158,7 @@ export const SettingsPage: React.FC = () => {
     if (!activeShopId) return;
     const isFirst = gstProfiles.length === 0;
     const prefix = type === 'wholesale' ? 'INV-W' : 'INV-R';
-    const { error } = await supabase.from('shop_gst_profiles').insert({
-      shop_id: activeShopId,
-      profile_name: type === 'wholesale' ? 'Wholesale Profile' : 'Retail Profile',
-      business_name: '',
-      gst_number: '',
-      address: '',
-      phone: '',
-      sub_heading: '',
-      is_default: isFirst,
-      profile_type: type,
-      invoice_prefix: prefix,
-      last_invoice_number: 0,
-    } as any);
+    const { error } = await supabase.from('shop_gst_profiles').insert({ shop_id: activeShopId, profile_name: type === 'wholesale' ? 'Wholesale Profile' : 'Retail Profile', business_name: '', gst_number: '', address: '', phone: '', sub_heading: '', is_default: isFirst, profile_type: type, invoice_prefix: prefix, last_invoice_number: 0 } as any);
     if (!error) { toast.success(`${type === 'wholesale' ? 'Wholesale' : 'Retail'} GST Profile added`); fetchGstProfiles(); }
   };
 
@@ -193,15 +171,9 @@ export const SettingsPage: React.FC = () => {
   const saveGstProfiles = async () => {
     for (const p of gstProfiles) {
       await supabase.from('shop_gst_profiles').update({
-        profile_name: p.profile_name,
-        business_name: p.business_name,
-        gst_number: p.gst_number,
-        address: p.address,
-        phone: p.phone,
-        sub_heading: p.sub_heading || '',
-        is_default: p.is_default,
-        profile_type: p.profile_type,
-        invoice_prefix: p.invoice_prefix,
+        profile_name: p.profile_name, business_name: p.business_name, gst_number: p.gst_number,
+        address: p.address, phone: p.phone, sub_heading: p.sub_heading || '',
+        is_default: p.is_default, profile_type: p.profile_type, invoice_prefix: p.invoice_prefix,
       } as any).eq('id', p.id);
     }
     toast.success('GST Profiles saved');
@@ -218,7 +190,6 @@ export const SettingsPage: React.FC = () => {
     setGstProfiles(prev => prev.map((p, i) => ({ ...p, is_default: i === idx })));
   };
 
-  // Terms & Conditions
   const openTermsEditor = (shop: Shop) => {
     setEditingTermsShopId(shop.id);
     setEditTerms(shop.terms_and_conditions || []);
@@ -243,6 +214,7 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto overflow-y-auto h-full">
+      {/* Hidden file input */}
       <input
         ref={logoInputRef}
         type="file"
@@ -251,9 +223,7 @@ export const SettingsPage: React.FC = () => {
         onChange={e => {
           const file = e.target.files?.[0];
           if (file && uploadingLogo) {
-            // Determine type from context
-            const isShop = localShops.some(s => s.id === uploadingLogo);
-            handleUploadLogo(file, isShop ? 'shop' : 'gst_profile', uploadingLogo);
+            handleUploadLogo(file, uploadContext, uploadingLogo);
           }
           e.target.value = '';
         }}
@@ -278,7 +248,7 @@ export const SettingsPage: React.FC = () => {
         ))}
       </div>
 
-      {/* ── Shop Profiles ───────────────────────────────────────── */}
+      {/* ── Shop Profiles ── */}
       {tab === 'shops' && (
         <div className="space-y-4">
           {localShops.map((shop, idx) => (
@@ -306,34 +276,18 @@ export const SettingsPage: React.FC = () => {
                       <Image className="w-5 h-5 text-muted-foreground/40" />
                     </div>
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setUploadingLogo(shop.id);
-                      logoInputRef.current?.click();
-                    }}
-                  >
-                    <Upload className="w-3.5 h-3.5 mr-1" /> {shop.logo_url ? 'Change' : 'Upload'} Logo
+                  <Button variant="outline" size="sm" disabled={uploadingLogo === shop.id} onClick={() => { setUploadContext('shop'); setUploadingLogo(shop.id); logoInputRef.current?.click(); }}>
+                    <Upload className="w-3.5 h-3.5 mr-1" /> {uploadingLogo === shop.id ? 'Uploading...' : shop.logo_url ? 'Change' : 'Upload'} Logo
                   </Button>
                   {shop.logo_url && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        handleSaveShop(idx, 'logo_url', '');
-                      }}
-                      className="text-destructive"
-                    >
-                      Remove
-                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleSaveShop(idx, 'logo_url', '')} className="text-destructive">Remove</Button>
                   )}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">Max 2MB, appears on invoices</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Max 2MB · Appears on invoices</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[['name', 'Shop Name'], ['sub_heading', 'Sub Heading (shown below name)'], ['address', 'Address'], ['phone', 'Phone'], ['gst_number', 'GST Number'], ['invoice_prefix', 'Invoice Prefix']].map(([field, label]) => (
+                {[['name', 'Shop Name'], ['sub_heading', 'Sub Heading'], ['address', 'Address'], ['phone', 'Phone'], ['gst_number', 'GST Number'], ['invoice_prefix', 'Invoice Prefix']].map(([field, label]) => (
                   <div key={field} className={field === 'sub_heading' || field === 'address' ? 'sm:col-span-2' : ''}>
                     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</label>
                     <Input value={String((shop as any)[field] || '')} onChange={e => handleSaveShop(idx, field, e.target.value)} className="h-10" />
@@ -349,7 +303,7 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── GST Profiles ───────────────────────────────────────── */}
+      {/* ── GST Profiles ── */}
       {tab === 'gst_profiles' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
@@ -359,17 +313,15 @@ export const SettingsPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-display font-bold">GST Billing Profiles</h3>
-                <p className="text-xs text-muted-foreground">Separate invoice numbering per profile. One inventory, many billing identities.</p>
+                <p className="text-xs text-muted-foreground">Separate invoice numbering per profile. Each profile can have its own logo.</p>
               </div>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => addGstProfile('retail')}>
-                <Building2 className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                + Retail
+                <Building2 className="w-3.5 h-3.5 mr-1.5 text-primary" /> + Retail
               </Button>
               <Button variant="outline" size="sm" onClick={() => addGstProfile('wholesale')}>
-                <Store className="w-3.5 h-3.5 mr-1.5 text-warning" />
-                + Wholesale
+                <Store className="w-3.5 h-3.5 mr-1.5 text-warning" /> + Wholesale
               </Button>
             </div>
           </div>
@@ -378,7 +330,6 @@ export const SettingsPage: React.FC = () => {
             <div className="bg-card rounded-xl border-2 border-dashed border-border p-8 text-center">
               <Building2 className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
               <p className="font-display font-semibold text-muted-foreground">No GST profiles yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Add Retail or Wholesale profiles to bill under different GST numbers with separate invoice sequences.</p>
               <div className="flex gap-2 justify-center mt-4 flex-wrap">
                 <Button size="sm" onClick={() => addGstProfile('retail')} className="gradient-primary border-0 text-primary-foreground">
                   <Building2 className="w-3.5 h-3.5 mr-1.5" /> Add Retail Profile
@@ -391,25 +342,16 @@ export const SettingsPage: React.FC = () => {
           )}
 
           {gstProfiles.map((profile, idx) => (
-            <div key={profile.id} className={`bg-card rounded-xl border p-5 shadow-sm ${
-              profile.is_default ? 'border-primary/30 ring-1 ring-primary/15' : ''
-            }`}>
+            <div key={profile.id} className={`bg-card rounded-xl border p-5 shadow-sm ${profile.is_default ? 'border-primary/30 ring-1 ring-primary/15' : ''}`}>
               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                    profile.profile_type === 'wholesale' ? 'bg-warning/15' : 'bg-primary/15'
-                  }`}>
-                    {profile.profile_type === 'wholesale'
-                      ? <Store className="w-4 h-4 text-warning" />
-                      : <Building2 className="w-4 h-4 text-primary" />
-                    }
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${profile.profile_type === 'wholesale' ? 'bg-warning/15' : 'bg-primary/15'}`}>
+                    {profile.profile_type === 'wholesale' ? <Store className="w-4 h-4 text-warning" /> : <Building2 className="w-4 h-4 text-primary" />}
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <h3 className="font-display font-bold text-sm">{profile.profile_name || 'Unnamed Profile'}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-display font-bold ${
-                        profile.profile_type === 'wholesale' ? 'bg-warning/15 text-warning' : 'bg-primary/10 text-primary'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-display font-bold ${profile.profile_type === 'wholesale' ? 'bg-warning/15 text-warning' : 'bg-primary/10 text-primary'}`}>
                         {profile.profile_type === 'wholesale' ? 'Wholesale' : 'Retail'}
                       </span>
                       {profile.is_default && (
@@ -429,16 +371,44 @@ export const SettingsPage: React.FC = () => {
                       <Star className="w-3 h-3" /> Set Default
                     </button>
                   )}
-                  <button
-                    onClick={() => updateGstProfile(idx, 'profile_type', profile.profile_type === 'retail' ? 'wholesale' : 'retail')}
-                    className="text-[10px] font-display font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-secondary"
-                  >
+                  <button onClick={() => updateGstProfile(idx, 'profile_type', profile.profile_type === 'retail' ? 'wholesale' : 'retail')} className="text-[10px] font-display font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-secondary">
                     Switch to {profile.profile_type === 'retail' ? 'Wholesale' : 'Retail'}
                   </button>
                   <button onClick={() => deleteGstProfile(profile.id)} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
+              </div>
+
+              {/* Profile Logo Upload */}
+              <div className="mb-4 pb-4 border-b">
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Profile Logo (overrides shop logo on invoices)</label>
+                <div className="flex items-center gap-4">
+                  {profile.logo_url ? (
+                    <img src={profile.logo_url} alt="Profile logo" className="h-12 max-w-[120px] object-contain rounded-lg border p-1 bg-white" />
+                  ) : (
+                    <div className="h-12 w-12 rounded-lg border-2 border-dashed border-border flex items-center justify-center">
+                      <Image className="w-4 h-4 text-muted-foreground/40" />
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingLogo === profile.id}
+                    onClick={() => { setUploadContext('gst_profile'); setUploadingLogo(profile.id); logoInputRef.current?.click(); }}
+                  >
+                    <Upload className="w-3.5 h-3.5 mr-1" /> {uploadingLogo === profile.id ? 'Uploading...' : profile.logo_url ? 'Change' : 'Upload'} Logo
+                  </Button>
+                  {profile.logo_url && (
+                    <Button variant="ghost" size="sm" onClick={async () => {
+                      await supabase.from('shop_gst_profiles').update({ logo_url: null } as any).eq('id', profile.id);
+                      setGstProfiles(prev => prev.map(p => p.id === profile.id ? { ...p, logo_url: null } : p));
+                    }} className="text-destructive text-xs">
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">Max 2MB · Profile-specific logo for invoices</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -451,13 +421,11 @@ export const SettingsPage: React.FC = () => {
                   <Input value={profile.business_name || ''} onChange={e => updateGstProfile(idx, 'business_name', e.target.value)} className="h-10" placeholder="Legal business name" />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Sub Heading (shown below business name)</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Sub Heading</label>
                   <Input value={profile.sub_heading || ''} onChange={e => updateGstProfile(idx, 'sub_heading', e.target.value)} className="h-10" placeholder="e.g. Mobile & Accessories" />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
-                    <Hash className="w-3 h-3" /> GSTIN
-                  </label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1"><Hash className="w-3 h-3" /> GSTIN</label>
                   <Input value={profile.gst_number || ''} onChange={e => updateGstProfile(idx, 'gst_number', e.target.value.toUpperCase())} className="h-10 font-mono tracking-wider" placeholder="22AAAAA0000A1Z5" maxLength={15} />
                 </div>
                 <div>
@@ -469,35 +437,23 @@ export const SettingsPage: React.FC = () => {
                   <Input value={profile.address || ''} onChange={e => updateGstProfile(idx, 'address', e.target.value)} className="h-10" placeholder="Full business address" />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
-                    <Tag className="w-3 h-3" /> Invoice Prefix
-                  </label>
-                  <Input
-                    value={profile.invoice_prefix || ''}
-                    onChange={e => updateGstProfile(idx, 'invoice_prefix', e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
-                    className="h-10 font-mono"
-                    placeholder="INV-R"
-                    maxLength={10}
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Preview: <span className="font-mono font-semibold">{profile.invoice_prefix || 'INV'}-{String((profile.last_invoice_number || 0) + 1).padStart(4, '0')}</span>
-                  </p>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1"><Tag className="w-3 h-3" /> Invoice Prefix</label>
+                  <Input value={profile.invoice_prefix || ''} onChange={e => updateGstProfile(idx, 'invoice_prefix', e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))} className="h-10 font-mono" placeholder="INV-R" maxLength={10} />
+                  <p className="text-[10px] text-muted-foreground mt-1">Preview: <span className="font-mono font-semibold">{profile.invoice_prefix || 'INV'}-{String((profile.last_invoice_number || 0) + 1).padStart(4, '0')}</span></p>
                 </div>
               </div>
             </div>
           ))}
 
           {gstProfiles.length > 0 && (
-            <div className="flex gap-3">
-              <Button onClick={saveGstProfiles} className="gradient-primary border-0 text-primary-foreground">
-                <Save className="w-4 h-4 mr-1.5" /> Save All Profiles
-              </Button>
-            </div>
+            <Button onClick={saveGstProfiles} className="gradient-primary border-0 text-primary-foreground">
+              <Save className="w-4 h-4 mr-1.5" /> Save All Profiles
+            </Button>
           )}
         </div>
       )}
 
-      {/* ── General Settings ──────────────────────────────────── */}
+      {/* ── General Settings ── */}
       {tab === 'general' && localSettings && (
         <div className="bg-card rounded-xl border p-5 shadow-sm space-y-5">
           <div className="flex items-center justify-between">
@@ -505,20 +461,20 @@ export const SettingsPage: React.FC = () => {
               <p className="font-display font-semibold">Enable Discounts</p>
               <p className="text-xs text-muted-foreground mt-0.5">Allow item and bill-level discounts during billing</p>
             </div>
-            <button onClick={() => setLocalSettings({...localSettings, discount_enabled: !localSettings.discount_enabled})}
+            <button onClick={() => setLocalSettings({ ...localSettings, discount_enabled: !localSettings.discount_enabled })}
               className={`w-12 h-6 rounded-full transition-colors ${localSettings.discount_enabled ? 'bg-primary' : 'bg-border'}`}>
               <div className={`w-5 h-5 rounded-full bg-card shadow-sm transition-transform ${localSettings.discount_enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
             </button>
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Default GST %</label>
-            <Input type="number" value={localSettings.default_gst_percent} onChange={e => setLocalSettings({...localSettings, default_gst_percent: parseFloat(e.target.value) || 0})} className="w-28 h-10" />
+            <Input type="number" value={localSettings.default_gst_percent} onChange={e => setLocalSettings({ ...localSettings, default_gst_percent: parseFloat(e.target.value) || 0 })} className="w-28 h-10" />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Thermal Printer Width</label>
             <div className="flex bg-secondary rounded-lg p-0.5 w-fit">
               {['58mm', '80mm'].map(w => (
-                <button key={w} onClick={() => setLocalSettings({...localSettings, thermal_width: w})}
+                <button key={w} onClick={() => setLocalSettings({ ...localSettings, thermal_width: w })}
                   className={`px-4 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${localSettings.thermal_width === w ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
                   {w}
                 </button>
@@ -529,7 +485,7 @@ export const SettingsPage: React.FC = () => {
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Default Print Type</label>
             <div className="flex bg-secondary rounded-lg p-0.5 w-fit">
               {[['thermal', 'Thermal'], ['a4', 'A4 Invoice']].map(([v, l]) => (
-                <button key={v} onClick={() => setLocalSettings({...localSettings, default_print_type: v})}
+                <button key={v} onClick={() => setLocalSettings({ ...localSettings, default_print_type: v })}
                   className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${localSettings.default_print_type === v ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
                   <Printer className="w-3.5 h-3.5" />{l}
                 </button>
@@ -540,16 +496,72 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Invoice Customization ──────────────────────────────── */}
+      {/* ── Invoice Customization ── */}
       {tab === 'invoice' && (
-        <div className="space-y-4">
+        <div className="space-y-5">
+          {/* Bill Template Selection */}
+          <div className="bg-card rounded-xl border p-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Layout className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold">Bill Template</h3>
+                <p className="text-xs text-muted-foreground">Choose the layout style for your invoices</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {BILL_TEMPLATES.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedTemplate(t.id)}
+                  className={`rounded-xl border p-4 text-left transition-all ${selectedTemplate === t.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:bg-accent/30'}`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-display font-bold text-sm">{t.label}</p>
+                    {selectedTemplate === t.id && <span className="w-2 h-2 rounded-full bg-primary" />}
+                  </div>
+                  {/* Template preview mini */}
+                  <div className="h-20 rounded-lg bg-secondary/50 border flex flex-col gap-1 p-2 mb-2">
+                    {t.id === 'classic' && <>
+                      <div className="h-2 w-3/4 bg-foreground/20 rounded mx-auto" />
+                      <div className="h-1 w-1/2 bg-foreground/10 rounded mx-auto" />
+                      <div className="border-t border-border/50 my-1" />
+                      <div className="space-y-0.5">
+                        {[0.8, 0.6, 0.9].map((w, i) => <div key={i} className="h-1 rounded" style={{ width: `${w * 100}%`, background: 'hsl(var(--foreground) / 0.1)' }} />)}
+                      </div>
+                    </>}
+                    {t.id === 'modern' && <>
+                      <div className="h-3 w-2/3 bg-primary/30 rounded mx-auto" />
+                      <div className="h-1 w-1/3 bg-primary/20 rounded mx-auto" />
+                      <div className="flex gap-1 mt-1">
+                        {[1, 1, 1].map((_, i) => <div key={i} className="flex-1 h-4 bg-primary/10 rounded" />)}
+                      </div>
+                      <div className="h-2 w-1/3 bg-primary/20 rounded ml-auto mt-1" />
+                    </>}
+                    {t.id === 'compact' && <>
+                      <div className="h-1.5 w-1/2 bg-foreground/20 rounded" />
+                      {[0.9, 0.7, 0.8, 0.6].map((w, i) => <div key={i} className="h-1 rounded" style={{ width: `${w * 100}%`, background: 'hsl(var(--foreground) / 0.08)' }} />)}
+                      <div className="h-1.5 w-1/3 bg-foreground/20 rounded ml-auto" />
+                    </>}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{t.description}</p>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-3 bg-accent/40 px-3 py-2 rounded-lg">
+              💡 Template selection is saved locally. Full template customization is coming soon.
+            </p>
+          </div>
+
+          {/* Terms & Conditions */}
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <FileText className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-display font-bold">Invoice Customization</h3>
-              <p className="text-xs text-muted-foreground">Customize terms & conditions shown on invoices</p>
+              <h3 className="font-display font-bold">Terms & Conditions</h3>
+              <p className="text-xs text-muted-foreground">Customize terms shown on invoices</p>
             </div>
           </div>
 
@@ -558,53 +570,31 @@ export const SettingsPage: React.FC = () => {
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-display font-semibold text-sm">{shop.name} — Terms & Conditions</h4>
                 {editingTermsShopId !== shop.id ? (
-                  <Button variant="outline" size="sm" onClick={() => openTermsEditor(shop)}>
-                    Edit Terms
-                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openTermsEditor(shop)}>Edit Terms</Button>
                 ) : (
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={saveTerms} className="gradient-primary border-0 text-primary-foreground">
-                      <Save className="w-3.5 h-3.5 mr-1" /> Save
-                    </Button>
+                    <Button size="sm" onClick={saveTerms} className="gradient-primary border-0 text-primary-foreground"><Save className="w-3.5 h-3.5 mr-1" /> Save</Button>
                     <Button variant="outline" size="sm" onClick={() => setEditingTermsShopId(null)}>Cancel</Button>
                   </div>
                 )}
               </div>
-
               {editingTermsShopId === shop.id ? (
                 <div className="space-y-2">
                   {editTerms.map((term, i) => (
                     <div key={i} className="flex gap-2 items-start">
                       <span className="text-xs text-muted-foreground mt-2.5 w-6 flex-shrink-0">{i + 1}.</span>
-                      <Input
-                        value={term}
-                        onChange={e => {
-                          const updated = [...editTerms];
-                          updated[i] = e.target.value;
-                          setEditTerms(updated);
-                        }}
-                        className="h-9 text-xs flex-1"
-                      />
-                      <button
-                        onClick={() => setEditTerms(prev => prev.filter((_, idx) => idx !== i))}
-                        className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all mt-1"
-                      >
+                      <Input value={term} onChange={e => { const u = [...editTerms]; u[i] = e.target.value; setEditTerms(u); }} className="h-9 text-xs flex-1" />
+                      <button onClick={() => setEditTerms(prev => prev.filter((_, idx) => idx !== i))} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all mt-1">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
-                  <Button variant="outline" size="sm" onClick={() => setEditTerms(prev => [...prev, ''])}>
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Term
-                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setEditTerms(prev => [...prev, ''])}><Plus className="w-3.5 h-3.5 mr-1" /> Add Term</Button>
                 </div>
               ) : (
                 <div className="text-xs text-muted-foreground space-y-1">
-                  {(shop.terms_and_conditions || []).map((t, i) => (
-                    <p key={i}>{t}</p>
-                  ))}
-                  {(!shop.terms_and_conditions || shop.terms_and_conditions.length === 0) && (
-                    <p className="italic">Using default Tamil terms & conditions</p>
-                  )}
+                  {(shop.terms_and_conditions || []).map((t, i) => <p key={i}>{t}</p>)}
+                  {(!shop.terms_and_conditions || shop.terms_and_conditions.length === 0) && <p className="italic">Using default Tamil terms & conditions</p>}
                 </div>
               )}
             </div>
@@ -612,7 +602,7 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── PIN Security ──────────────────────────────────────── */}
+      {/* ── PIN Security ── */}
       {tab === 'pin' && (
         <div className="bg-card rounded-xl border p-5 shadow-sm max-w-sm space-y-4">
           <div className="flex items-center gap-3 mb-2">
@@ -632,7 +622,7 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Team Members ──────────────────────────────────────── */}
+      {/* ── Team Members ── */}
       {tab === 'users' && (
         <div className="bg-card rounded-xl border p-5 shadow-sm space-y-4">
           <div className="flex items-center gap-3 mb-2">
@@ -651,9 +641,7 @@ export const SettingsPage: React.FC = () => {
                   <p className="font-display font-semibold text-sm">{(m.profiles as any)?.full_name || (m.profiles as any)?.email || 'Unknown'}</p>
                   <p className="text-xs text-muted-foreground">{(m.profiles as any)?.email}</p>
                 </div>
-                <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-display font-bold ${
-                  m.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-secondary text-muted-foreground'
-                }`}>
+                <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-display font-bold ${m.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-secondary text-muted-foreground'}`}>
                   <Shield className="w-3 h-3" />{m.role}
                 </span>
               </div>

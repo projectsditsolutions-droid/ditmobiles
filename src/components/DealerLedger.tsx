@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, RotateCcw, FileText, ArrowDownLeft, ArrowUpRight, TrendingDown, CalendarDays, Filter, X, Smartphone, Tag, HardDrive, Palette, Edit2, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, RotateCcw, FileText, ArrowDownLeft, ArrowUpRight, TrendingDown, CalendarDays, Filter, X, Smartphone, Tag, HardDrive, Palette, Edit2, Trash2, ChevronDown, ChevronUp, Download, BarChart2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -42,6 +42,14 @@ const getQuantityFromTxn = (txn: DealerTransaction) => {
   return match ? match[1] : '—';
 };
 
+const TXN_META: Record<string, { label: string; colorClass: string; bgClass: string; sign: '+' | '-' | '' }> = {
+  purchase: { label: 'Purchase', colorClass: 'text-destructive', bgClass: 'bg-destructive/10', sign: '+' },
+  payment: { label: 'Payment', colorClass: 'text-success', bgClass: 'bg-success/10', sign: '-' },
+  stock_return: { label: 'Return', colorClass: 'text-warning', bgClass: 'bg-warning/10', sign: '-' },
+  sale_deduction: { label: 'Sale', colorClass: 'text-primary', bgClass: 'bg-primary/10', sign: '' },
+  opening_adjustment: { label: 'Adjustment', colorClass: 'text-muted-foreground', bgClass: 'bg-accent', sign: '' },
+};
+
 export const DealerLedger: React.FC = () => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
   const [dealers, setDealers] = useState<Dealer[]>([]);
@@ -53,6 +61,7 @@ export const DealerLedger: React.FC = () => {
   const [showStockEntry, setShowStockEntry] = useState(false);
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const [brandFilter, setBrandFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'credit_desc' | 'credit_asc' | 'recent'>('credit_desc');
@@ -67,6 +76,7 @@ export const DealerLedger: React.FC = () => {
   const [showEditCredit, setShowEditCredit] = useState(false);
   const [editCreditValue, setEditCreditValue] = useState(0);
   const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
+  const [reportDealerMode, setReportDealerMode] = useState<'selected' | 'all'>('selected');
 
   const fetchDealers = async () => {
     if (!activeShopId && !isAllShops) return;
@@ -121,7 +131,6 @@ export const DealerLedger: React.FC = () => {
       const matchesBrand = brandFilter === 'all' || d.brand_name === brandFilter;
       return matchesSearch && matchesBrand;
     });
-
     return base.sort((a, b) => {
       if (sortBy === 'credit_asc') return Number(a.total_credit) - Number(b.total_credit);
       if (sortBy === 'recent') return new Date(lastTxnMap.get(b.id) || 0).getTime() - new Date(lastTxnMap.get(a.id) || 0).getTime();
@@ -138,15 +147,9 @@ export const DealerLedger: React.FC = () => {
     const payment = selectedTxns.filter(t => t.type === 'payment').reduce((s, t) => s + Number(t.amount), 0);
     const sold = selectedTxns.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
-    const openingAdj = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    // Balance = Opening + Purchases - Payments - Returns
     const opening = current - purchase + payment + returned;
-    // Only manual payments count as settled
-    const totalSettled = payment;
-    // Track how much sold cost has been settled via payments
     const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => {
-      // Parse sold cost amount from description for 'both' type
       const bothMatch = t.description.match(/Sold Cost: ₹([\d,]+)/);
       if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
       if (t.description.includes('Settled from Sold Cost')) return s + Number(t.amount);
@@ -158,10 +161,12 @@ export const DealerLedger: React.FC = () => {
       if (t.description.includes('Settled from Opening Credit')) return s + Number(t.amount);
       return s;
     }, 0);
-    // Remaining available amounts
     const availableSoldCost = Math.max(0, sold - soldCostSettled);
     const availableOpeningCredit = Math.max(0, opening - openingCreditSettled);
-    return { purchase, payment, sold, returned, current, opening, totalSettled, openingAdj, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit };
+    const purchaseCount = selectedTxns.filter(t => t.type === 'purchase').length;
+    const returnCount = selectedTxns.filter(t => t.type === 'stock_return').length;
+    const saleCount = selectedTxns.filter(t => t.type === 'sale_deduction').length;
+    return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount };
   }, [selectedDealer, selectedTxns]);
 
   const totalOutstanding = dealers.reduce((sum, dealer) => sum + Number(dealer.total_credit), 0);
@@ -173,14 +178,7 @@ export const DealerLedger: React.FC = () => {
   };
 
   const openEditDealer = (dealer: Dealer) => {
-    setDealerForm({
-      brand_name: dealer.brand_name,
-      dealer_name: dealer.dealer_name,
-      phone: dealer.phone,
-      address: dealer.address,
-      gstin: dealer.gstin,
-      total_credit: Number(dealer.total_credit),
-    });
+    setDealerForm({ brand_name: dealer.brand_name, dealer_name: dealer.dealer_name, phone: dealer.phone, address: dealer.address, gstin: dealer.gstin, total_credit: Number(dealer.total_credit) });
     setEditingDealerId(dealer.id);
     setShowDealerForm(true);
   };
@@ -196,35 +194,16 @@ export const DealerLedger: React.FC = () => {
   };
 
   const handleAddDealer = async () => {
-    if (!activeShopId || !dealerForm.dealer_name.trim()) {
-      toast.error('Dealer name is required');
-      return;
-    }
-
+    if (!activeShopId || !dealerForm.dealer_name.trim()) { toast.error('Dealer name is required'); return; }
     if (editingDealerId) {
-      const { error } = await supabase.from('dealers').update({
-        brand_name: dealerForm.brand_name.trim(),
-        dealer_name: dealerForm.dealer_name.trim(),
-        phone: dealerForm.phone.trim(),
-        address: dealerForm.address.trim(),
-        gstin: dealerForm.gstin.trim(),
-      }).eq('id', editingDealerId);
+      const { error } = await supabase.from('dealers').update({ brand_name: dealerForm.brand_name.trim(), dealer_name: dealerForm.dealer_name.trim(), phone: dealerForm.phone.trim(), address: dealerForm.address.trim(), gstin: dealerForm.gstin.trim() }).eq('id', editingDealerId);
       if (error) { toast.error('Failed: ' + error.message); return; }
       toast.success('Dealer updated');
     } else {
-      const { error } = await supabase.from('dealers').insert({
-        shop_id: activeShopId,
-        brand_name: dealerForm.brand_name.trim(),
-        dealer_name: dealerForm.dealer_name.trim(),
-        phone: dealerForm.phone.trim(),
-        address: dealerForm.address.trim(),
-        gstin: dealerForm.gstin.trim(),
-        total_credit: dealerForm.total_credit || 0,
-      });
+      const { error } = await supabase.from('dealers').insert({ shop_id: activeShopId, brand_name: dealerForm.brand_name.trim(), dealer_name: dealerForm.dealer_name.trim(), phone: dealerForm.phone.trim(), address: dealerForm.address.trim(), gstin: dealerForm.gstin.trim(), total_credit: dealerForm.total_credit || 0 });
       if (error) { toast.error('Failed: ' + error.message); return; }
       toast.success('Dealer added');
     }
-
     setShowDealerForm(false);
     setEditingDealerId(null);
     setDealerForm({ brand_name: '', dealer_name: '', phone: '', address: '', gstin: '', total_credit: 0 });
@@ -237,14 +216,7 @@ export const DealerLedger: React.FC = () => {
     const diff = editCreditValue - oldOpening;
     const newBalance = Number(selectedDealer.total_credit) + diff;
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
-    await supabase.from('dealer_transactions').insert({
-      dealer_id: selectedDealer.id,
-      shop_id: activeShopId,
-      type: 'opening_adjustment',
-      amount: Math.abs(diff),
-      running_balance: newBalance,
-      description: `Opening credit adjusted from ₹${oldOpening.toLocaleString('en-IN')} to ₹${editCreditValue.toLocaleString('en-IN')}`,
-    });
+    await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'opening_adjustment', amount: Math.abs(diff), running_balance: newBalance, description: `Opening credit adjusted from ₹${oldOpening.toLocaleString('en-IN')} to ₹${editCreditValue.toLocaleString('en-IN')}` });
     setShowEditCredit(false);
     toast.success('Opening credit updated');
     fetchDealers();
@@ -255,7 +227,6 @@ export const DealerLedger: React.FC = () => {
 
   const handlePayment = async () => {
     if (!selectedDealer || !activeShopId) return;
-
     let totalAmount = 0;
     if (paymentForm.settleFrom === 'both') {
       totalAmount = paymentForm.soldCostAmount + paymentForm.openingCreditAmount;
@@ -271,31 +242,13 @@ export const DealerLedger: React.FC = () => {
       if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
       if (totalAmount > totals.availableOpeningCredit) { toast.error(`Amount exceeds available opening credit (${fmt(totals.availableOpeningCredit)})`); return; }
     }
-
     const methods = paymentForm.paymentMethods.length > 0 ? paymentForm.paymentMethods.join(', ') : 'Not specified';
-    const settleLabel = paymentForm.settleFrom === 'sold_cost' ? 'Settled from Sold Cost' :
-      paymentForm.settleFrom === 'opening_credit' ? 'Settled from Opening Credit' :
-      `Sold Cost: ₹${paymentForm.soldCostAmount.toLocaleString('en-IN')}, Opening: ₹${paymentForm.openingCreditAmount.toLocaleString('en-IN')}`;
-
-    const desc = [
-      settleLabel,
-      `via ${methods}`,
-      paymentForm.notes ? `Notes: ${paymentForm.notes}` : '',
-      paymentForm.description || '',
-    ].filter(Boolean).join(' | ');
-
+    const settleLabel = paymentForm.settleFrom === 'sold_cost' ? 'Settled from Sold Cost' : paymentForm.settleFrom === 'opening_credit' ? 'Settled from Opening Credit' : `Sold Cost: ₹${paymentForm.soldCostAmount.toLocaleString('en-IN')}, Opening: ₹${paymentForm.openingCreditAmount.toLocaleString('en-IN')}`;
+    const desc = [settleLabel, `via ${methods}`, paymentForm.notes ? `Notes: ${paymentForm.notes}` : '', paymentForm.description || ''].filter(Boolean).join(' | ');
     const newBalance = Number(selectedDealer.total_credit) - totalAmount;
-    const { error: txnError } = await supabase.from('dealer_transactions').insert({
-      dealer_id: selectedDealer.id,
-      shop_id: activeShopId,
-      type: 'payment',
-      amount: totalAmount,
-      running_balance: newBalance,
-      description: desc,
-    });
+    const { error: txnError } = await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'payment', amount: totalAmount, running_balance: newBalance, description: desc });
     if (txnError) { toast.error('Failed: ' + txnError.message); return; }
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
-
     setShowPayment(false);
     setPaymentForm(defaultPaymentForm);
     toast.success('Payment recorded');
@@ -304,82 +257,32 @@ export const DealerLedger: React.FC = () => {
   };
 
   const handleCreateProductInStock = async () => {
-    if (!activeShopId || !newProductForm.brand || !newProductForm.model) {
-      toast.error('Brand and Model are required');
-      return;
-    }
-    const { data, error } = await supabase.from('products').insert({
-      brand: newProductForm.brand,
-      model: newProductForm.model,
-      variant: newProductForm.variant,
-      color: newProductForm.color,
-      purchase_price: stockForm.unit_price,
-      sale_price: newProductForm.sale_price,
-      gst_percent: newProductForm.gst_percent,
-      hsn_code: newProductForm.hsn_code,
-      category: newProductForm.category,
-      shop_id: activeShopId,
-      stock_quantity: 0,
-    } as any).select().single();
+    if (!activeShopId || !newProductForm.brand || !newProductForm.model) { toast.error('Brand and Model are required'); return; }
+    const { data, error } = await supabase.from('products').insert({ brand: newProductForm.brand, model: newProductForm.model, variant: newProductForm.variant, color: newProductForm.color, purchase_price: stockForm.unit_price, sale_price: newProductForm.sale_price, gst_percent: newProductForm.gst_percent, hsn_code: newProductForm.hsn_code, category: newProductForm.category, shop_id: activeShopId, stock_quantity: 0 } as any).select().single();
     if (error) { toast.error('Failed to create product: ' + error.message); return; }
-    if (data) {
-      setStockForm({ ...stockForm, product_id: data.id, hsn_code: newProductForm.hsn_code });
-      setStockSearch(`${data.brand} ${data.model} ${data.variant}`);
-      setShowNewProductInStock(false);
-      toast.success('Product created! Now add IMEIs below.');
-      fetchProducts();
-    }
+    if (data) { setStockForm({ ...stockForm, product_id: data.id, hsn_code: newProductForm.hsn_code }); setStockSearch(`${data.brand} ${data.model} ${data.variant}`); setShowNewProductInStock(false); toast.success('Product created! Now add IMEIs below.'); fetchProducts(); }
   };
 
   const handleStockEntry = async () => {
-    if (!selectedDealer || !activeShopId || !stockForm.product_id) {
-      toast.error('Select a product');
-      return;
-    }
-
+    if (!selectedDealer || !activeShopId || !stockForm.product_id) { toast.error('Select a product'); return; }
     const imeiList = stockForm.imeis.split('\n').map(v => v.trim()).filter(v => /^\d{15}$/.test(v));
-    if (imeiList.length === 0) {
-      toast.error('Enter valid 15-digit IMEIs');
-      return;
-    }
-
+    if (imeiList.length === 0) { toast.error('Enter valid 15-digit IMEIs'); return; }
     let added = 0;
     for (const imei of imeiList) {
-      const { error } = await supabase.from('imei_records').insert({
-        imei,
-        product_id: stockForm.product_id,
-        shop_id: activeShopId,
-        dealer_id: selectedDealer.id,
-        status: 'in_stock',
-        purchase_price: stockForm.unit_price,
-      });
+      const { error } = await supabase.from('imei_records').insert({ imei, product_id: stockForm.product_id, shop_id: activeShopId, dealer_id: selectedDealer.id, status: 'in_stock', purchase_price: stockForm.unit_price });
       if (!error) added++;
     }
-
-    if (added === 0) {
-      toast.error('No IMEIs were added (duplicates?)');
-      return;
-    }
-
+    if (added === 0) { toast.error('No IMEIs were added (duplicates?)'); return; }
     const product = products.find(p => p.id === stockForm.product_id);
     if (product) {
       const updateData: any = { stock_quantity: product.stock_quantity + added };
       if (stockForm.hsn_code) updateData.hsn_code = stockForm.hsn_code;
       await supabase.from('products').update(updateData).eq('id', product.id);
     }
-
     const purchaseValue = added * stockForm.unit_price;
     const newBalance = Number(selectedDealer.total_credit) + purchaseValue;
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
-    await supabase.from('dealer_transactions').insert({
-      dealer_id: selectedDealer.id,
-      shop_id: activeShopId,
-      type: 'purchase',
-      amount: purchaseValue,
-      running_balance: newBalance,
-      description: `Purchase ${added} × ${product?.brand || ''} ${product?.model || ''} @ ₹${stockForm.unit_price.toLocaleString('en-IN')}`,
-    });
-
+    await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'purchase', amount: purchaseValue, running_balance: newBalance, description: `Purchase ${added} × ${product?.brand || ''} ${product?.model || ''} @ ₹${stockForm.unit_price.toLocaleString('en-IN')}` });
     setShowStockEntry(false);
     setStockForm({ product_id: '', unit_price: 0, imeis: '', hsn_code: '' });
     setShowNewProductInStock(false);
@@ -392,35 +295,16 @@ export const DealerLedger: React.FC = () => {
   };
 
   const handleStockReturn = async () => {
-    if (!selectedDealer || !activeShopId || !returnForm.imei.trim()) {
-      toast.error('Enter IMEI');
-      return;
-    }
-
+    if (!selectedDealer || !activeShopId || !returnForm.imei.trim()) { toast.error('Enter IMEI'); return; }
     const { data: imeiRecord } = await supabase.from('imei_records').select('*, products(*)').eq('imei', returnForm.imei.trim()).eq('dealer_id', selectedDealer.id).eq('status', 'in_stock').maybeSingle();
-    if (!imeiRecord) {
-      toast.error('IMEI not found in available stock for this dealer');
-      return;
-    }
-
+    if (!imeiRecord) { toast.error('IMEI not found in available stock for this dealer'); return; }
     const product = imeiRecord.products as unknown as Product;
     const costValue = Number(imeiRecord.purchase_price || 0);
-
     await supabase.from('imei_records').update({ status: 'returned' }).eq('id', imeiRecord.id);
     await supabase.from('products').update({ stock_quantity: Math.max(0, (product?.stock_quantity || 0) - 1) }).eq('id', imeiRecord.product_id);
-
     const newBalance = Number(selectedDealer.total_credit) - costValue;
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
-    await supabase.from('dealer_transactions').insert({
-      dealer_id: selectedDealer.id,
-      shop_id: activeShopId,
-      type: 'stock_return',
-      amount: costValue,
-      running_balance: newBalance,
-      description: `Return ${product?.brand || ''} ${product?.model || ''} (IMEI: ${returnForm.imei.trim()})${returnForm.reason ? ` - ${returnForm.reason}` : ''}`,
-      imei_ref: returnForm.imei.trim(),
-    });
-
+    await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'stock_return', amount: costValue, running_balance: newBalance, description: `Return ${product?.brand || ''} ${product?.model || ''} (IMEI: ${returnForm.imei.trim()})${returnForm.reason ? ` - ${returnForm.reason}` : ''}`, imei_ref: returnForm.imei.trim() });
     setShowReturnForm(false);
     setReturnForm({ imei: '', reason: '' });
     toast.success('Stock return recorded');
@@ -429,35 +313,72 @@ export const DealerLedger: React.FC = () => {
     fetchProducts();
   };
 
+  // ── Dealer Report ──────────────────────────────────────────────────────
+  const buildReportData = () => {
+    const targetDealers = reportDealerMode === 'all' ? dealers : (selectedDealer ? [selectedDealer] : []);
+    return targetDealers.map(dealer => {
+      const txns = allTxns.filter(t => t.dealer_id === dealer.id);
+      const purchase = txns.filter(t => t.type === 'purchase').reduce((s, t) => s + Number(t.amount), 0);
+      const payment = txns.filter(t => t.type === 'payment').reduce((s, t) => s + Number(t.amount), 0);
+      const sold = txns.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
+      const returned = txns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
+      const opening = Number(dealer.total_credit) - purchase + payment + returned;
+      const purchaseCount = txns.filter(t => t.type === 'purchase').length;
+      const returnCount = txns.filter(t => t.type === 'stock_return').length;
+      const soldCount = txns.filter(t => t.type === 'sale_deduction').length;
+      return { dealer, purchase, payment, sold, returned, opening, purchaseCount, returnCount, soldCount, balance: Number(dealer.total_credit) };
+    });
+  };
+
+  const downloadDealerCSV = () => {
+    const rows = buildReportData();
+    if (rows.length === 0) { toast.error('No data to export'); return; }
+    const headers = ['Dealer Name', 'Brand', 'Phone', 'GSTIN', 'Opening Credit', 'Total Purchases (₹)', 'Purchase Entries', 'Sold Cost (₹)', 'Sold Entries', 'Returns (₹)', 'Return Entries', 'Total Payments (₹)', 'Current Balance (₹)'];
+    const csvRows = rows.map(r => [
+      `"${r.dealer.dealer_name}"`, `"${r.dealer.brand_name}"`, `"${r.dealer.phone}"`, `"${r.dealer.gstin}"`,
+      r.opening, r.purchase, r.purchaseCount, r.sold, r.soldCount, r.returned, r.returnCount, r.payment, r.balance
+    ].join(','));
+    const csv = [headers.join(','), ...csvRows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dealer_report_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Report downloaded');
+  };
+
+  const filteredProducts = products.filter(p => !stockSearch || `${p.brand} ${p.model} ${p.variant} ${p.color}`.toLowerCase().includes(stockSearch.toLowerCase()));
+
   return (
     <div className="h-full p-5 overflow-y-auto pos-scrollable">
       <div className="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-5 h-full">
+        {/* ── Dealer List ── */}
         <div className="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-[700px]">
           <div className="p-4 border-b space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="font-display text-lg font-extrabold">Dealer Ledger</h1>
-                <p className="text-xs text-muted-foreground">Cost-price payable tracking with live balance</p>
+                <p className="text-xs text-muted-foreground">Cost-price payable tracking</p>
               </div>
               <Button size="sm" onClick={() => setShowDealerForm(true)} className="gradient-primary border-0 text-primary-foreground">
-                <Plus className="w-4 h-4 mr-1" /> Add Dealer
+                <Plus className="w-4 h-4 mr-1" /> Add
               </Button>
             </div>
 
-            <div className="rounded-2xl border bg-accent/40 p-4">
+            <div className="rounded-2xl border bg-destructive/5 p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Wallet className="w-4 h-4 text-destructive" />
                 <span className="text-xs font-display font-semibold uppercase tracking-wider text-muted-foreground">Total Payable</span>
               </div>
               <div className="font-display text-3xl font-extrabold text-destructive">{fmt(totalOutstanding)}</div>
-              <p className="text-xs text-muted-foreground mt-1">Ledger uses only cost price. Selling price and GST do not affect dealer balance.</p>
             </div>
 
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input value={searchQ} onChange={e => setSearchQ(e.target.value)} className="h-10 pl-9" placeholder="Search dealer, brand or phone" />
             </div>
-
             <div className="grid grid-cols-2 gap-2">
               <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                 {brands.map(brand => <option key={brand} value={brand}>{brand === 'all' ? 'All brands' : brand}</option>)}
@@ -474,22 +395,30 @@ export const DealerLedger: React.FC = () => {
             <table className="w-full text-sm">
               <thead className="bg-secondary/50 sticky top-0 z-10">
                 <tr className="text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-3">Brand</th>
-                  <th className="px-4 py-3">Dealer</th>
-                  <th className="px-4 py-3">Phone</th>
-                  <th className="px-4 py-3 text-right">Credit</th>
+                  <th className="px-4 py-3">Brand / Dealer</th>
+                  <th className="px-4 py-3 text-right">Balance</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredDealers.map(dealer => (
-                  <tr key={dealer.id} onClick={() => setSelectedDealerId(dealer.id)} className={`cursor-pointer border-t transition-colors ${selectedDealerId === dealer.id ? 'bg-accent/60' : 'hover:bg-accent/30'}`}>
-                    <td className="px-4 py-3 font-display font-semibold">{dealer.brand_name || '—'}</td>
+                  <tr key={dealer.id} onClick={() => setSelectedDealerId(dealer.id)} className={`cursor-pointer border-t transition-colors ${selectedDealerId === dealer.id ? 'bg-accent/60 border-l-2 border-l-primary' : 'hover:bg-accent/30'}`}>
                     <td className="px-4 py-3">
-                      <div className="font-display font-semibold">{dealer.dealer_name}</div>
-                      <div className="text-[11px] text-muted-foreground">{lastTxnMap.get(dealer.id) ? new Date(lastTxnMap.get(dealer.id) as string).toLocaleDateString('en-IN') : 'No transactions yet'}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Building2 className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-display font-bold text-sm">{dealer.dealer_name}</div>
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                            {dealer.brand_name && <span className="px-1.5 py-0.5 rounded bg-secondary font-semibold">{dealer.brand_name}</span>}
+                            <span>{dealer.phone || '—'}</span>
+                          </div>
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{dealer.phone || '—'}</td>
-                    <td className={`px-4 py-3 text-right font-display font-bold ${getBalanceTone(Number(dealer.total_credit))}`}>{fmt(Number(dealer.total_credit))}</td>
+                    <td className={`px-4 py-3 text-right font-display font-bold ${getBalanceTone(Number(dealer.total_credit))}`}>
+                      {fmt(Number(dealer.total_credit))}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -497,11 +426,13 @@ export const DealerLedger: React.FC = () => {
           </div>
         </div>
 
+        {/* ── Dealer Detail ── */}
         <div className="bg-card rounded-2xl border shadow-sm overflow-hidden min-h-[700px]">
           {selectedDealer ? (
             <div className="h-full flex flex-col">
+              {/* Header */}
               <div className="p-5 border-b bg-gradient-to-r from-accent/70 to-transparent">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h2 className="font-display text-2xl font-extrabold">{selectedDealer.dealer_name}</h2>
@@ -512,444 +443,429 @@ export const DealerLedger: React.FC = () => {
                       <span className="flex items-center gap-1"><Hash className="w-4 h-4" /> {selectedDealer.gstin || 'No GSTIN'}</span>
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex gap-2 items-center flex-shrink-0 flex-wrap">
+                    <Button size="sm" variant="outline" onClick={() => { setReportDealerMode('selected'); setShowReport(true); }}>
+                      <BarChart2 className="w-4 h-4 mr-1" /> Report
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => openEditDealer(selectedDealer)}>
                       <Edit2 className="w-4 h-4 mr-1" /> Edit
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => handleDeleteDealer(selectedDealer.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-display uppercase tracking-widest text-muted-foreground">Current Balance</p>
-                    <p className={`font-display text-4xl font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-5 border-b space-y-4">
-                <div className="grid grid-cols-2 xl:grid-cols-7 gap-3">
-                  {[
-                    { label: 'Opening Credit', value: totals.opening, tone: 'text-muted-foreground', editable: true },
-                    { label: 'Purchases', value: totals.purchase, tone: 'text-destructive' },
-                    { label: 'Sold (Cost)', value: totals.sold, tone: 'text-primary' },
-                    { label: 'Avail. Sold Cost', value: totals.availableSoldCost, tone: 'text-primary' },
-                    { label: 'Payments', value: totals.payment, tone: 'text-success' },
-                    { label: 'Returns', value: totals.returned, tone: 'text-warning' },
-                    { label: 'Avail. Opening', value: totals.availableOpeningCredit, tone: 'text-muted-foreground' },
-                  ].map(card => (
-                    <div key={card.label} className="rounded-2xl border bg-background p-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">{card.label}</p>
-                        {'editable' in card && card.editable && (
-                          <button onClick={() => { setEditCreditValue(totals.opening); setShowEditCredit(true); }} className="text-xs text-primary hover:underline font-display font-semibold">
-                            <Edit2 className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                      <p className={`mt-2 font-display text-xl font-extrabold ${card.tone}`}>{fmt(card.value)}</p>
+                    <div className="border-l pl-3 ml-1">
+                      <p className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">Balance</p>
+                      <p className={`font-display text-3xl font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
                     </div>
-                  ))}
+                  </div>
                 </div>
+              </div>
 
-                <div className="rounded-2xl border bg-secondary/30 p-4 text-sm text-muted-foreground">
-                  <p className="font-display font-bold text-foreground mb-2">Ledger Rules</p>
-                  <div className="grid md:grid-cols-2 gap-2">
-                    <p>• Purchase adds cost price to dealer credit</p>
-                    <p>• Sold cost is tracked but does NOT auto-settle</p>
-                    <p>• Settlement happens ONLY via Record Payment</p>
-                    <p>• Stock return reduces balance &amp; removes from inventory</p>
-                    <p>• Record Payment: settle from Sold Cost / Opening Credit / Both</p>
-                    <p>• Balance = Opening + Purchases - Payments - Returns</p>
+              {/* Balance Summary Cards */}
+              <div className="p-5 border-b">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
+                  {/* Opening Credit */}
+                  <div className="rounded-xl border bg-background p-3 col-span-1">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Opening</p>
+                      <button onClick={() => { setEditCreditValue(totals.opening); setShowEditCredit(true); }} className="text-primary hover:bg-primary/10 rounded p-0.5 transition-colors">
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <p className="font-display text-lg font-extrabold text-muted-foreground">{fmt(totals.opening)}</p>
+                    {totals.availableOpeningCredit > 0 && <p className="text-[9px] text-warning mt-0.5">Pending: {fmt(totals.availableOpeningCredit)}</p>}
+                  </div>
+
+                  {/* Purchases */}
+                  <div className="rounded-xl border bg-background p-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Purchases</p>
+                      <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.purchaseCount}×</span>
+                    </div>
+                    <p className="font-display text-lg font-extrabold text-destructive">+{fmt(totals.purchase)}</p>
+                  </div>
+
+                  {/* Sold Cost */}
+                  <div className="rounded-xl border bg-background p-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Sold Cost</p>
+                      <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.saleCount}×</span>
+                    </div>
+                    <p className="font-display text-lg font-extrabold text-primary">{fmt(totals.sold)}</p>
+                    {totals.availableSoldCost > 0 && <p className="text-[9px] text-primary/70 mt-0.5">Pending: {fmt(totals.availableSoldCost)}</p>}
+                  </div>
+
+                  {/* Returns */}
+                  <div className="rounded-xl border bg-background p-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Returns</p>
+                      <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.returnCount}×</span>
+                    </div>
+                    <p className="font-display text-lg font-extrabold text-warning">-{fmt(totals.returned)}</p>
+                  </div>
+
+                  {/* Payments */}
+                  <div className="rounded-xl border bg-background p-3">
+                    <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground mb-1.5">Paid</p>
+                    <p className="font-display text-lg font-extrabold text-success">-{fmt(totals.payment)}</p>
+                  </div>
+
+                  {/* Net Balance formula */}
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                    <p className="text-[10px] font-display uppercase tracking-wider text-primary/70 mb-1.5">Net Balance</p>
+                    <p className={`font-display text-lg font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
+                    <p className="text-[8px] text-muted-foreground mt-0.5">Opening + Purchase − Paid − Returns</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <button onClick={() => setShowStockEntry(true)} className="rounded-2xl border p-4 text-left hover:bg-accent/40 transition-colors">
-                    <Package className="w-5 h-5 text-destructive mb-2" />
-                    <p className="font-display font-bold">Purchase Stock</p>
-                    <p className="text-xs text-muted-foreground mt-1">Adds inventory and increases payable balance</p>
+                {/* Action buttons */}
+                <div className="grid grid-cols-3 gap-3">
+                  <button onClick={() => setShowStockEntry(true)} className="rounded-xl border p-3 text-left hover:bg-accent/40 transition-colors group">
+                    <Package className="w-5 h-5 text-destructive mb-1.5" />
+                    <p className="font-display font-bold text-sm">Purchase Stock</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Add IMEI + increases balance</p>
                   </button>
-                  <button onClick={() => setShowPayment(true)} className="rounded-2xl border p-4 text-left hover:bg-accent/40 transition-colors">
-                    <IndianRupee className="w-5 h-5 text-success mb-2" />
-                    <p className="font-display font-bold">Record Payment</p>
-                    <p className="text-xs text-muted-foreground mt-1">Reduces dealer balance immediately</p>
+                  <button onClick={() => setShowPayment(true)} className="rounded-xl border p-3 text-left hover:bg-accent/40 transition-colors">
+                    <IndianRupee className="w-5 h-5 text-success mb-1.5" />
+                    <p className="font-display font-bold text-sm">Record Payment</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Reduces dealer balance</p>
                   </button>
-                  <button onClick={() => setShowReturnForm(true)} className="rounded-2xl border p-4 text-left hover:bg-accent/40 transition-colors">
-                    <RotateCcw className="w-5 h-5 text-warning mb-2" />
-                    <p className="font-display font-bold">Return Stock</p>
-                    <p className="text-xs text-muted-foreground mt-1">Removes inventory and reduces dealer balance</p>
+                  <button onClick={() => setShowReturnForm(true)} className="rounded-xl border p-3 text-left hover:bg-accent/40 transition-colors">
+                    <RotateCcw className="w-5 h-5 text-warning mb-1.5" />
+                    <p className="font-display font-bold text-sm">Return Stock</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Removes IMEI + reduces balance</p>
                   </button>
                 </div>
               </div>
 
+              {/* Transaction History */}
               <div className="p-5 flex-1 overflow-auto">
                 <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
-                  <div>
-                    <h3 className="font-display font-bold text-lg">Transaction History</h3>
-                    <p className="text-xs text-muted-foreground">Click a row to expand details</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-muted-foreground" />
-                    <select value={txnFilter} onChange={e => setTxnFilter(e.target.value as any)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                      <option value="all">All</option>
-                      <option value="purchase">Purchase</option>
-                      <option value="sale_deduction">Sale</option>
-                      <option value="payment">Payment</option>
-                      <option value="stock_return">Return</option>
-                    </select>
-                  </div>
+                  <h3 className="font-display font-bold">Transaction History</h3>
+                  <select value={txnFilter} onChange={e => setTxnFilter(e.target.value as any)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="all">All Types</option>
+                    <option value="purchase">📦 Purchases</option>
+                    <option value="sale_deduction">💰 Sales</option>
+                    <option value="payment">✅ Payments</option>
+                    <option value="stock_return">↩ Returns</option>
+                  </select>
                 </div>
 
-                <div className="rounded-2xl border overflow-hidden">
+                <div className="rounded-xl border overflow-hidden">
                   <table className="w-full text-sm">
                     <thead className="bg-secondary/50">
                       <tr className="text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground">
-                        <th className="px-4 py-3">Date</th>
-                        <th className="px-4 py-3">Type</th>
-                        <th className="px-4 py-3">Reference</th>
-                        <th className="px-4 py-3 text-center">Qty</th>
-                        <th className="px-4 py-3 text-right">Cost Value</th>
-                        <th className="px-4 py-3 text-right">Balance After</th>
+                        <th className="px-4 py-3">Date & Type</th>
+                        <th className="px-4 py-3">Details</th>
+                        <th className="px-4 py-3 text-right">Amount</th>
+                        <th className="px-4 py-3 text-right">Balance</th>
                         <th className="px-4 py-3 w-8"></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleTxns.map(txn => (
-                        <React.Fragment key={txn.id}>
-                          <tr
-                            onClick={() => setExpandedTxnId(expandedTxnId === txn.id ? null : txn.id)}
-                            className="border-t hover:bg-accent/30 transition-colors cursor-pointer"
-                          >
-                            <td className="px-4 py-3 text-muted-foreground">{new Date(txn.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-display font-bold ${
-                                txn.type === 'purchase' ? 'bg-destructive/10 text-destructive' :
-                                txn.type === 'payment' ? 'bg-success/10 text-success' :
-                                txn.type === 'stock_return' ? 'bg-warning/10 text-warning' :
-                                txn.type === 'opening_adjustment' ? 'bg-accent text-accent-foreground' :
-                                'bg-primary/10 text-primary'
-                              }`}>
-                                {txn.type === 'sale_deduction' ? 'Sale' : txn.type === 'stock_return' ? 'Return' : txn.type === 'opening_adjustment' ? 'Adj.' : txn.type}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="font-display font-semibold text-foreground">{txn.invoice_ref || txn.imei_ref || 'Manual entry'}</div>
-                            </td>
-                            <td className="px-4 py-3 text-center">{getQuantityFromTxn(txn)}</td>
-                            <td className="px-4 py-3 text-right font-display font-bold">{txn.type === 'purchase' ? '+' : '-'}{fmt(Number(txn.amount))}</td>
-                            <td className="px-4 py-3 text-right font-display font-extrabold">{fmt(Number(txn.running_balance))}</td>
-                            <td className="px-4 py-3">
-                              {expandedTxnId === txn.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                            </td>
-                          </tr>
-                          {expandedTxnId === txn.id && (
-                            <tr className="border-t bg-accent/20">
-                              <td colSpan={7} className="px-6 py-4">
-                                <div className="text-sm space-y-2">
-                                  <p className="text-muted-foreground"><span className="font-display font-semibold text-foreground">Description:</span> {txn.description}</p>
-                                  {txn.imei_ref && <p className="text-muted-foreground"><span className="font-display font-semibold text-foreground">IMEI:</span> <span className="font-mono">{txn.imei_ref}</span></p>}
-                                  {txn.invoice_ref && <p className="text-muted-foreground"><span className="font-display font-semibold text-foreground">Invoice:</span> {txn.invoice_ref}</p>}
-                                  <p className="text-muted-foreground"><span className="font-display font-semibold text-foreground">Recorded:</span> {new Date(txn.created_at).toLocaleString('en-IN')}</p>
+                      {visibleTxns.length === 0 && (
+                        <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">No transactions found</td></tr>
+                      )}
+                      {visibleTxns.map(txn => {
+                        const meta = TXN_META[txn.type] || { label: txn.type, colorClass: 'text-foreground', bgClass: 'bg-secondary', sign: '' as const };
+                        const isExpanded = expandedTxnId === txn.id;
+                        return (
+                          <React.Fragment key={txn.id}>
+                            <tr onClick={() => setExpandedTxnId(isExpanded ? null : txn.id)} className={`border-t hover:bg-accent/30 transition-colors cursor-pointer ${isExpanded ? 'bg-accent/20' : ''}`}>
+                              <td className="px-4 py-3">
+                                <div className="text-xs text-muted-foreground">{new Date(txn.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                                <span className={`inline-flex items-center mt-1 rounded-full px-2 py-0.5 text-[10px] font-display font-bold ${meta.bgClass} ${meta.colorClass}`}>
+                                  {meta.label}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="font-display font-semibold text-sm text-foreground truncate max-w-[180px]">
+                                  {txn.invoice_ref || txn.imei_ref || txn.description.split('|')[0].trim()}
                                 </div>
+                                {getQuantityFromTxn(txn) !== '—' && <div className="text-[10px] text-muted-foreground">Qty: {getQuantityFromTxn(txn)}</div>}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <span className={`font-display font-bold ${meta.colorClass}`}>
+                                  {txn.type === 'purchase' ? '+' : txn.type === 'payment' || txn.type === 'stock_return' ? '−' : ''}{fmt(Number(txn.amount))}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right font-display font-extrabold text-sm">{fmt(Number(txn.running_balance))}</td>
+                              <td className="px-4 py-3">
+                                {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                               </td>
                             </tr>
-                          )}
-                        </React.Fragment>
-                      ))}
-                      {visibleTxns.length === 0 && (
-                        <tr>
-                          <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
-                            <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                            No transactions found
-                          </td>
-                        </tr>
-                      )}
+                            {isExpanded && (
+                              <tr className="border-t bg-accent/10">
+                                <td colSpan={5} className="px-5 py-4">
+                                  <div className="text-xs space-y-1.5 bg-background rounded-lg p-3 border">
+                                    <p className="font-display font-semibold text-sm text-foreground mb-2">Transaction Details</p>
+                                    <p className="text-muted-foreground"><span className="font-semibold text-foreground">Description:</span> {txn.description}</p>
+                                    {txn.imei_ref && <p className="text-muted-foreground"><span className="font-semibold text-foreground">IMEI:</span> <span className="font-mono bg-secondary px-1.5 py-0.5 rounded">{txn.imei_ref}</span></p>}
+                                    {txn.invoice_ref && <p className="text-muted-foreground"><span className="font-semibold text-foreground">Invoice Ref:</span> {txn.invoice_ref}</p>}
+                                    <p className="text-muted-foreground"><span className="font-semibold text-foreground">Date & Time:</span> {new Date(txn.created_at).toLocaleString('en-IN')}</p>
+                                    <div className="pt-1.5 border-t flex gap-4">
+                                      <div><p className="text-[10px] text-muted-foreground">Amount</p><p className={`font-display font-bold ${meta.colorClass}`}>{fmt(Number(txn.amount))}</p></div>
+                                      <div><p className="text-[10px] text-muted-foreground">Running Balance</p><p className="font-display font-bold">{fmt(Number(txn.running_balance))}</p></div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="font-display font-semibold">Select a dealer to view the ledger</p>
+            <div className="h-full flex items-center justify-center text-center p-8">
+              <div>
+                <Building2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="font-display font-semibold text-muted-foreground">Select a dealer to view their ledger</p>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      <Modal open={showDealerForm} onClose={() => { setShowDealerForm(false); setEditingDealerId(null); }} title={editingDealerId ? 'Edit Dealer' : 'Add Dealer'} subtitle={editingDealerId ? 'Update dealer details' : 'Create dealer master with opening credit'}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Brand Name</label>
-            <Input value={dealerForm.brand_name} onChange={e => setDealerForm({ ...dealerForm, brand_name: e.target.value })} placeholder="OPPO, Vivo" />
-          </div>
-          <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Dealer Name</label>
-            <Input value={dealerForm.dealer_name} onChange={e => setDealerForm({ ...dealerForm, dealer_name: e.target.value })} placeholder="Dealer contact" />
-          </div>
-          <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Phone Number</label>
-            <Input value={dealerForm.phone} onChange={e => setDealerForm({ ...dealerForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="9876543210" />
-          </div>
-          <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">GSTIN</label>
-            <Input value={dealerForm.gstin} onChange={e => setDealerForm({ ...dealerForm, gstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15) })} placeholder="Optional" />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Address</label>
-            <Input value={dealerForm.address} onChange={e => setDealerForm({ ...dealerForm, address: e.target.value })} placeholder="Dealer address" />
-          </div>
+      {/* ── Add/Edit Dealer Modal ── */}
+      <Modal open={showDealerForm} onClose={() => { setShowDealerForm(false); setEditingDealerId(null); }} title={editingDealerId ? 'Edit Dealer' : 'Add New Dealer'}>
+        <div className="space-y-3">
+          {[['dealer_name', 'Dealer / Person Name *'], ['brand_name', 'Brand Name'], ['phone', 'Phone'], ['gstin', 'GSTIN'], ['address', 'Address']].map(([field, label]) => (
+            <div key={field}>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">{label}</label>
+              <Input value={(dealerForm as any)[field] || ''} onChange={e => setDealerForm({ ...dealerForm, [field]: e.target.value })} className="h-10" />
+            </div>
+          ))}
           {!editingDealerId && (
-            <div className="sm:col-span-2">
-              <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Opening Credit</label>
-              <Input type="number" value={dealerForm.total_credit || ''} onChange={e => setDealerForm({ ...dealerForm, total_credit: parseFloat(e.target.value) || 0 })} placeholder="Amount payable at start" />
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Opening Credit (₹)</label>
+              <Input type="number" value={dealerForm.total_credit || ''} onChange={e => setDealerForm({ ...dealerForm, total_credit: parseFloat(e.target.value) || 0 })} className="h-10" placeholder="0" />
             </div>
           )}
-        </div>
-        <div className="flex justify-end gap-3 mt-5">
-          <Button variant="outline" onClick={() => { setShowDealerForm(false); setEditingDealerId(null); }}>Cancel</Button>
-          <Button onClick={handleAddDealer} className="gradient-primary border-0 text-primary-foreground">{editingDealerId ? 'Update Dealer' : 'Save Dealer'}</Button>
+          <Button onClick={handleAddDealer} className="w-full gradient-primary border-0 text-primary-foreground">{editingDealerId ? 'Update Dealer' : 'Add Dealer'}</Button>
         </div>
       </Modal>
 
-      <Modal open={showStockEntry} onClose={() => { setShowStockEntry(false); setShowNewProductInStock(false); }} title="Purchase Stock" subtitle={`Adds inventory for ${selectedDealer?.dealer_name || 'dealer'} and increases payable balance`}>
+      {/* ── Stock Entry Modal ── */}
+      <Modal open={showStockEntry} onClose={() => setShowStockEntry(false)} title="Purchase Stock" subtitle={`Dealer: ${selectedDealer?.dealer_name}`}>
         <div className="space-y-4">
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-display font-semibold text-muted-foreground">Product</label>
-              <button onClick={() => setShowNewProductInStock(!showNewProductInStock)}
-                className="text-xs font-display font-semibold text-primary hover:underline flex items-center gap-1">
-                <Plus className="w-3 h-3" /> {showNewProductInStock ? 'Select Existing' : 'New Product'}
-              </button>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Search Product</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input value={stockSearch} onChange={e => { setStockSearch(e.target.value); setStockForm({ ...stockForm, product_id: '' }); }} className="h-10 pl-9" placeholder="Brand, model, variant..." />
             </div>
-
-            {!showNewProductInStock ? (
-              <>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    value={stockSearch}
-                    onChange={e => setStockSearch(e.target.value)}
-                    placeholder="Search product by name, brand, model..."
-                    className="w-full h-10 pl-9 pr-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-                <div className="max-h-40 overflow-y-auto rounded-xl border bg-background">
-                  {products
-                    .filter(p => !stockSearch || `${p.brand} ${p.model} ${p.variant} ${p.color}`.toLowerCase().includes(stockSearch.toLowerCase()))
-                    .map(product => (
-                      <button key={product.id} onClick={() => {
-                        setStockForm({ ...stockForm, product_id: product.id, unit_price: Number(product.purchase_price), hsn_code: (product as any).hsn_code || '' });
-                        setStockSearch(`${product.brand} ${product.model} ${product.variant}`);
-                      }}
-                        className={`w-full text-left px-3 py-2.5 border-b last:border-b-0 flex items-center justify-between hover:bg-accent transition-colors ${stockForm.product_id === product.id ? 'bg-accent/60' : ''}`}>
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="w-4 h-4 text-primary" />
-                          <div>
-                            <span className="font-display font-semibold text-sm">{product.brand} {product.model}</span>
-                            <span className="text-xs text-muted-foreground ml-2">{product.variant} {product.color}</span>
-                          </div>
-                        </div>
-                        <span className="text-xs text-muted-foreground">Stock: {product.stock_quantity}</span>
-                      </button>
-                    ))}
-                  {products.filter(p => !stockSearch || `${p.brand} ${p.model} ${p.variant} ${p.color}`.toLowerCase().includes(stockSearch.toLowerCase())).length === 0 && (
-                    <div className="px-3 py-6 text-center text-muted-foreground text-sm">
-                      No products found. <button onClick={() => setShowNewProductInStock(true)} className="text-primary font-semibold hover:underline">Create new product</button>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="rounded-xl border bg-accent/30 p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block flex items-center gap-1"><Tag className="w-3 h-3" /> Brand *</label>
-                    <Input value={newProductForm.brand} onChange={e => setNewProductForm({ ...newProductForm, brand: e.target.value })} placeholder="Samsung, Oppo..." className="h-9" />
+            {stockSearch && !stockForm.product_id && (
+              <div className="mt-1 border rounded-xl bg-card shadow-sm max-h-48 overflow-auto">
+                {filteredProducts.slice(0, 10).map(p => (
+                  <button key={p.id} onClick={() => { setStockForm({ ...stockForm, product_id: p.id, hsn_code: p.hsn_code }); setStockSearch(`${p.brand} ${p.model} ${p.variant}`); }} className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors border-b last:border-0">
+                    <div className="font-display font-semibold text-sm">{p.brand} {p.model}</div>
+                    <div className="text-xs text-muted-foreground">{p.variant} {p.color} · Stock: {p.stock_quantity}</div>
+                  </button>
+                ))}
+                {filteredProducts.length === 0 && (
+                  <div className="px-4 py-3 text-sm text-muted-foreground">
+                    No product found.
+                    <button onClick={() => setShowNewProductInStock(true)} className="text-primary hover:underline ml-1 font-semibold">Create new?</button>
                   </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block flex items-center gap-1"><Smartphone className="w-3 h-3" /> Model *</label>
-                    <Input value={newProductForm.model} onChange={e => setNewProductForm({ ...newProductForm, model: e.target.value })} placeholder="Galaxy A54..." className="h-9" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block flex items-center gap-1"><HardDrive className="w-3 h-3" /> RAM/Storage</label>
-                    <Input value={newProductForm.variant} onChange={e => setNewProductForm({ ...newProductForm, variant: e.target.value })} placeholder="6GB/128GB" className="h-9" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block flex items-center gap-1"><Palette className="w-3 h-3" /> Color</label>
-                    <Input value={newProductForm.color} onChange={e => setNewProductForm({ ...newProductForm, color: e.target.value })} placeholder="Black, Blue..." className="h-9" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block">Sale Price (₹)</label>
-                    <Input type="number" value={newProductForm.sale_price || ''} onChange={e => setNewProductForm({ ...newProductForm, sale_price: parseFloat(e.target.value) || 0 })} className="h-9" placeholder="0" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block">GST %</label>
-                    <Input type="number" value={newProductForm.gst_percent} onChange={e => setNewProductForm({ ...newProductForm, gst_percent: parseFloat(e.target.value) || 0 })} className="h-9" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block">HSN Code</label>
-                    <Input value={newProductForm.hsn_code} onChange={e => setNewProductForm({ ...newProductForm, hsn_code: e.target.value })} className="h-9" placeholder="85171300" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block">Category</label>
-                    <select value={newProductForm.category} onChange={e => setNewProductForm({ ...newProductForm, category: e.target.value })}
-                      className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                      <option value="mobile">📱 Mobile</option>
-                      <option value="accessory">🎧 Accessory</option>
-                      <option value="other">📦 Other</option>
-                    </select>
-                  </div>
-                </div>
-                <Button size="sm" onClick={handleCreateProductInStock} className="gradient-primary border-0 text-primary-foreground w-full">
-                  <Plus className="w-4 h-4 mr-1" /> Create Product & Select
-                </Button>
+                )}
               </div>
             )}
           </div>
 
+          {showNewProductInStock && (
+            <div className="border rounded-xl p-4 space-y-3 bg-accent/30">
+              <p className="font-display font-bold text-sm">Create New Product</p>
+              <div className="grid grid-cols-2 gap-3">
+                {[['brand', 'Brand *'], ['model', 'Model *'], ['variant', 'Variant'], ['color', 'Color']].map(([field, label]) => (
+                  <div key={field}>
+                    <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
+                    <Input value={(newProductForm as any)[field] || ''} onChange={e => setNewProductForm({ ...newProductForm, [field]: e.target.value })} className="h-9" />
+                  </div>
+                ))}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Sale Price</label>
+                  <Input type="number" value={newProductForm.sale_price || ''} onChange={e => setNewProductForm({ ...newProductForm, sale_price: parseFloat(e.target.value) || 0 })} className="h-9" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">GST %</label>
+                  <Input type="number" value={newProductForm.gst_percent || ''} onChange={e => setNewProductForm({ ...newProductForm, gst_percent: parseFloat(e.target.value) || 0 })} className="h-9" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-muted-foreground mb-1 block">HSN Code</label>
+                  <Input value={newProductForm.hsn_code} onChange={e => setNewProductForm({ ...newProductForm, hsn_code: e.target.value })} className="h-9" placeholder="8517" />
+                </div>
+              </div>
+              <Button size="sm" onClick={handleCreateProductInStock} className="w-full gradient-primary border-0 text-primary-foreground">Create Product</Button>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Cost Price Per Unit (₹)</label>
-              <Input type="number" value={stockForm.unit_price || ''} onChange={e => setStockForm({ ...stockForm, unit_price: parseFloat(e.target.value) || 0 })} />
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Purchase Price / Unit (₹)</label>
+              <Input type="number" value={stockForm.unit_price || ''} onChange={e => setStockForm({ ...stockForm, unit_price: parseFloat(e.target.value) || 0 })} className="h-10" placeholder="0" />
             </div>
             <div>
-              <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">HSN Code</label>
-              <Input value={stockForm.hsn_code} onChange={e => setStockForm({ ...stockForm, hsn_code: e.target.value })} placeholder="85171300" />
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">HSN Code</label>
+              <Input value={stockForm.hsn_code} onChange={e => setStockForm({ ...stockForm, hsn_code: e.target.value })} className="h-10" placeholder="8517" />
             </div>
           </div>
-
           <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">IMEI Numbers (one per line)</label>
-            <Textarea rows={6} value={stockForm.imeis} onChange={e => setStockForm({ ...stockForm, imeis: e.target.value })} placeholder="Enter 15-digit IMEI numbers&#10;356789012345678&#10;356789012345679" className="font-mono" />
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">IMEI Numbers (one per line)</label>
+            <Textarea value={stockForm.imeis} onChange={e => setStockForm({ ...stockForm, imeis: e.target.value })} rows={5} className="font-mono text-xs" placeholder={"123456789012345\n987654321098765"} />
+            <p className="text-[10px] text-muted-foreground mt-1">{stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length} valid IMEIs</p>
           </div>
-
-          <div className="rounded-xl border bg-accent/40 p-4 text-sm space-y-2">
-            <div className="flex justify-between"><span className="text-muted-foreground">Units</span><span className="font-display font-bold">{stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Cost Price / Unit</span><span className="font-display font-bold">{fmt(stockForm.unit_price)}</span></div>
-            <div className="flex justify-between border-t pt-2"><span className="text-muted-foreground font-semibold">Total Purchase Value</span><span className="font-display font-bold text-destructive">{fmt(stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length * stockForm.unit_price)}</span></div>
+          <div className="rounded-xl bg-secondary/50 p-3 text-sm">
+            <p className="font-display font-semibold mb-1">Ledger Impact</p>
+            <p className="text-muted-foreground">Balance will increase by <span className="text-destructive font-bold">{fmt(stockForm.unit_price * stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length)}</span></p>
           </div>
-        </div>
-        <div className="flex justify-end gap-3 mt-5">
-          <Button variant="outline" onClick={() => { setShowStockEntry(false); setShowNewProductInStock(false); }}>Cancel</Button>
-          <Button onClick={handleStockEntry} disabled={!stockForm.product_id} className="gradient-primary border-0 text-primary-foreground">Save Purchase</Button>
+          <Button onClick={handleStockEntry} className="w-full gradient-primary border-0 text-primary-foreground">Add to Inventory</Button>
         </div>
       </Modal>
 
-      <Modal open={showPayment} onClose={() => setShowPayment(false)} title="Record Payment" subtitle="Settlement reduces dealer balance — choose what you're settling">
+      {/* ── Payment Modal ── */}
+      <Modal open={showPayment} onClose={() => setShowPayment(false)} title="Record Payment" subtitle={`${selectedDealer?.dealer_name} · Balance: ${fmt(totals.current)}`}>
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Settle From</label>
-            <select value={paymentForm.settleFrom} onChange={e => setPaymentForm({ ...paymentForm, settleFrom: e.target.value as any })}
-              className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="opening_credit">Opening Credit (Available: {fmt(totals.availableOpeningCredit)})</option>
-              <option value="sold_cost">Sold Cost (Available: {fmt(totals.availableSoldCost)})</option>
-              <option value="both">Both (Custom Split)</option>
-            </select>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Settle From</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[['opening_credit', 'Opening Credit', fmt(totals.availableOpeningCredit)], ['sold_cost', 'Sold Cost', fmt(totals.availableSoldCost)], ['both', 'Split Both', '']].map(([v, l, avail]) => (
+                <button key={v} onClick={() => setPaymentForm({ ...paymentForm, settleFrom: v as any, amount: 0, soldCostAmount: 0, openingCreditAmount: 0 })}
+                  className={`p-3 rounded-xl border text-left transition-all ${paymentForm.settleFrom === v ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'hover:bg-accent/30'}`}>
+                  <p className="font-display font-bold text-xs">{l}</p>
+                  {avail && <p className="text-[10px] text-muted-foreground mt-0.5">Avail: {avail}</p>}
+                </button>
+              ))}
+            </div>
           </div>
 
           {paymentForm.settleFrom === 'both' ? (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Sold Cost Amount (₹)</label>
-                <Input type="number" value={paymentForm.soldCostAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, soldCostAmount: parseFloat(e.target.value) || 0 })} />
-                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.availableSoldCost)}</p>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Sold Cost (max: {fmt(totals.availableSoldCost)})</label>
+                <Input type="number" value={paymentForm.soldCostAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, soldCostAmount: parseFloat(e.target.value) || 0 })} className="h-10" />
               </div>
               <div>
-                <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Opening Credit Amount (₹)</label>
-                <Input type="number" value={paymentForm.openingCreditAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, openingCreditAmount: parseFloat(e.target.value) || 0 })} />
-                <p className="text-[10px] text-muted-foreground mt-1">Available: {fmt(totals.availableOpeningCredit)}</p>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Opening (max: {fmt(totals.availableOpeningCredit)})</label>
+                <Input type="number" value={paymentForm.openingCreditAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, openingCreditAmount: parseFloat(e.target.value) || 0 })} className="h-10" />
+              </div>
+              <div className="col-span-2 rounded-lg bg-secondary/50 px-3 py-2 text-sm">
+                Total: <span className="font-display font-bold text-primary">{fmt(paymentForm.soldCostAmount + paymentForm.openingCreditAmount)}</span>
               </div>
             </div>
           ) : (
             <div>
-              <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Amount (₹)</label>
-              <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Available: {fmt(paymentForm.settleFrom === 'sold_cost' ? totals.availableSoldCost : totals.availableOpeningCredit)}
-              </p>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Amount (max: {paymentForm.settleFrom === 'sold_cost' ? fmt(totals.availableSoldCost) : fmt(totals.availableOpeningCredit)})
+              </label>
+              <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} className="h-11 text-lg font-mono" placeholder="0" />
             </div>
           )}
 
           <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-2 block">Payment Method</label>
-            <div className="flex flex-wrap gap-3">
-              {['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Card'].map(method => (
-                <label key={method} className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={paymentForm.paymentMethods.includes(method)}
-                    onCheckedChange={(checked) => {
-                      setPaymentForm(prev => ({
-                        ...prev,
-                        paymentMethods: checked
-                          ? [...prev.paymentMethods, method]
-                          : prev.paymentMethods.filter(m => m !== method)
-                      }));
-                    }}
-                  />
-                  <span className="text-sm">{method}</span>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment Method(s)</label>
+            <div className="flex flex-wrap gap-2">
+              {['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Card'].map(m => (
+                <label key={m} className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={paymentForm.paymentMethods.includes(m)} onCheckedChange={checked => setPaymentForm({ ...paymentForm, paymentMethods: checked ? [...paymentForm.paymentMethods, m] : paymentForm.paymentMethods.filter(x => x !== m) })} />
+                  <span className="text-sm">{m}</span>
                 </label>
               ))}
             </div>
           </div>
-
           <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Reference / Description</label>
-            <Input value={paymentForm.description} onChange={e => setPaymentForm({ ...paymentForm, description: e.target.value })} placeholder="Transaction ref, cheque no..." />
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Notes (optional)</label>
+            <Input value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} className="h-10" placeholder="Reference / remarks" />
           </div>
-
-          <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Notes</label>
-            <Textarea value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder="Additional notes..." rows={2} />
-          </div>
-
-          <div className="rounded-xl border bg-accent/40 p-4 text-sm space-y-2">
-            <div className="flex justify-between"><span className="text-muted-foreground">Current Balance</span><span className="font-display font-bold">{fmt(Number(selectedDealer?.total_credit || 0))}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Payment Amount</span><span className="font-display font-bold text-success">{fmt(paymentForm.settleFrom === 'both' ? paymentForm.soldCostAmount + paymentForm.openingCreditAmount : paymentForm.amount)}</span></div>
-            <div className="flex justify-between border-t pt-2"><span className="text-muted-foreground font-semibold">After Payment</span><span className="font-display font-bold text-success">{fmt(Number(selectedDealer?.total_credit || 0) - (paymentForm.settleFrom === 'both' ? paymentForm.soldCostAmount + paymentForm.openingCreditAmount : paymentForm.amount))}</span></div>
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 mt-5">
-          <Button variant="outline" onClick={() => setShowPayment(false)}>Cancel</Button>
-          <Button onClick={handlePayment} className="bg-success hover:bg-success/90 text-success-foreground">Save Payment</Button>
+          <Button onClick={handlePayment} className="w-full gradient-primary border-0 text-primary-foreground">Record Payment</Button>
         </div>
       </Modal>
 
-      <Modal open={showEditCredit} onClose={() => setShowEditCredit(false)} title="Edit Opening Credit" subtitle="Adjust the opening balance for this dealer">
-        <div className="space-y-3">
+      {/* ── Return Stock Modal ── */}
+      <Modal open={showReturnForm} onClose={() => setShowReturnForm(false)} title="Return Stock" subtitle="Removes from inventory and reduces balance">
+        <div className="space-y-4">
           <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Current Opening Credit</label>
-            <p className="font-display text-xl font-bold">{fmt(totals.opening)}</p>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">IMEI Number</label>
+            <Input value={returnForm.imei} onChange={e => setReturnForm({ ...returnForm, imei: e.target.value })} className="h-11 font-mono" placeholder="15-digit IMEI" maxLength={15} />
           </div>
           <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">New Opening Credit (₹)</label>
-            <Input type="number" value={editCreditValue || ''} onChange={e => setEditCreditValue(parseFloat(e.target.value) || 0)} />
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Return Reason (optional)</label>
+            <Input value={returnForm.reason} onChange={e => setReturnForm({ ...returnForm, reason: e.target.value })} className="h-10" placeholder="Defective, wrong model..." />
           </div>
-        </div>
-        <div className="flex justify-end gap-3 mt-5">
-          <Button variant="outline" onClick={() => setShowEditCredit(false)}>Cancel</Button>
-          <Button onClick={handleEditOpeningCredit} className="gradient-primary border-0 text-primary-foreground">Update</Button>
+          <Button onClick={handleStockReturn} className="w-full gradient-primary border-0 text-primary-foreground">Process Return</Button>
         </div>
       </Modal>
 
-      <Modal open={showReturnForm} onClose={() => setShowReturnForm(false)} title="Return Stock" subtitle="Removes inventory and reduces dealer balance by cost price">
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">IMEI</label>
-            <Input value={returnForm.imei} onChange={e => setReturnForm({ ...returnForm, imei: e.target.value.replace(/\D/g, '').slice(0, 15) })} className="font-mono" placeholder="15-digit IMEI" />
+      {/* ── Edit Opening Credit Modal ── */}
+      <Modal open={showEditCredit} onClose={() => setShowEditCredit(false)} title="Edit Opening Credit">
+        <div className="space-y-4">
+          <div className="rounded-xl bg-secondary/50 p-3 text-sm space-y-1">
+            <div className="flex justify-between"><span className="text-muted-foreground">Current Opening:</span><span className="font-bold">{fmt(totals.opening)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Current Balance:</span><span className="font-bold">{fmt(totals.current)}</span></div>
           </div>
           <div>
-            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">Reason</label>
-            <Input value={returnForm.reason} onChange={e => setReturnForm({ ...returnForm, reason: e.target.value })} placeholder="Damaged / replacement / wrong stock" />
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">New Opening Credit (₹)</label>
+            <Input type="number" value={editCreditValue || ''} onChange={e => setEditCreditValue(parseFloat(e.target.value) || 0)} className="h-11 text-lg font-mono" />
           </div>
+          <Button onClick={handleEditOpeningCredit} className="w-full gradient-primary border-0 text-primary-foreground">Update Opening Credit</Button>
         </div>
-        <div className="flex justify-end gap-3 mt-5">
-          <Button variant="outline" onClick={() => setShowReturnForm(false)}>Cancel</Button>
-          <Button variant="destructive" onClick={handleStockReturn}>Save Return</Button>
+      </Modal>
+
+      {/* ── Report Modal ── */}
+      <Modal open={showReport} onClose={() => setShowReport(false)} title="Dealer Report" subtitle="Product purchase, sold and return counts">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setReportDealerMode('selected')} className={`px-3 py-1.5 rounded-lg text-xs font-display font-semibold border transition-all ${reportDealerMode === 'selected' ? 'bg-primary text-primary-foreground border-primary' : 'border-input'}`}>
+              {selectedDealer?.dealer_name || 'Selected Dealer'}
+            </button>
+            <button onClick={() => setReportDealerMode('all')} className={`px-3 py-1.5 rounded-lg text-xs font-display font-semibold border transition-all ${reportDealerMode === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'border-input'}`}>
+              All Dealers
+            </button>
+          </div>
+
+          <div className="rounded-xl border overflow-hidden">
+            <table className="w-full text-xs">
+              <thead className="bg-secondary/50">
+                <tr className="text-left font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 py-2">Dealer</th>
+                  <th className="px-3 py-2 text-center">Purchases</th>
+                  <th className="px-3 py-2 text-center">Sold</th>
+                  <th className="px-3 py-2 text-center">Returns</th>
+                  <th className="px-3 py-2 text-right">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {buildReportData().map(r => (
+                  <tr key={r.dealer.id} className="border-t">
+                    <td className="px-3 py-2">
+                      <div className="font-display font-semibold">{r.dealer.dealer_name}</div>
+                      <div className="text-[10px] text-muted-foreground">{r.dealer.brand_name}</div>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <div className="font-bold text-destructive">{r.purchaseCount}</div>
+                      <div className="text-[10px] text-muted-foreground">{fmt(r.purchase)}</div>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <div className="font-bold text-primary">{r.soldCount}</div>
+                      <div className="text-[10px] text-muted-foreground">{fmt(r.sold)}</div>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <div className="font-bold text-warning">{r.returnCount}</div>
+                      <div className="text-[10px] text-muted-foreground">{fmt(r.returned)}</div>
+                    </td>
+                    <td className={`px-3 py-2 text-right font-display font-bold ${getBalanceTone(r.balance)}`}>{fmt(r.balance)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Button onClick={downloadDealerCSV} className="w-full" variant="outline">
+            <Download className="w-4 h-4 mr-2" /> Download CSV Report
+          </Button>
         </div>
       </Modal>
     </div>

@@ -25,6 +25,7 @@ export const ReportsPage: React.FC = () => {
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [modeFilter, setModeFilter] = useState('all');
   const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(null);
+  const [autoPrintQueue, setAutoPrintQueue] = useState(false);
 
   useEffect(() => {
     if (!activeShopId && !isAllShops) return;
@@ -49,6 +50,7 @@ export const ReportsPage: React.FC = () => {
           ...p,
           inStock: imeis.filter(r => r.product_id === p.id && r.status === 'in_stock').length,
           sold: imeis.filter(r => r.product_id === p.id && r.status === 'sold').length,
+          returned: imeis.filter(r => r.product_id === p.id && r.status === 'returned').length,
           total: imeis.filter(r => r.product_id === p.id).length,
           stockValue: imeis.filter(r => r.product_id === p.id && r.status === 'in_stock').reduce((s, r) => s + Number(r.purchase_price), 0),
         })));
@@ -112,11 +114,10 @@ export const ReportsPage: React.FC = () => {
       warranty_mobile: (invoice as any).warranty_mobile || undefined,
       warranty_accessories: (invoice as any).warranty_accessories || undefined,
     };
-    // Attach payment_details for mixed payment breakdown
     (preview as any).payment_details = invoice.payment_details;
 
     setSelectedInvoice(preview);
-    if (autoPrint) window.setTimeout(() => window.print(), 250);
+    if (autoPrint) window.setTimeout(() => window.print(), 300);
   };
 
   const toggleSelect = (id: string) => {
@@ -174,15 +175,11 @@ export const ReportsPage: React.FC = () => {
       Total: inv.grand_total,
     }));
     downloadCSV(data, `invoices_${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Invoices downloaded');
+    toast.success('Invoices exported');
   };
 
   const downloadBackup = () => {
-    const backup = {
-      exportDate: new Date().toISOString(),
-      invoices: filteredInvoices,
-      stock: stockData,
-    };
+    const backup = { exportDate: new Date().toISOString(), invoices: filteredInvoices, stock: stockData };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -216,12 +213,20 @@ export const ReportsPage: React.FC = () => {
     { key: 'profit', label: 'Profit', icon: DollarSign },
   ] as const;
 
+  const PAYMENT_COLORS: Record<string, string> = {
+    cash: 'bg-success/10 text-success',
+    upi: 'bg-primary/10 text-primary',
+    card: 'bg-warning/10 text-warning',
+    emi: 'bg-destructive/10 text-destructive',
+    mixed: 'bg-accent text-accent-foreground',
+  };
+
   const renderPaymentDetail = (inv: Invoice) => {
-    if (inv.payment_method !== 'mixed' || !inv.payment_details) return null;
+    if (!inv.payment_details) return null;
     const details = inv.payment_details as Record<string, number>;
     return (
       <div className="px-6 py-3 bg-accent/20 border-t text-xs">
-        <p className="font-display font-semibold text-foreground mb-1.5">Payment Breakdown:</p>
+        <p className="font-display font-semibold text-foreground mb-1.5">💳 Payment Breakdown:</p>
         <div className="flex flex-wrap gap-2">
           {Object.entries(details).map(([key, val]) =>
             Number(val) > 0 ? (
@@ -359,9 +364,7 @@ export const ReportsPage: React.FC = () => {
                     <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                     <td className="px-4 py-2.5 font-display text-sm">{inv.customer_name}</td>
                     <td className="px-4 py-2.5">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold ${
-                        inv.is_gst_bill ? (inv.customer_gst ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning') : 'bg-secondary text-secondary-foreground'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold ${inv.is_gst_bill ? (inv.customer_gst ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning') : 'bg-secondary text-secondary-foreground'}`}>
                         {inv.is_gst_bill ? (inv.customer_gst ? 'B2B' : 'B2C') : 'Non-GST'}
                       </span>
                     </td>
@@ -370,27 +373,36 @@ export const ReportsPage: React.FC = () => {
                         onClick={() => setExpandedPaymentId(expandedPaymentId === inv.id ? null : inv.id)}
                         className="flex items-center gap-1"
                       >
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-display font-bold bg-secondary capitalize">{inv.payment_method}</span>
-                        {inv.payment_method === 'mixed' && inv.payment_details && (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold capitalize ${PAYMENT_COLORS[inv.payment_method] || 'bg-secondary text-secondary-foreground'}`}>
+                          {inv.payment_method}
+                        </span>
+                        {inv.payment_details && (
                           expandedPaymentId === inv.id ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />
                         )}
                       </button>
                     </td>
                     <td className="px-4 py-2.5 text-right price-text">₹{Number(inv.grand_total).toLocaleString('en-IN')}</td>
                     <td className="px-4 py-2.5">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" className="h-8" onClick={() => openInvoice(inv)}><Eye className="w-3.5 h-3.5 mr-1" /> View</Button>
-                        <Button size="sm" className="h-8" onClick={() => openInvoice(inv, true)}><Printer className="w-3.5 h-3.5 mr-1" /> Reprint</Button>
+                      <div className="flex justify-end gap-1">
+                        <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => openInvoice(inv)}>
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button size="sm" className="h-8 px-2" onClick={() => openInvoice(inv, true)}>
+                          <Printer className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
-                  {expandedPaymentId === inv.id && inv.payment_method === 'mixed' && inv.payment_details && (
+                  {expandedPaymentId === inv.id && inv.payment_details && (
                     <tr>
                       <td colSpan={8}>{renderPaymentDetail(inv)}</td>
                     </tr>
                   )}
                 </React.Fragment>
               ))}
+              {filteredInvoices.length === 0 && (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No invoices found</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -427,19 +439,26 @@ export const ReportsPage: React.FC = () => {
             <thead className="bg-secondary/40">
               <tr className="text-left font-display text-[11px] text-muted-foreground uppercase tracking-wider">
                 <th className="px-4 py-3">Product</th>
+                <th className="px-4 py-3 text-center">Purchased</th>
                 <th className="px-4 py-3 text-center">In Stock</th>
                 <th className="px-4 py-3 text-center">Sold</th>
-                <th className="px-4 py-3 text-center">Total</th>
+                <th className="px-4 py-3 text-center">Returned</th>
                 <th className="px-4 py-3 text-right">Stock Value</th>
               </tr>
             </thead>
             <tbody>
               {stockData.map((p: any) => (
                 <tr key={p.id} className="border-t border-border/50 hover:bg-accent/30 transition-colors">
-                  <td className="px-4 py-2.5"><span className="font-display font-semibold">{p.brand} {p.model}</span><span className="text-muted-foreground ml-1.5 text-xs">{p.variant}</span></td>
-                  <td className="px-4 py-2.5 text-center"><span className={`font-display font-bold ${p.inStock > 0 ? 'text-success' : 'text-destructive'}`}>{p.inStock}</span></td>
-                  <td className="px-4 py-2.5 text-center text-muted-foreground">{p.sold}</td>
-                  <td className="px-4 py-2.5 text-center">{p.total}</td>
+                  <td className="px-4 py-2.5">
+                    <span className="font-display font-semibold">{p.brand} {p.model}</span>
+                    <span className="text-muted-foreground ml-1.5 text-xs">{p.variant}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-center text-muted-foreground font-display font-semibold">{p.total}</td>
+                  <td className="px-4 py-2.5 text-center">
+                    <span className={`font-display font-bold ${p.inStock > 0 ? 'text-success' : 'text-destructive'}`}>{p.inStock}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-center text-primary font-display font-bold">{p.sold}</td>
+                  <td className="px-4 py-2.5 text-center text-warning font-display font-bold">{p.returned}</td>
                   <td className="px-4 py-2.5 text-right price-text text-xs">₹{p.stockValue.toLocaleString('en-IN')}</td>
                 </tr>
               ))}
@@ -468,6 +487,7 @@ export const ReportsPage: React.FC = () => {
                 <div className="space-y-2 text-sm p-4 rounded-lg bg-secondary/30">
                   <div className="flex justify-between"><span className="text-muted-foreground">CGST Collected</span><span className="price-text">₹{totalCGST.toLocaleString('en-IN')}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">SGST Collected</span><span className="price-text">₹{totalSGST.toLocaleString('en-IN')}</span></div>
+                  <div className="border-t pt-2 flex justify-between font-semibold"><span>Total GST</span><span className="text-primary">₹{(totalCGST + totalSGST).toLocaleString('en-IN')}</span></div>
                 </div>
               </div>
             );
@@ -479,13 +499,21 @@ export const ReportsPage: React.FC = () => {
         <div className="bg-card rounded-xl border p-6 shadow-sm">
           {(() => {
             const totalRevenue = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
+            const totalGST = invoices.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
+            const netRevenue = totalRevenue - totalGST;
             const totalCost = stockData.reduce((s, p) => s + (p.sold * Number(p.purchase_price)), 0);
-            const profit = totalRevenue - totalCost;
+            const profit = netRevenue - totalCost;
             return (
-              <div className="grid grid-cols-3 gap-4">
-                <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Total Revenue</p><p className="font-display text-xl font-extrabold text-success">₹{totalRevenue.toLocaleString('en-IN')}</p></div>
-                <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Est. Cost</p><p className="font-display text-xl font-extrabold text-destructive">₹{totalCost.toLocaleString('en-IN')}</p></div>
-                <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Est. Profit</p><p className={`font-display text-xl font-extrabold ${profit >= 0 ? 'text-success' : 'text-destructive'}`}>₹{profit.toLocaleString('en-IN')}</p></div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Gross Revenue</p><p className="font-display text-xl font-extrabold">₹{totalRevenue.toLocaleString('en-IN')}</p></div>
+                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">GST Liability</p><p className="font-display text-xl font-extrabold text-warning">₹{totalGST.toLocaleString('en-IN')}</p></div>
+                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Est. Cost</p><p className="font-display text-xl font-extrabold text-destructive">₹{totalCost.toLocaleString('en-IN')}</p></div>
+                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Est. Profit</p><p className={`font-display text-xl font-extrabold ${profit >= 0 ? 'text-success' : 'text-destructive'}`}>₹{profit.toLocaleString('en-IN')}</p></div>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary/30 text-xs text-muted-foreground">
+                  Profit = Gross Revenue − GST − Est. Cost of Sold Items
+                </div>
               </div>
             );
           })()}
