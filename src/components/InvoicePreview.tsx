@@ -15,6 +15,10 @@ export const getSelectedTemplate = (): string => {
 interface Props {
   invoice: InvoiceData;
   onClose: () => void;
+  /** If provided, shows a "Confirm & Save" button instead of just print */
+  onConfirmSave?: () => void;
+  /** Label for the mode — preview-only or post-save */
+  mode?: 'preview' | 'saved';
 }
 
 const DEFAULT_TERMS = [
