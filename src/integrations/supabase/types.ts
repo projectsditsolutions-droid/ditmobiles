@@ -289,7 +289,9 @@ export type Database = {
           billing_address: string | null
           billing_business_name: string | null
           billing_gst_number: string | null
+          billing_logo_url: string | null
           billing_phone: string | null
+          billing_sub_heading: string | null
           cgst: number
           created_at: string
           customer_address: string | null
@@ -322,7 +324,9 @@ export type Database = {
           billing_address?: string | null
           billing_business_name?: string | null
           billing_gst_number?: string | null
+          billing_logo_url?: string | null
           billing_phone?: string | null
+          billing_sub_heading?: string | null
           cgst?: number
           created_at?: string
           customer_address?: string | null
@@ -355,7 +359,9 @@ export type Database = {
           billing_address?: string | null
           billing_business_name?: string | null
           billing_gst_number?: string | null
+          billing_logo_url?: string | null
           billing_phone?: string | null
+          billing_sub_heading?: string | null
           cgst?: number
           created_at?: string
           customer_address?: string | null
