@@ -488,6 +488,8 @@ export const POSBilling: React.FC = () => {
       billing_address: selectedProfile?.address || activeShop.address,
       billing_phone: selectedProfile?.phone || activeShop.phone,
       billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
+      billing_sub_heading: selectedProfile?.sub_heading || (activeShop as any).sub_heading || '',
+      billing_logo_url: selectedProfile?.logo_url || activeShop.logo_url || '',
       warranty_mobile: warrantyMobile || '',
       warranty_accessories: warrantyAccessories || '',
     } as any).select().single();
