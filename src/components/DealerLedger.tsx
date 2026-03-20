@@ -873,6 +873,15 @@ export const DealerLedger: React.FC = () => {
           </Button>
         </div>
       </Modal>
+
+      {/* ── Dealer Statement Modal ── */}
+      {showStatement && selectedDealer && (
+        <DealerStatement
+          dealer={selectedDealer}
+          allTxns={allTxns}
+          onClose={() => setShowStatement(false)}
+        />
+      )}
     </div>
   );
 };
