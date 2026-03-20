@@ -203,6 +203,7 @@ export const POSBilling: React.FC = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [showInvoice, setShowInvoice] = useState<InvoiceData | null>(null);
+  const [previewInvoice, setPreviewInvoice] = useState<InvoiceData | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
   const [gstProfiles, setGstProfiles] = useState<GSTProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
