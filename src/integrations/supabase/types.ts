@@ -702,6 +702,20 @@ export type Database = {
     }
     Functions: {
       decrement_stock: { Args: { p_product_id: string }; Returns: undefined }
+      get_next_invoice_number: {
+        Args: { p_shop_id: string }
+        Returns: {
+          invoice_number: string
+          next_num: number
+        }[]
+      }
+      get_next_profile_invoice_number: {
+        Args: { p_profile_id: string }
+        Returns: {
+          invoice_number: string
+          next_num: number
+        }[]
+      }
       get_user_shop_ids: { Args: { _user_id: string }; Returns: string[] }
       has_role: {
         Args: {
