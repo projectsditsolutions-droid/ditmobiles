@@ -870,6 +870,7 @@ export const POSBilling: React.FC = () => {
         onWarrantyMobileChange={setWarrantyMobile}
         onWarrantyAccessoriesChange={setWarrantyAccessories}
         onCompleteSale={handleCompleteSale}
+        onPreviewBill={handlePreviewBill}
         discountEnabled={settings?.discount_enabled ?? true}
       />
 
