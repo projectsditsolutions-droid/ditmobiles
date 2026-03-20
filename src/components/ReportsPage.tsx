@@ -462,7 +462,7 @@ export const ReportsPage: React.FC = () => {
                         <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => openInvoice(inv)}>
                           <Eye className="w-3.5 h-3.5" />
                         </Button>
-                        <Button size="sm" className="h-8 px-2" onClick={() => openInvoice(inv, true)}>
+                        <Button size="sm" className="h-8 px-2" onClick={() => openInvoice(inv)}>
                           <Printer className="w-3.5 h-3.5" />
                         </Button>
                       </div>
