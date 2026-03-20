@@ -19,6 +19,7 @@ type Invoice = Database['public']['Tables']['invoices']['Row'];
 
 export const ReportsPage: React.FC = () => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
+  const { printContent, clearContent } = usePrint();
   const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit'>('daily');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stockData, setStockData] = useState<any[]>([]);
