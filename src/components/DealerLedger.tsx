@@ -449,6 +449,9 @@ export const DealerLedger: React.FC = () => {
                     <Button size="sm" variant="outline" onClick={() => { setReportDealerMode('selected'); setShowReport(true); }}>
                       <BarChart2 className="w-4 h-4 mr-1" /> Report
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowStatement(true)}>
+                      <FileText className="w-4 h-4 mr-1" /> Statement
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => openEditDealer(selectedDealer)}>
                       <Edit2 className="w-4 h-4 mr-1" /> Edit
                     </Button>
