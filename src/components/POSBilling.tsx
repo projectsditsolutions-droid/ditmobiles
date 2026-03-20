@@ -72,6 +72,7 @@ export interface InvoiceData {
   billing_phone?: string;
   billing_gst_number?: string;
   billing_sub_heading?: string;
+  billing_logo_url?: string;
   profile_type?: string;
   warranty_mobile?: string;
   warranty_accessories?: string;
