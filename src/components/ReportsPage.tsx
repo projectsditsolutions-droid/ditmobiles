@@ -347,7 +347,7 @@ export const ReportsPage: React.FC = () => {
               <>
                 <Button variant="outline" size="sm" onClick={handleBulkPrint} disabled={bulkPrinting}>
                   <FileDown className="w-3.5 h-3.5 mr-1" />
-                  {bulkPrinting ? 'Printing…' : `Print PDF (${selectedIds.size})`}
+                  {bulkPrinting ? 'Preparing…' : `Download PDF (${selectedIds.size})`}
                 </Button>
                 <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
                   <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete ({selectedIds.size})
