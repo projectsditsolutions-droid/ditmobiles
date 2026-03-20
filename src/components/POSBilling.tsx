@@ -28,6 +28,7 @@ export interface GSTProfile {
   invoice_prefix: string;
   last_invoice_number: number;
   sub_heading: string;
+  logo_url?: string | null;
 }
 
 type Product = Database['public']['Tables']['products']['Row'];
