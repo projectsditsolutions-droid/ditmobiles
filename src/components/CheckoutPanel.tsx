@@ -33,6 +33,7 @@ interface Props {
   onWarrantyMobileChange: (v: string) => void;
   onWarrantyAccessoriesChange: (v: string) => void;
   onCompleteSale: () => void;
+  onPreviewBill?: () => void;
   discountEnabled: boolean;
 }
 
