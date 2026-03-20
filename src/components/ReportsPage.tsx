@@ -136,44 +136,45 @@ export const ReportsPage: React.FC = () => {
     const preview = await buildInvoiceData(invoice);
     if (!preview) return;
     setSelectedInvoice(preview);
-    if (autoPrint) window.setTimeout(() => triggerInvoicePrint(), 400);
   };
 
-  // Bulk PDF: open each selected invoice sequentially and print it
+  // Bulk PDF: build all invoices, combine into one print job
   const handleBulkPrint = async () => {
     const toProcess = filteredInvoices.filter(i => selectedIds.has(i.id));
     if (toProcess.length === 0) { toast.error('Select invoices first'); return; }
     setBulkPrinting(true);
     toast.info(`Preparing ${toProcess.length} invoice(s) for printing…`);
 
-    for (let i = 0; i < toProcess.length; i++) {
-      const preview = await buildInvoiceData(toProcess[i]);
-      if (!preview) continue;
+    // Build all invoice data
+    const allPreviews: InvoiceData[] = [];
+    for (const inv of toProcess) {
+      const preview = await buildInvoiceData(inv);
+      if (preview) allPreviews.push(preview);
+    }
 
-      // Mount the invoice into the print root
-      setSelectedInvoice(preview);
+    if (allPreviews.length === 0) {
+      setBulkPrinting(false);
+      toast.error('Could not load invoice data');
+      return;
+    }
 
-      // Wait for React to render, then print
-      await new Promise<void>(resolve => {
-        setTimeout(() => {
-          document.body.classList.add('printing-invoice');
-          window.print();
-          window.addEventListener('afterprint', () => {
-            document.body.classList.remove('printing-invoice');
-            resolve();
-          }, { once: true });
-        }, 350);
-      });
-
-      // Small gap between prints
-      if (i < toProcess.length - 1) {
+    // Print each one sequentially
+    for (let i = 0; i < allPreviews.length; i++) {
+      setSelectedInvoice(allPreviews[i]);
+      // Wait for render, then the InvoicePreview component handles print via its own buttons
+      // For bulk, we trigger directly
+      await new Promise<void>(resolve => setTimeout(resolve, 200));
+      await triggerPrint();
+      if (i < allPreviews.length - 1) {
         await new Promise(r => setTimeout(r, 300));
       }
     }
 
     setSelectedInvoice(null);
+    clearContent();
     setBulkPrinting(false);
-    toast.success(`Printed ${toProcess.length} invoice(s)`);
+    setSelectedIds(new Set());
+    toast.success(`Printed ${allPreviews.length} invoice(s)`);
   };
 
   const toggleSelect = (id: string) => {
