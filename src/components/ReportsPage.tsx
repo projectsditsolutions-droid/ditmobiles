@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { InvoicePreview, InvoicePrintBody } from './InvoicePreview';
+import { InvoicePreview, InvoicePrintBody, getSelectedTemplate } from './InvoicePreview';
 import { usePrint, triggerPrint } from '@/components/PrintPortal';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
