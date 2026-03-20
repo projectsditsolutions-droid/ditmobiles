@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, RotateCcw, FileText, ArrowDownLeft, ArrowUpRight, TrendingDown, CalendarDays, Filter, X, Smartphone, Tag, HardDrive, Palette, Edit2, Trash2, ChevronDown, ChevronUp, Download, BarChart2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { DealerStatement } from '@/components/DealerStatement';
 
 type Dealer = Database['public']['Tables']['dealers']['Row'];
 type DealerTransaction = Database['public']['Tables']['dealer_transactions']['Row'];
@@ -77,6 +78,7 @@ export const DealerLedger: React.FC = () => {
   const [editCreditValue, setEditCreditValue] = useState(0);
   const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
   const [reportDealerMode, setReportDealerMode] = useState<'selected' | 'all'>('selected');
+  const [showStatement, setShowStatement] = useState(false);
 
   const fetchDealers = async () => {
     if (!activeShopId && !isAllShops) return;
@@ -446,6 +448,9 @@ export const DealerLedger: React.FC = () => {
                   <div className="flex gap-2 items-center flex-shrink-0 flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => { setReportDealerMode('selected'); setShowReport(true); }}>
                       <BarChart2 className="w-4 h-4 mr-1" /> Report
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowStatement(true)}>
+                      <FileText className="w-4 h-4 mr-1" /> Statement
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => openEditDealer(selectedDealer)}>
                       <Edit2 className="w-4 h-4 mr-1" /> Edit
@@ -868,6 +873,15 @@ export const DealerLedger: React.FC = () => {
           </Button>
         </div>
       </Modal>
+
+      {/* ── Dealer Statement Modal ── */}
+      {showStatement && selectedDealer && (
+        <DealerStatement
+          dealer={selectedDealer}
+          allTxns={allTxns}
+          onClose={() => setShowStatement(false)}
+        />
+      )}
     </div>
   );
 };
