@@ -267,7 +267,7 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
         {/* Screen preview */}
         <div className="flex-1 overflow-y-auto p-6 bg-secondary/20">
           <div className="bg-white rounded-lg shadow-sm border p-6 max-w-[600px] mx-auto">
-            <InvoicePrintBody invoice={invoice} shop={shop} />
+            <InvoicePrintBody invoice={invoice} shop={shop} template={template} />
           </div>
         </div>
       </div>
