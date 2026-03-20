@@ -78,6 +78,7 @@ export const DealerLedger: React.FC = () => {
   const [editCreditValue, setEditCreditValue] = useState(0);
   const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
   const [reportDealerMode, setReportDealerMode] = useState<'selected' | 'all'>('selected');
+  const [showStatement, setShowStatement] = useState(false);
 
   const fetchDealers = async () => {
     if (!activeShopId && !isAllShops) return;
