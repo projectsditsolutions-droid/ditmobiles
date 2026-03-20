@@ -877,6 +877,18 @@ export const POSBilling: React.FC = () => {
       {showInvoice && (
         <InvoicePreview invoice={showInvoice} onClose={() => setShowInvoice(null)} />
       )}
+
+      {previewInvoice && (
+        <InvoicePreview
+          invoice={previewInvoice}
+          mode="preview"
+          onClose={() => setPreviewInvoice(null)}
+          onConfirmSave={() => {
+            setPreviewInvoice(null);
+            handleCompleteSale();
+          }}
+        />
+      )}
     </div>
   );
 };
