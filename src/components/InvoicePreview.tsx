@@ -237,8 +237,10 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
 
   if (!shop) return null;
 
+  const template = getSelectedTemplate();
+
   const handlePrint = () => {
-    printContent(<InvoicePrintBody invoice={invoice} shop={shop} />);
+    printContent(<InvoicePrintBody invoice={invoice} shop={shop} template={template} />);
     setTimeout(() => {
       triggerPrint().then(() => clearContent());
     }, 100);
