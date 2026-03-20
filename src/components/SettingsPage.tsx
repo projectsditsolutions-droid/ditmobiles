@@ -48,7 +48,9 @@ export const SettingsPage: React.FC = () => {
   const [editingTermsShopId, setEditingTermsShopId] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState<string | null>(null);
   const [uploadContext, setUploadContext] = useState<'shop' | 'gst_profile'>('shop');
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('classic');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(() => {
+    try { return localStorage.getItem('bill_template') || 'classic'; } catch { return 'classic'; }
+  });
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setLocalShops(shops); }, [shops]);
