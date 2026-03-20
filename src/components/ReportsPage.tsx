@@ -1,11 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useShop } from '@/contexts/ShopContext';
-import { TrendingUp, Package, FileText, Calendar, DollarSign, Eye, Printer, IndianRupee, ShoppingBag, Download, Trash2, CheckSquare, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  TrendingUp, Package, FileText, Calendar, DollarSign, Eye, Printer,
+  IndianRupee, ShoppingBag, Download, Trash2, CheckSquare, Filter, X,
+  ChevronDown, ChevronUp, Search, FileDown
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { InvoicePreview } from './InvoicePreview';
+import { InvoicePreview, triggerInvoicePrint } from './InvoicePreview';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import type { InvoiceData } from './POSBilling';
@@ -25,7 +29,8 @@ export const ReportsPage: React.FC = () => {
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [modeFilter, setModeFilter] = useState('all');
   const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(null);
-  const [autoPrintQueue, setAutoPrintQueue] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [bulkPrinting, setBulkPrinting] = useState(false);
 
   useEffect(() => {
     if (!activeShopId && !isAllShops) return;
@@ -65,10 +70,17 @@ export const ReportsPage: React.FC = () => {
     if (paymentFilter !== 'all' && inv.payment_method !== paymentFilter) return false;
     if (modeFilter === 'gst' && !inv.is_gst_bill) return false;
     if (modeFilter === 'non-gst' && inv.is_gst_bill) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchInvoice = inv.invoice_number?.toLowerCase().includes(q);
+      const matchCustomer = inv.customer_name?.toLowerCase().includes(q);
+      const matchPhone = inv.customer_phone?.toLowerCase().includes(q);
+      if (!matchInvoice && !matchCustomer && !matchPhone) return false;
+    }
     return true;
   });
 
-  const openInvoice = async (invoice: Invoice, autoPrint = false) => {
+  const buildInvoiceData = async (invoice: Invoice): Promise<InvoiceData | null> => {
     const { data: invoiceItems } = await supabase
       .from('invoice_items')
       .select('*, products(*)')
@@ -115,9 +127,51 @@ export const ReportsPage: React.FC = () => {
       warranty_accessories: (invoice as any).warranty_accessories || undefined,
     };
     (preview as any).payment_details = invoice.payment_details;
+    return preview;
+  };
 
+  const openInvoice = async (invoice: Invoice, autoPrint = false) => {
+    const preview = await buildInvoiceData(invoice);
+    if (!preview) return;
     setSelectedInvoice(preview);
-    if (autoPrint) window.setTimeout(() => window.print(), 300);
+    if (autoPrint) window.setTimeout(() => triggerInvoicePrint(), 400);
+  };
+
+  // Bulk PDF: open each selected invoice sequentially and print it
+  const handleBulkPrint = async () => {
+    const toProcess = filteredInvoices.filter(i => selectedIds.has(i.id));
+    if (toProcess.length === 0) { toast.error('Select invoices first'); return; }
+    setBulkPrinting(true);
+    toast.info(`Preparing ${toProcess.length} invoice(s) for printing…`);
+
+    for (let i = 0; i < toProcess.length; i++) {
+      const preview = await buildInvoiceData(toProcess[i]);
+      if (!preview) continue;
+
+      // Mount the invoice into the print root
+      setSelectedInvoice(preview);
+
+      // Wait for React to render, then print
+      await new Promise<void>(resolve => {
+        setTimeout(() => {
+          document.body.classList.add('printing-invoice');
+          window.print();
+          window.addEventListener('afterprint', () => {
+            document.body.classList.remove('printing-invoice');
+            resolve();
+          }, { once: true });
+        }, 350);
+      });
+
+      // Small gap between prints
+      if (i < toProcess.length - 1) {
+        await new Promise(r => setTimeout(r, 300));
+      }
+    }
+
+    setSelectedInvoice(null);
+    setBulkPrinting(false);
+    toast.success(`Printed ${toProcess.length} invoice(s)`);
   };
 
   const toggleSelect = (id: string) => {
@@ -226,7 +280,7 @@ export const ReportsPage: React.FC = () => {
     const details = inv.payment_details as Record<string, number>;
     return (
       <div className="px-6 py-3 bg-accent/20 border-t text-xs">
-        <p className="font-display font-semibold text-foreground mb-1.5">💳 Payment Breakdown:</p>
+        <p className="font-display font-semibold text-foreground mb-1.5">Payment Breakdown:</p>
         <div className="flex flex-wrap gap-2">
           {Object.entries(details).map(([key, val]) =>
             Number(val) > 0 ? (
@@ -277,7 +331,8 @@ export const ReportsPage: React.FC = () => {
         ))}
       </div>
 
-      <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
+      {/* Tabs + actions bar */}
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <div className="flex bg-secondary rounded-lg p-0.5 w-fit">
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-all ${tab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
@@ -286,11 +341,17 @@ export const ReportsPage: React.FC = () => {
           ))}
         </div>
         {tab === 'daily' && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {selectedIds.size > 0 && (
-              <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
-                <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete ({selectedIds.size})
-              </Button>
+              <>
+                <Button variant="outline" size="sm" onClick={handleBulkPrint} disabled={bulkPrinting}>
+                  <FileDown className="w-3.5 h-3.5 mr-1" />
+                  {bulkPrinting ? 'Printing…' : `Print PDF (${selectedIds.size})`}
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
+                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete ({selectedIds.size})
+                </Button>
+              </>
             )}
             <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
               <Filter className="w-3.5 h-3.5 mr-1" /> Filters
@@ -298,6 +359,24 @@ export const ReportsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Search bar for Sales tab */}
+      {tab === 'daily' && (
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search invoice number, customer name or phone…"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 text-sm"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
 
       {tab === 'daily' && showFilters && (
         <div className="bg-card rounded-xl border p-4 mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -328,7 +407,8 @@ export const ReportsPage: React.FC = () => {
               <option value="non-gst">Non-GST</option>
             </select>
           </div>
-          <div className="col-span-full flex justify-end">
+          <div className="col-span-full flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">{filteredInvoices.length} results</span>
             <Button variant="ghost" size="sm" onClick={() => { setDateFrom(''); setDateTo(''); setPaymentFilter('all'); setModeFilter('all'); }}>
               <X className="w-3.5 h-3.5 mr-1" /> Clear Filters
             </Button>
@@ -362,7 +442,10 @@ export const ReportsPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-2.5 font-display font-semibold text-primary text-xs">{inv.invoice_number}</td>
                     <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                    <td className="px-4 py-2.5 font-display text-sm">{inv.customer_name}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="font-display text-sm">{inv.customer_name}</div>
+                      {inv.customer_phone && <div className="text-[10px] text-muted-foreground">{inv.customer_phone}</div>}
+                    </td>
                     <td className="px-4 py-2.5">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold ${inv.is_gst_bill ? (inv.customer_gst ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning') : 'bg-secondary text-secondary-foreground'}`}>
                         {inv.is_gst_bill ? (inv.customer_gst ? 'B2B' : 'B2C') : 'Non-GST'}
@@ -401,10 +484,17 @@ export const ReportsPage: React.FC = () => {
                 </React.Fragment>
               ))}
               {filteredInvoices.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No invoices found</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                  {searchQuery ? `No invoices matching "${searchQuery}"` : 'No invoices found'}
+                </td></tr>
               )}
             </tbody>
           </table>
+          {filteredInvoices.length > 200 && (
+            <div className="px-4 py-2 text-xs text-muted-foreground border-t text-center">
+              Showing first 200 of {filteredInvoices.length} invoices. Use filters to narrow results.
+            </div>
+          )}
         </div>
       )}
 
