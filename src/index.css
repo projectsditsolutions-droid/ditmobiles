@@ -138,45 +138,24 @@
 }
 
 /* ══════════════════════════════════════════════════════
-   A4 Invoice / Dealer Statement Print
-   Strategy: body.printing-invoice hides everything EXCEPT
-   .invoice-print-root which is a sibling of the modal,
-   positioned offscreen normally but brought to front on print.
-   IMPORTANT: do NOT put display:none on .invoice-print-root — 
-   instead use visibility:hidden + absolute offscreen positioning.
+   Print System
+   Strategy: body.printing hides #app-root entirely
+   and shows #print-area. Simple and bulletproof.
    ══════════════════════════════════════════════════════ */
 
-/* Offscreen but in the DOM so print can reach it */
-.invoice-print-root {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-  width: 176mm;
-  visibility: hidden;
-  pointer-events: none;
+/* Print area is always hidden on screen */
+#print-area {
+  display: none;
 }
 
 @media print {
-  /* Default: hide everything */
-  body * {
-    visibility: hidden !important;
+  /* When body has .printing class, hide the app and show print area */
+  body.printing #app-root {
+    display: none !important;
   }
 
-  /* When printing invoice: show only the print root */
-  body.printing-invoice .invoice-print-root,
-  body.printing-invoice .invoice-print-root * {
-    visibility: visible !important;
-  }
-
-  body.printing-invoice .invoice-print-root {
-    position: fixed !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    visibility: visible !important;
-    background: #fff !important;
-    padding: 0 !important;
-    margin: 0 !important;
+  body.printing #print-area {
+    display: block !important;
   }
 
   @page {
@@ -184,11 +163,7 @@
     margin: 12mm 14mm;
   }
 
-  .invoice-print-root .no-print {
-    display: none !important;
-  }
-
-  .invoice-print-root .invoice-page {
+  #print-area .invoice-page {
     width: 100%;
     max-width: 176mm;
     font-family: 'Inter', Arial, sans-serif;
@@ -197,22 +172,26 @@
     background: #fff !important;
   }
 
-  .invoice-print-root table {
+  #print-area table {
     border-collapse: collapse;
     width: 100%;
     page-break-inside: auto;
   }
 
-  .invoice-print-root tr {
+  #print-area tr {
     page-break-inside: avoid;
     page-break-after: auto;
   }
 
-  .invoice-print-root thead {
+  #print-area thead {
     display: table-header-group;
   }
 
-  .invoice-print-root tfoot {
+  #print-area tfoot {
     display: table-footer-group;
+  }
+
+  #print-area .no-print {
+    display: none !important;
   }
 }

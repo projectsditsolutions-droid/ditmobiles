@@ -9,7 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { InvoicePreview, triggerInvoicePrint } from './InvoicePreview';
+import { InvoicePreview, InvoicePrintBody } from './InvoicePreview';
+import { usePrint, triggerPrint } from '@/components/PrintPortal';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import type { InvoiceData } from './POSBilling';
@@ -18,6 +19,7 @@ type Invoice = Database['public']['Tables']['invoices']['Row'];
 
 export const ReportsPage: React.FC = () => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
+  const { printContent, clearContent } = usePrint();
   const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit'>('daily');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stockData, setStockData] = useState<any[]>([]);
@@ -130,47 +132,37 @@ export const ReportsPage: React.FC = () => {
     return preview;
   };
 
-  const openInvoice = async (invoice: Invoice, autoPrint = false) => {
+  const openInvoice = async (invoice: Invoice) => {
     const preview = await buildInvoiceData(invoice);
     if (!preview) return;
     setSelectedInvoice(preview);
-    if (autoPrint) window.setTimeout(() => triggerInvoicePrint(), 400);
   };
 
-  // Bulk PDF: open each selected invoice sequentially and print it
+  // Bulk PDF: build all invoices, print each sequentially
   const handleBulkPrint = async () => {
     const toProcess = filteredInvoices.filter(i => selectedIds.has(i.id));
     if (toProcess.length === 0) { toast.error('Select invoices first'); return; }
     setBulkPrinting(true);
     toast.info(`Preparing ${toProcess.length} invoice(s) for printing…`);
 
+    const shop = activeShopId ? (await supabase.from('shops').select('*').eq('id', activeShopId).single()).data : null;
+    if (!shop) { setBulkPrinting(false); toast.error('Shop not found'); return; }
+
     for (let i = 0; i < toProcess.length; i++) {
       const preview = await buildInvoiceData(toProcess[i]);
       if (!preview) continue;
 
-      // Mount the invoice into the print root
-      setSelectedInvoice(preview);
-
-      // Wait for React to render, then print
-      await new Promise<void>(resolve => {
-        setTimeout(() => {
-          document.body.classList.add('printing-invoice');
-          window.print();
-          window.addEventListener('afterprint', () => {
-            document.body.classList.remove('printing-invoice');
-            resolve();
-          }, { once: true });
-        }, 350);
-      });
-
-      // Small gap between prints
+      printContent(<InvoicePrintBody invoice={preview} shop={shop} />);
+      await new Promise(r => setTimeout(r, 200));
+      await triggerPrint();
       if (i < toProcess.length - 1) {
         await new Promise(r => setTimeout(r, 300));
       }
     }
 
-    setSelectedInvoice(null);
+    clearContent();
     setBulkPrinting(false);
+    setSelectedIds(new Set());
     toast.success(`Printed ${toProcess.length} invoice(s)`);
   };
 
@@ -470,7 +462,7 @@ export const ReportsPage: React.FC = () => {
                         <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => openInvoice(inv)}>
                           <Eye className="w-3.5 h-3.5" />
                         </Button>
-                        <Button size="sm" className="h-8 px-2" onClick={() => openInvoice(inv, true)}>
+                        <Button size="sm" className="h-8 px-2" onClick={() => openInvoice(inv)}>
                           <Printer className="w-3.5 h-3.5" />
                         </Button>
                       </div>
