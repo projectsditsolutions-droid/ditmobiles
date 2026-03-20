@@ -1,0 +1,1 @@
+ALTER TABLE public.shop_gst_profiles ADD COLUMN IF NOT EXISTS logo_url TEXT DEFAULT NULL;
