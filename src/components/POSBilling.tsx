@@ -406,25 +406,24 @@ export const POSBilling: React.FC = () => {
     if (items.length === 0) { toast.error('Add items to bill first'); return; }
     if (!activeShop || !activeShopId || !user) return;
 
-    // Use per-profile invoice numbering if a profile is selected
+    // Use ATOMIC DB functions to prevent duplicate invoice numbers under concurrent saves
     let invoiceNumber: string;
     if (selectedProfile) {
-      const nextNum = (selectedProfile.last_invoice_number || 0) + 1;
-      const prefix = selectedProfile.invoice_prefix || (
-        selectedProfile.profile_type === 'wholesale' ? 'INV-W' : 'INV-R'
-      );
-      invoiceNumber = `${prefix}-${String(nextNum).padStart(4, '0')}`;
-      await supabase
-        .from('shop_gst_profiles')
-        .update({ last_invoice_number: nextNum } as any)
-        .eq('id', selectedProfile.id);
+      const { data: numData, error: numErr } = await supabase
+        .rpc('get_next_profile_invoice_number', { p_profile_id: selectedProfile.id } as any)
+        .single();
+      if (numErr || !numData) { toast.error('Failed to generate invoice number'); return; }
+      invoiceNumber = (numData as any).invoice_number;
+      // Refresh local profile state to reflect new counter
       setGstProfiles(prev => prev.map(p =>
-        p.id === selectedProfile.id ? { ...p, last_invoice_number: nextNum } : p
+        p.id === selectedProfile.id ? { ...p, last_invoice_number: (numData as any).next_num } : p
       ));
     } else {
-      const nextNum = (activeShop.last_invoice_number || 0) + 1;
-      invoiceNumber = `${activeShop.invoice_prefix}-${String(nextNum).padStart(4, '0')}`;
-      await supabase.from('shops').update({ last_invoice_number: nextNum }).eq('id', activeShopId);
+      const { data: numData, error: numErr } = await supabase
+        .rpc('get_next_invoice_number', { p_shop_id: activeShopId } as any)
+        .single();
+      if (numErr || !numData) { toast.error('Failed to generate invoice number'); return; }
+      invoiceNumber = (numData as any).invoice_number;
     }
 
     // Auto-save / link customer
