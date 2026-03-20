@@ -4,7 +4,13 @@ import { amountInWords, calculateGST } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { X, Printer, Download } from 'lucide-react';
 import { usePrint, triggerPrint } from '@/components/PrintPortal';
+import { ModernInvoiceBody } from './invoice-templates/ModernInvoiceBody';
+import { CompactInvoiceBody } from './invoice-templates/CompactInvoiceBody';
 import type { InvoiceData } from './POSBilling';
+
+export const getSelectedTemplate = (): string => {
+  try { return localStorage.getItem('bill_template') || 'classic'; } catch { return 'classic'; }
+};
 
 interface Props {
   invoice: InvoiceData;
