@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Banknote, Smartphone, Shuffle, Printer, ShoppingBag, User, Phone, Hash, Receipt, Building2, MapPin, AlertCircle, Calendar, Shield } from 'lucide-react';
+import { CreditCard, Banknote, Smartphone, Shuffle, Printer, ShoppingBag, User, Phone, Hash, Receipt, Building2, MapPin, AlertCircle, Calendar, Shield, Eye } from 'lucide-react';
 
 interface Props {
   items: any[];
@@ -33,6 +33,7 @@ interface Props {
   onWarrantyMobileChange: (v: string) => void;
   onWarrantyAccessoriesChange: (v: string) => void;
   onCompleteSale: () => void;
+  onPreviewBill?: () => void;
   discountEnabled: boolean;
 }
 
@@ -44,7 +45,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   onBillDiscountChange, onBillDiscountTypeChange, onPaymentMethodChange,
   onCustomerNameChange, onCustomerPhoneChange, onCustomerGSTChange, onCustomerAddressChange,
   onMixedPaymentChange, onWarrantyMobileChange, onWarrantyAccessoriesChange,
-  onCompleteSale, discountEnabled,
+  onCompleteSale, onPreviewBill, discountEnabled,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
@@ -338,16 +339,28 @@ export const CheckoutPanel: React.FC<Props> = ({
           <span className="text-checkout-foreground/50 font-display text-xs uppercase tracking-wider">Grand Total</span>
           <span className="font-display text-3xl font-extrabold tracking-tight">{fmt(grandTotal)}</span>
         </div>
-        <Button
-          size="lg"
-          className="w-full h-12 bg-success hover:bg-success/90 text-success-foreground font-display font-bold text-base shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
-          onClick={onCompleteSale}
-          disabled={items.length === 0 || !mixedValid}
-        >
-          <Printer className="w-5 h-5 mr-2" />
-          Print & Save
-          <span className="text-[10px] opacity-70 ml-2 px-1.5 py-0.5 bg-success-foreground/20 rounded">F9</span>
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="lg"
+            variant="outline"
+            className="flex-1 h-12 font-display font-bold text-base"
+            onClick={onPreviewBill}
+            disabled={items.length === 0 || !mixedValid}
+          >
+            <Eye className="w-5 h-5 mr-2" />
+            Preview
+          </Button>
+          <Button
+            size="lg"
+            className="flex-1 h-12 bg-success hover:bg-success/90 text-success-foreground font-display font-bold text-base shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
+            onClick={onCompleteSale}
+            disabled={items.length === 0 || !mixedValid}
+          >
+            <Printer className="w-5 h-5 mr-2" />
+            Print & Save
+            <span className="text-[10px] opacity-70 ml-2 px-1.5 py-0.5 bg-success-foreground/20 rounded">F9</span>
+          </Button>
+        </div>
       </div>
     </div>
   );

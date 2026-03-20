@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useShop } from '@/contexts/ShopContext';
 import { amountInWords, calculateGST } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import { X, Printer, Download } from 'lucide-react';
+import { X, Printer, Download, CheckCircle2 } from 'lucide-react';
 import { usePrint, triggerPrint } from '@/components/PrintPortal';
 import { ModernInvoiceBody } from './invoice-templates/ModernInvoiceBody';
 import { CompactInvoiceBody } from './invoice-templates/CompactInvoiceBody';
@@ -15,6 +15,10 @@ export const getSelectedTemplate = (): string => {
 interface Props {
   invoice: InvoiceData;
   onClose: () => void;
+  /** If provided, shows a "Confirm & Save" button instead of just print */
+  onConfirmSave?: () => void;
+  /** Label for the mode — preview-only or post-save */
+  mode?: 'preview' | 'saved';
 }
 
 const DEFAULT_TERMS = [
@@ -230,7 +234,7 @@ const InvoiceBodyInner: React.FC<{
   </div>
 );
 
-export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
+export const InvoicePreview: React.FC<Props> = ({ invoice, onClose, onConfirmSave, mode = 'saved' }) => {
   const { activeShop } = useShop();
   const shop = activeShop;
   const { printContent, clearContent } = usePrint();
@@ -238,6 +242,7 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
   if (!shop) return null;
 
   const template = getSelectedTemplate();
+  const isPreviewMode = mode === 'preview' && !!onConfirmSave;
 
   const handlePrint = () => {
     printContent(<InvoicePrintBody invoice={invoice} shop={shop} template={template} />);
@@ -250,18 +255,12 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-sm">
       <div className="bg-card rounded-xl shadow-2xl w-[700px] max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h2 className="font-display font-bold text-lg">Invoice Preview</h2>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Download className="w-4 h-4 mr-1" /> Save PDF
-            </Button>
-            <Button variant="default" size="sm" onClick={handlePrint}>
-              <Printer className="w-4 h-4 mr-1" /> Print
-            </Button>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+          <h2 className="font-display font-bold text-lg">
+            {isPreviewMode ? 'Bill Preview — Review Before Saving' : 'Invoice Preview'}
+          </h2>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
         </div>
 
         {/* Screen preview */}
@@ -269,6 +268,29 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
           <div className="bg-white rounded-lg shadow-sm border p-6 max-w-[600px] mx-auto">
             <InvoicePrintBody invoice={invoice} shop={shop} template={template} />
           </div>
+        </div>
+
+        {/* Action bar */}
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t bg-card">
+          {isPreviewMode ? (
+            <>
+              <Button variant="outline" size="sm" onClick={onClose}>
+                <X className="w-4 h-4 mr-1" /> Cancel & Edit
+              </Button>
+              <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground font-bold" onClick={onConfirmSave}>
+                <CheckCircle2 className="w-4 h-4 mr-1" /> Confirm & Save
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Download className="w-4 h-4 mr-1" /> Save PDF
+              </Button>
+              <Button variant="default" size="sm" onClick={handlePrint}>
+                <Printer className="w-4 h-4 mr-1" /> Print
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>
