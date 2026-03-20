@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { InvoicePreview, InvoicePrintBody } from './InvoicePreview';
+import { InvoicePreview, InvoicePrintBody, getSelectedTemplate } from './InvoicePreview';
 import { usePrint, triggerPrint } from '@/components/PrintPortal';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -125,6 +125,8 @@ export const ReportsPage: React.FC = () => {
       billing_address: (invoice as any).billing_address || undefined,
       billing_phone: (invoice as any).billing_phone || undefined,
       billing_gst_number: (invoice as any).billing_gst_number || undefined,
+      billing_sub_heading: (invoice as any).billing_sub_heading || undefined,
+      billing_logo_url: (invoice as any).billing_logo_url || undefined,
       warranty_mobile: (invoice as any).warranty_mobile || undefined,
       warranty_accessories: (invoice as any).warranty_accessories || undefined,
     };
@@ -156,12 +158,13 @@ export const ReportsPage: React.FC = () => {
 
     if (allPreviews.length === 0) { setBulkPrinting(false); toast.error('No invoices to print'); return; }
 
+    const template = getSelectedTemplate();
     // Render all invoices in a single print area with page breaks between them
     printContent(
       <div>
         {allPreviews.map((preview, idx) => (
           <div key={preview.id} style={{ pageBreakAfter: idx < allPreviews.length - 1 ? 'always' : 'auto' }}>
-            <InvoicePrintBody invoice={preview} shop={shop} />
+            <InvoicePrintBody invoice={preview} shop={shop} template={template} />
           </div>
         ))}
       </div>

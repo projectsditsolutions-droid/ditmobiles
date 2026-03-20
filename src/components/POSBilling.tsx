@@ -28,6 +28,7 @@ export interface GSTProfile {
   invoice_prefix: string;
   last_invoice_number: number;
   sub_heading: string;
+  logo_url?: string | null;
 }
 
 type Product = Database['public']['Tables']['products']['Row'];
@@ -71,6 +72,7 @@ export interface InvoiceData {
   billing_phone?: string;
   billing_gst_number?: string;
   billing_sub_heading?: string;
+  billing_logo_url?: string;
   profile_type?: string;
   warranty_mobile?: string;
   warranty_accessories?: string;
@@ -486,6 +488,8 @@ export const POSBilling: React.FC = () => {
       billing_address: selectedProfile?.address || activeShop.address,
       billing_phone: selectedProfile?.phone || activeShop.phone,
       billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
+      billing_sub_heading: selectedProfile?.sub_heading || (activeShop as any).sub_heading || '',
+      billing_logo_url: selectedProfile?.logo_url || activeShop.logo_url || '',
       warranty_mobile: warrantyMobile || '',
       warranty_accessories: warrantyAccessories || '',
     } as any).select().single();
@@ -576,6 +580,7 @@ export const POSBilling: React.FC = () => {
       billing_phone: selectedProfile?.phone || activeShop.phone,
       billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
       billing_sub_heading: selectedProfile?.sub_heading || (activeShop as any).sub_heading || '',
+      billing_logo_url: selectedProfile?.logo_url || activeShop.logo_url || '',
       profile_type: selectedProfile?.profile_type,
       warranty_mobile: warrantyMobile || undefined,
       warranty_accessories: warrantyAccessories || undefined,

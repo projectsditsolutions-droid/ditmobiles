@@ -4,7 +4,13 @@ import { amountInWords, calculateGST } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { X, Printer, Download } from 'lucide-react';
 import { usePrint, triggerPrint } from '@/components/PrintPortal';
+import { ModernInvoiceBody } from './invoice-templates/ModernInvoiceBody';
+import { CompactInvoiceBody } from './invoice-templates/CompactInvoiceBody';
 import type { InvoiceData } from './POSBilling';
+
+export const getSelectedTemplate = (): string => {
+  try { return localStorage.getItem('bill_template') || 'classic'; } catch { return 'classic'; }
+};
 
 interface Props {
   invoice: InvoiceData;
@@ -23,16 +29,25 @@ const DEFAULT_TERMS = [
 export { triggerPrint as triggerInvoicePrint };
 
 /** Standalone print body — can be used outside InvoicePreview (e.g. bulk print) */
-export const InvoicePrintBody: React.FC<{ invoice: InvoiceData; shop: any }> = ({ invoice, shop }) => {
+export const InvoicePrintBody: React.FC<{ invoice: InvoiceData; shop: any; template?: string }> = ({ invoice, shop, template = 'classic' }) => {
   const businessName = invoice.billing_business_name || shop.name;
   const businessAddress = invoice.billing_address || shop.address;
   const businessPhone = invoice.billing_phone || shop.phone;
   const businessGST = invoice.billing_gst_number || shop.gst_number;
   const subHeading = invoice.billing_sub_heading || (shop as any).sub_heading || '';
-  const logoUrl = (invoice as any).billing_logo_url || (invoice as any).billing_profile_logo_url || shop.logo_url;
+  const logoUrl = (invoice as any).billing_logo_url || shop.logo_url;
   const terms = (shop.terms_and_conditions && shop.terms_and_conditions.length > 0)
     ? shop.terms_and_conditions
     : DEFAULT_TERMS;
+
+  if (template === 'modern') {
+    return <ModernInvoiceBody invoice={invoice} businessName={businessName} businessAddress={businessAddress}
+      businessPhone={businessPhone} businessGST={businessGST} subHeading={subHeading} logoUrl={logoUrl} terms={terms} />;
+  }
+  if (template === 'compact') {
+    return <CompactInvoiceBody invoice={invoice} businessName={businessName} businessAddress={businessAddress}
+      businessPhone={businessPhone} businessGST={businessGST} subHeading={subHeading} logoUrl={logoUrl} terms={terms} />;
+  }
 
   return (
     <InvoiceBodyInner invoice={invoice} businessName={businessName} businessAddress={businessAddress}
@@ -222,8 +237,10 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
 
   if (!shop) return null;
 
+  const template = getSelectedTemplate();
+
   const handlePrint = () => {
-    printContent(<InvoicePrintBody invoice={invoice} shop={shop} />);
+    printContent(<InvoicePrintBody invoice={invoice} shop={shop} template={template} />);
     setTimeout(() => {
       triggerPrint().then(() => clearContent());
     }, 100);
@@ -250,7 +267,7 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
         {/* Screen preview */}
         <div className="flex-1 overflow-y-auto p-6 bg-secondary/20">
           <div className="bg-white rounded-lg shadow-sm border p-6 max-w-[600px] mx-auto">
-            <InvoicePrintBody invoice={invoice} shop={shop} />
+            <InvoicePrintBody invoice={invoice} shop={shop} template={template} />
           </div>
         </div>
       </div>
