@@ -45,7 +45,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   onBillDiscountChange, onBillDiscountTypeChange, onPaymentMethodChange,
   onCustomerNameChange, onCustomerPhoneChange, onCustomerGSTChange, onCustomerAddressChange,
   onMixedPaymentChange, onWarrantyMobileChange, onWarrantyAccessoriesChange,
-  onCompleteSale, discountEnabled,
+  onCompleteSale, onPreviewBill, discountEnabled,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
