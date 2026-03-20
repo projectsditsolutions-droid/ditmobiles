@@ -158,12 +158,13 @@ export const ReportsPage: React.FC = () => {
 
     if (allPreviews.length === 0) { setBulkPrinting(false); toast.error('No invoices to print'); return; }
 
+    const template = getSelectedTemplate();
     // Render all invoices in a single print area with page breaks between them
     printContent(
       <div>
         {allPreviews.map((preview, idx) => (
           <div key={preview.id} style={{ pageBreakAfter: idx < allPreviews.length - 1 ? 'always' : 'auto' }}>
-            <InvoicePrintBody invoice={preview} shop={shop} />
+            <InvoicePrintBody invoice={preview} shop={shop} template={template} />
           </div>
         ))}
       </div>
