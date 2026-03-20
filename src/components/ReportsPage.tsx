@@ -125,6 +125,8 @@ export const ReportsPage: React.FC = () => {
       billing_address: (invoice as any).billing_address || undefined,
       billing_phone: (invoice as any).billing_phone || undefined,
       billing_gst_number: (invoice as any).billing_gst_number || undefined,
+      billing_sub_heading: (invoice as any).billing_sub_heading || undefined,
+      billing_logo_url: (invoice as any).billing_logo_url || undefined,
       warranty_mobile: (invoice as any).warranty_mobile || undefined,
       warranty_accessories: (invoice as any).warranty_accessories || undefined,
     };
