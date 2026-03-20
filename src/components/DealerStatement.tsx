@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X, Printer, Download, FileText } from 'lucide-react';
+import { usePrint, triggerPrint } from '@/components/PrintPortal';
 import type { Database } from '@/integrations/supabase/types';
 
 type Dealer = Database['public']['Tables']['dealers']['Row'];
@@ -23,15 +24,8 @@ const TXN_LABELS: Record<string, string> = {
   opening_adjustment: 'Adjustment',
 };
 
-const triggerStatementPrint = () => {
-  document.body.classList.add('printing-invoice');
-  window.print();
-  window.addEventListener('afterprint', () => {
-    document.body.classList.remove('printing-invoice');
-  }, { once: true });
-};
-
 export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) => {
+  const { printContent, clearContent } = usePrint();
   const today = new Date().toISOString().slice(0, 10);
   const monthStart = today.slice(0, 8) + '01';
   const [dateFrom, setDateFrom] = useState(monthStart);
@@ -52,7 +46,6 @@ export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) =
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   }, [dealerTxns, dateFrom, dateTo]);
 
-  // Opening balance = balance of the last transaction BEFORE the date range
   const txnsBefore = useMemo(() => {
     const from = new Date(dateFrom);
     from.setHours(0, 0, 0, 0);
@@ -69,7 +62,8 @@ export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) =
   const periodReturn = filtered.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
   const periodSale = filtered.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
 
-  const StatementContent = () => (
+  /** The print-only content rendered into #print-area */
+  const StatementPrintContent = () => (
     <div className="invoice-page" style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: '10pt', color: '#111', background: '#fff', minWidth: '600px' }}>
       {/* Header */}
       <div style={{ borderBottom: '3px double #222', paddingBottom: '12px', marginBottom: '14px' }}>
@@ -87,7 +81,7 @@ export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) =
         </div>
       </div>
 
-      {/* Dealer Info */}
+      {/* Dealer Info + Summary */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px', fontSize: '10px' }}>
         <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px' }}>
           <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '6px', color: '#374151' }}>DEALER DETAILS</div>
@@ -107,12 +101,6 @@ export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) =
             <span style={{ color: '#dc2626' }}>+ Purchases</span>
             <span style={{ fontWeight: 700, color: '#dc2626' }}>{fmt(periodPurchase)}</span>
           </div>
-          {periodSale > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
-              <span style={{ color: '#4f46e5' }}>Sold Cost (Info)</span>
-              <span style={{ fontWeight: 700, color: '#4f46e5' }}>{fmt(periodSale)}</span>
-            </div>
-          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
             <span style={{ color: '#059669' }}>− Payments</span>
             <span style={{ fontWeight: 700, color: '#059669' }}>{fmt(periodPayment)}</span>
@@ -213,163 +201,162 @@ export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) =
     </div>
   );
 
+  const handlePrint = () => {
+    printContent(<StatementPrintContent />);
+    setTimeout(() => {
+      triggerPrint().then(() => clearContent());
+    }, 100);
+  };
+
   return (
-    <>
-      {/* Hidden printable root */}
-      <div className="invoice-print-root" style={{ display: 'none' }}>
-        <StatementContent />
-      </div>
-
-      {/* On-screen modal */}
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/50 backdrop-blur-sm p-4">
-        <div className="bg-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col border">
-          {/* Modal header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="font-display font-bold text-lg">Dealer Statement</h2>
-                <p className="text-xs text-muted-foreground">{dealer.dealer_name} · {dealer.brand_name}</p>
-              </div>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/50 backdrop-blur-sm p-4">
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col border">
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-primary" />
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={triggerStatementPrint}>
-                <Download className="w-4 h-4 mr-1" /> Save PDF
-              </Button>
-              <Button variant="default" size="sm" onClick={triggerStatementPrint}>
-                <Printer className="w-4 h-4 mr-1" /> Print
-              </Button>
-              <Button variant="ghost" size="icon" onClick={onClose}>
-                <X className="w-4 h-4" />
-              </Button>
+            <div>
+              <h2 className="font-display font-bold text-lg">Dealer Statement</h2>
+              <p className="text-xs text-muted-foreground">{dealer.dealer_name} · {dealer.brand_name}</p>
             </div>
           </div>
-
-          {/* Date range picker */}
-          <div className="px-5 py-3 border-b bg-secondary/30 flex-shrink-0">
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-sm font-display font-semibold text-muted-foreground">Period:</span>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-muted-foreground">From</label>
-                <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-8 w-40 text-xs" />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-muted-foreground">To</label>
-                <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-8 w-40 text-xs" />
-              </div>
-              {/* Quick presets */}
-              <div className="flex gap-1 ml-2">
-                {[
-                  { label: 'This Month', fn: () => { const n = new Date(); setDateFrom(`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-01`); setDateTo(today); } },
-                  { label: 'Last 30d', fn: () => { const d = new Date(); d.setDate(d.getDate()-30); setDateFrom(d.toISOString().slice(0,10)); setDateTo(today); } },
-                  { label: 'All Time', fn: () => { setDateFrom('2020-01-01'); setDateTo(today); } },
-                ].map(p => (
-                  <button key={p.label} onClick={p.fn} className="px-2.5 py-1 rounded-lg text-[11px] font-display font-semibold border hover:bg-accent transition-colors">
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              <div className="ml-auto text-xs text-muted-foreground font-display">
-                <span className="font-bold text-foreground">{filtered.length}</span> transactions
-              </div>
-            </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Download className="w-4 h-4 mr-1" /> Save PDF
+            </Button>
+            <Button variant="default" size="sm" onClick={handlePrint}>
+              <Printer className="w-4 h-4 mr-1" /> Print
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
           </div>
+        </div>
 
-          {/* Statement preview */}
-          <div className="flex-1 overflow-y-auto p-5 pos-scrollable">
-            {/* Summary cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
+        {/* Date range picker */}
+        <div className="px-5 py-3 border-b bg-secondary/30 flex-shrink-0">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-display font-semibold text-muted-foreground">Period:</span>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">From</label>
+              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-8 w-40 text-xs" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">To</label>
+              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-8 w-40 text-xs" />
+            </div>
+            {/* Quick presets */}
+            <div className="flex gap-1 ml-2">
               {[
-                { label: 'Opening Balance', value: fmt(openingBalance), color: 'text-muted-foreground' },
-                { label: 'Purchases', value: `+${fmt(periodPurchase)}`, color: 'text-destructive' },
-                { label: 'Payments', value: `-${fmt(periodPayment)}`, color: 'text-success' },
-                { label: 'Returns', value: `-${fmt(periodReturn)}`, color: 'text-warning' },
-                { label: 'Closing Balance', value: fmt(closingBalance), color: closingBalance > 100000 ? 'text-destructive' : closingBalance > 30000 ? 'text-warning' : 'text-success' },
-              ].map(c => (
-                <div key={c.label} className="bg-background rounded-xl border p-3 text-center">
-                  <p className="text-[10px] text-muted-foreground font-display uppercase tracking-wider mb-1">{c.label}</p>
-                  <p className={`font-display font-extrabold text-sm ${c.color}`}>{c.value}</p>
-                </div>
+                { label: 'This Month', fn: () => { const n = new Date(); setDateFrom(`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-01`); setDateTo(today); } },
+                { label: 'Last 30d', fn: () => { const d = new Date(); d.setDate(d.getDate()-30); setDateFrom(d.toISOString().slice(0,10)); setDateTo(today); } },
+                { label: 'All Time', fn: () => { setDateFrom('2020-01-01'); setDateTo(today); } },
+              ].map(p => (
+                <button key={p.label} onClick={p.fn} className="px-2.5 py-1 rounded-lg text-[11px] font-display font-semibold border hover:bg-accent transition-colors">
+                  {p.label}
+                </button>
               ))}
             </div>
-
-            {/* Transactions table */}
-            <div className="rounded-xl border overflow-hidden">
-              <table className="w-full text-xs">
-                <thead className="bg-foreground text-background">
-                  <tr>
-                    {['Date', 'Type', 'Description', 'Debit (+)', 'Credit (−)', 'Balance'].map(h => (
-                      <th key={h} className={`px-3 py-2.5 font-display text-[10px] uppercase tracking-wider ${h.includes('Debit') || h.includes('Credit') || h === 'Balance' ? 'text-right' : 'text-left'}`}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="bg-secondary/60 border-b">
-                    <td className="px-3 py-2 text-muted-foreground text-[10px]">—</td>
-                    <td className="px-3 py-2"><span className="bg-secondary text-foreground px-2 py-0.5 rounded-full text-[10px] font-bold">OPENING</span></td>
-                    <td className="px-3 py-2 text-muted-foreground">Balance b/f</td>
-                    <td className="px-3 py-2 text-right">—</td>
-                    <td className="px-3 py-2 text-right">—</td>
-                    <td className="px-3 py-2 text-right font-display font-extrabold">{fmt(openingBalance)}</td>
-                  </tr>
-                  {filtered.length === 0 && (
-                    <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">No transactions in this period</td></tr>
-                  )}
-                  {filtered.map((txn, idx) => {
-                    const isDebit = txn.type === 'purchase';
-                    const isCredit = txn.type === 'payment' || txn.type === 'stock_return';
-                    const bgColors: Record<string, string> = {
-                      purchase: 'bg-destructive/5',
-                      payment: 'bg-success/5',
-                      stock_return: 'bg-warning/5',
-                      sale_deduction: 'bg-primary/5',
-                      opening_adjustment: 'bg-secondary/30',
-                    };
-                    const labelColors: Record<string, string> = {
-                      purchase: 'bg-destructive/10 text-destructive',
-                      payment: 'bg-success/10 text-success',
-                      stock_return: 'bg-warning/10 text-warning',
-                      sale_deduction: 'bg-primary/10 text-primary',
-                      opening_adjustment: 'bg-secondary text-muted-foreground',
-                    };
-                    return (
-                      <tr key={txn.id} className={`border-t ${bgColors[txn.type] || ''}`}>
-                        <td className="px-3 py-2 text-muted-foreground text-[10px] whitespace-nowrap">
-                          {new Date(txn.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                          <br /><span className="text-[9px]">{new Date(txn.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${labelColors[txn.type] || 'bg-secondary text-foreground'}`}>
-                            {TXN_LABELS[txn.type] || txn.type}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-[10px] max-w-[200px]">
-                          <div className="truncate">{txn.description.split('|')[0].trim()}</div>
-                          {txn.imei_ref && <div className="font-mono text-[9px] text-muted-foreground">IMEI: {txn.imei_ref}</div>}
-                          {txn.invoice_ref && <div className="text-[9px] text-muted-foreground">Inv: {txn.invoice_ref}</div>}
-                        </td>
-                        <td className={`px-3 py-2 text-right font-display font-bold ${isDebit ? 'text-destructive' : 'text-muted-foreground'}`}>
-                          {isDebit ? fmt(Number(txn.amount)) : '—'}
-                        </td>
-                        <td className={`px-3 py-2 text-right font-display font-bold ${isCredit ? 'text-success' : 'text-muted-foreground'}`}>
-                          {isCredit ? fmt(Number(txn.amount)) : '—'}
-                        </td>
-                        <td className="px-3 py-2 text-right font-display font-extrabold text-sm">{fmt(Number(txn.running_balance))}</td>
-                      </tr>
-                    );
-                  })}
-                  <tr className="bg-foreground text-background">
-                    <td colSpan={5} className="px-3 py-2.5 text-right font-display font-bold text-xs">CLOSING BALANCE</td>
-                    <td className="px-3 py-2.5 text-right font-display font-extrabold text-sm">{fmt(closingBalance)}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="ml-auto text-xs text-muted-foreground font-display">
+              <span className="font-bold text-foreground">{filtered.length}</span> transactions
             </div>
           </div>
         </div>
+
+        {/* Statement preview */}
+        <div className="flex-1 overflow-y-auto p-5 pos-scrollable">
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
+            {[
+              { label: 'Opening Balance', value: fmt(openingBalance), color: 'text-muted-foreground' },
+              { label: 'Purchases', value: `+${fmt(periodPurchase)}`, color: 'text-destructive' },
+              { label: 'Payments', value: `-${fmt(periodPayment)}`, color: 'text-success' },
+              { label: 'Returns', value: `-${fmt(periodReturn)}`, color: 'text-warning' },
+              { label: 'Closing Balance', value: fmt(closingBalance), color: closingBalance > 100000 ? 'text-destructive' : closingBalance > 30000 ? 'text-warning' : 'text-success' },
+            ].map(c => (
+              <div key={c.label} className="bg-background rounded-xl border p-3 text-center">
+                <p className="text-[10px] text-muted-foreground font-display uppercase tracking-wider mb-1">{c.label}</p>
+                <p className={`font-display font-extrabold text-sm ${c.color}`}>{c.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Transactions table */}
+          <div className="rounded-xl border overflow-hidden">
+            <table className="w-full text-xs">
+              <thead className="bg-foreground text-background">
+                <tr>
+                  {['Date', 'Type', 'Description', 'Debit (+)', 'Credit (−)', 'Balance'].map(h => (
+                    <th key={h} className={`px-3 py-2.5 font-display text-[10px] uppercase tracking-wider ${h.includes('Debit') || h.includes('Credit') || h === 'Balance' ? 'text-right' : 'text-left'}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="bg-secondary/60 border-b">
+                  <td className="px-3 py-2 text-muted-foreground text-[10px]">—</td>
+                  <td className="px-3 py-2"><span className="bg-secondary text-foreground px-2 py-0.5 rounded-full text-[10px] font-bold">OPENING</span></td>
+                  <td className="px-3 py-2 text-muted-foreground">Balance b/f</td>
+                  <td className="px-3 py-2 text-right">—</td>
+                  <td className="px-3 py-2 text-right">—</td>
+                  <td className="px-3 py-2 text-right font-display font-extrabold">{fmt(openingBalance)}</td>
+                </tr>
+                {filtered.length === 0 && (
+                  <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">No transactions in this period</td></tr>
+                )}
+                {filtered.map((txn, idx) => {
+                  const isDebit = txn.type === 'purchase';
+                  const isCredit = txn.type === 'payment' || txn.type === 'stock_return';
+                  const bgColors: Record<string, string> = {
+                    purchase: 'bg-destructive/5',
+                    payment: 'bg-success/5',
+                    stock_return: 'bg-warning/5',
+                    sale_deduction: 'bg-primary/5',
+                    opening_adjustment: 'bg-secondary/30',
+                  };
+                  const labelColors: Record<string, string> = {
+                    purchase: 'bg-destructive/10 text-destructive',
+                    payment: 'bg-success/10 text-success',
+                    stock_return: 'bg-warning/10 text-warning',
+                    sale_deduction: 'bg-primary/10 text-primary',
+                    opening_adjustment: 'bg-secondary text-muted-foreground',
+                  };
+                  return (
+                    <tr key={txn.id} className={`border-t ${bgColors[txn.type] || ''}`}>
+                      <td className="px-3 py-2 text-muted-foreground text-[10px] whitespace-nowrap">
+                        {new Date(txn.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                        <br /><span className="text-[9px]">{new Date(txn.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${labelColors[txn.type] || 'bg-secondary text-foreground'}`}>
+                          {TXN_LABELS[txn.type] || txn.type}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-[10px] max-w-[200px]">
+                        <div className="truncate">{txn.description.split('|')[0].trim()}</div>
+                        {txn.imei_ref && <div className="font-mono text-[9px] text-muted-foreground">IMEI: {txn.imei_ref}</div>}
+                        {txn.invoice_ref && <div className="text-[9px] text-muted-foreground">Inv: {txn.invoice_ref}</div>}
+                      </td>
+                      <td className={`px-3 py-2 text-right font-display font-bold ${isDebit ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        {isDebit ? fmt(Number(txn.amount)) : '—'}
+                      </td>
+                      <td className={`px-3 py-2 text-right font-display font-bold ${isCredit ? 'text-success' : 'text-muted-foreground'}`}>
+                        {isCredit ? fmt(Number(txn.amount)) : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-right font-display font-extrabold text-sm">{fmt(Number(txn.running_balance))}</td>
+                    </tr>
+                  );
+                })}
+                <tr className="bg-foreground text-background">
+                  <td colSpan={5} className="px-3 py-2.5 text-right font-display font-bold text-xs">CLOSING BALANCE</td>
+                  <td className="px-3 py-2.5 text-right font-display font-extrabold text-sm">{fmt(closingBalance)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 };

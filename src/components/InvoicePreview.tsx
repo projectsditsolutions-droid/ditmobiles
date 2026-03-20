@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useShop } from '@/contexts/ShopContext';
 import { amountInWords, calculateGST } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { X, Printer, Download } from 'lucide-react';
+import { usePrint, triggerPrint } from '@/components/PrintPortal';
 import type { InvoiceData } from './POSBilling';
 
 interface Props {
@@ -19,17 +20,12 @@ const DEFAULT_TERMS = [
   '★ வாரண்டி முடிந்த பிறகு, கம்பெனி செல்போன்களுக்கு உதிரிபாகங்கள் எதிர்காலத்தில் கிடைக்காமல் போனால் நிர்வாகம் பொறுப்பல்ல.',
 ];
 
-export const triggerInvoicePrint = () => {
-  document.body.classList.add('printing-invoice');
-  window.print();
-  window.addEventListener('afterprint', () => {
-    document.body.classList.remove('printing-invoice');
-  }, { once: true });
-};
+export { triggerPrint as triggerInvoicePrint };
 
 export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
   const { activeShop } = useShop();
   const shop = activeShop;
+  const { printContent, clearContent } = usePrint();
 
   if (!shop) return null;
 
@@ -44,14 +40,13 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
     ? shop.terms_and_conditions
     : DEFAULT_TERMS;
 
-  // The single source of truth for the printable layout — used in both screen preview and print
   const InvoiceBody = () => (
     <div className="invoice-page" style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: '11px', color: '#111', background: '#fff', padding: '0' }}>
       {/* Header */}
       <div style={{ textAlign: 'center', borderBottom: '2px solid #222', paddingBottom: '12px', marginBottom: '10px' }}>
         {logoUrl && (
           <div style={{ marginBottom: '6px', display: 'flex', justifyContent: 'center' }}>
-            <img src={logoUrl} alt="Logo" style={{ height: '60px', maxWidth: '180px', objectFit: 'contain' }} />
+            <img src={logoUrl} alt="Logo" style={{ height: '60px', maxWidth: '180px', objectFit: 'contain' }} crossOrigin="anonymous" />
           </div>
         )}
         <div style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.5px' }}>{businessName}</div>
@@ -82,11 +77,6 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
         </span>
         {invoice.gst_bearer === 'seller' && (
           <span style={{ marginLeft: '6px', display: 'inline-block', padding: '2px 8px', borderRadius: '999px', fontSize: '9px', fontWeight: 700, border: '1px solid #fcd34d', background: '#fffbeb', color: '#92400e' }}>GST Borne by Seller</span>
-        )}
-        {(invoice.payment_method === 'emi' || invoice.payment_method === 'mixed') && (
-          <span style={{ marginLeft: '6px', display: 'inline-block', padding: '2px 8px', borderRadius: '999px', fontSize: '9px', fontWeight: 700, border: '1px solid #a5b4fc', background: '#eef2ff', color: '#3730a3' }}>
-            {invoice.payment_method === 'emi' ? 'EMI' : 'Mixed Payment'}
-          </span>
         )}
       </div>
 
@@ -222,39 +212,38 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
     </div>
   );
 
+  const handlePrint = () => {
+    printContent(<InvoiceBody />);
+    setTimeout(() => {
+      triggerPrint().then(() => clearContent());
+    }, 100);
+  };
+
   return (
-    <>
-      {/* Print-only root — kept offscreen via CSS, shown during print */}
-      <div className="invoice-print-root">
-        <InvoiceBody />
-      </div>
-
-      {/* On-screen modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-sm">
-        <div className="bg-card rounded-xl shadow-2xl w-[700px] max-h-[90vh] flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b">
-            <h2 className="font-display font-bold text-lg">Invoice Preview</h2>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={triggerInvoicePrint}>
-                <Download className="w-4 h-4 mr-1" /> Save PDF
-              </Button>
-              <Button variant="default" size="sm" onClick={triggerInvoicePrint}>
-                <Printer className="w-4 h-4 mr-1" /> Print
-              </Button>
-              <Button variant="ghost" size="icon" onClick={onClose}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 backdrop-blur-sm">
+      <div className="bg-card rounded-xl shadow-2xl w-[700px] max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <h2 className="font-display font-bold text-lg">Invoice Preview</h2>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Download className="w-4 h-4 mr-1" /> Save PDF
+            </Button>
+            <Button variant="default" size="sm" onClick={handlePrint}>
+              <Printer className="w-4 h-4 mr-1" /> Print
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
           </div>
+        </div>
 
-          {/* Screen preview — mirrors the print layout exactly */}
-          <div className="flex-1 overflow-y-auto p-6 bg-secondary/20">
-            <div className="bg-white rounded-lg shadow-sm border p-6 max-w-[600px] mx-auto">
-              <InvoiceBody />
-            </div>
+        {/* Screen preview */}
+        <div className="flex-1 overflow-y-auto p-6 bg-secondary/20">
+          <div className="bg-white rounded-lg shadow-sm border p-6 max-w-[600px] mx-auto">
+            <InvoiceBody />
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
