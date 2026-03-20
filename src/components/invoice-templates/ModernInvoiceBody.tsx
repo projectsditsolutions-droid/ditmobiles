@@ -1,5 +1,5 @@
 import React from 'react';
-import { amountInWords, calculateGST } from '@/lib/store';
+import { amountInWords, calculateGST, calculateExclusiveGST } from '@/lib/store';
 import type { InvoiceData } from '../POSBilling';
 
 interface Props {
@@ -12,6 +12,9 @@ interface Props {
   logoUrl: string;
   terms: string[];
 }
+
+const calcItemGST = (total: number, gstPercent: number, bearer: string) =>
+  bearer === 'seller' ? calculateGST(total, gstPercent) : calculateExclusiveGST(total, gstPercent);
 
 export const ModernInvoiceBody: React.FC<Props> = ({
   invoice, businessName, businessAddress, businessPhone, businessGST, subHeading, logoUrl, terms,
@@ -62,13 +65,19 @@ export const ModernInvoiceBody: React.FC<Props> = ({
           <th style={{ padding: '6px 6px', textAlign: 'left' }}>IMEI</th>
           <th style={{ padding: '6px 6px', textAlign: 'right' }}>Price</th>
           <th style={{ padding: '6px 6px', textAlign: 'right' }}>Disc.</th>
-          {invoice.is_gst_bill && <th style={{ padding: '6px 6px', textAlign: 'right' }}>GST</th>}
+          {invoice.is_gst_bill && (
+            <>
+              <th style={{ padding: '6px 6px', textAlign: 'right' }}>Taxable</th>
+              <th style={{ padding: '6px 6px', textAlign: 'right' }}>CGST</th>
+              <th style={{ padding: '6px 6px', textAlign: 'right' }}>SGST</th>
+            </>
+          )}
           <th style={{ padding: '6px 6px', textAlign: 'right', borderRadius: '0 4px 0 0' }}>Amount</th>
         </tr>
       </thead>
       <tbody>
         {invoice.items.map((item, idx) => {
-          const gst = invoice.is_gst_bill ? calculateGST(item.total, Number(item.product.gst_percent)) : null;
+          const gst = invoice.is_gst_bill ? calcItemGST(item.total, Number(item.product.gst_percent), invoice.gst_bearer) : null;
           return (
             <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb', background: idx % 2 === 0 ? '#fafafa' : '#fff' }}>
               <td style={{ padding: '6px', verticalAlign: 'top' }}>{idx + 1}</td>
@@ -81,9 +90,19 @@ export const ModernInvoiceBody: React.FC<Props> = ({
               <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>₹{item.unitPrice.toLocaleString('en-IN')}</td>
               <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>{item.discount > 0 ? `₹${item.discount}` : '—'}</td>
               {invoice.is_gst_bill && gst && (
-                <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280' }}>
-                  ₹{gst.totalGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </td>
+                <>
+                  <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280' }}>
+                    ₹{gst.taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '8.5px' }}>
+                    ₹{gst.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    <div style={{ fontSize: '7px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
+                  </td>
+                  <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '8.5px' }}>
+                    ₹{gst.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    <div style={{ fontSize: '7px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
+                  </td>
+                </>
               )}
               <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 700 }}>₹{item.total.toLocaleString('en-IN')}</td>
             </tr>
@@ -92,9 +111,9 @@ export const ModernInvoiceBody: React.FC<Props> = ({
       </tbody>
     </table>
 
-    {/* Summary - Bold right-aligned box */}
+    {/* Summary */}
     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '14px' }}>
-      <div style={{ width: '240px', background: '#f5f3ff', borderRadius: '8px', padding: '12px', fontSize: '10px' }}>
+      <div style={{ width: '260px', background: '#f5f3ff', borderRadius: '8px', padding: '12px', fontSize: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
           <span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString('en-IN')}</span>
         </div>
@@ -106,15 +125,21 @@ export const ModernInvoiceBody: React.FC<Props> = ({
         {invoice.is_gst_bill && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#6b7280' }}>
+              <span>Taxable Amount</span><span>₹{(invoice.grand_total - invoice.cgst - invoice.sgst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#6b7280' }}>
               <span>CGST</span><span>₹{invoice.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#6b7280' }}>
               <span>SGST</span><span>₹{invoice.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#4338ca', fontWeight: 700 }}>
+              <span>GST Total</span><span>₹{(invoice.cgst + invoice.sgst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            </div>
           </>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '3px solid #4338ca', marginTop: '6px', paddingTop: '6px', fontWeight: 900, fontSize: '15px', color: '#4338ca' }}>
-          <span>Total</span><span>₹{invoice.grand_total.toLocaleString('en-IN')}</span>
+          <span>Grand Total</span><span>₹{invoice.grand_total.toLocaleString('en-IN')}</span>
         </div>
       </div>
     </div>
