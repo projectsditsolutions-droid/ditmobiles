@@ -138,32 +138,41 @@ export const ReportsPage: React.FC = () => {
     setSelectedInvoice(preview);
   };
 
-  // Bulk PDF: build all invoices, print each sequentially
+  // Bulk PDF: render ALL selected invoices in one print with page breaks
   const handleBulkPrint = async () => {
     const toProcess = filteredInvoices.filter(i => selectedIds.has(i.id));
     if (toProcess.length === 0) { toast.error('Select invoices first'); return; }
     setBulkPrinting(true);
-    toast.info(`Preparing ${toProcess.length} invoice(s) for printing…`);
+    toast.info(`Preparing ${toProcess.length} invoice(s) for download…`);
 
     const shop = activeShopId ? (await supabase.from('shops').select('*').eq('id', activeShopId).single()).data : null;
     if (!shop) { setBulkPrinting(false); toast.error('Shop not found'); return; }
 
-    for (let i = 0; i < toProcess.length; i++) {
-      const preview = await buildInvoiceData(toProcess[i]);
-      if (!preview) continue;
-
-      printContent(<InvoicePrintBody invoice={preview} shop={shop} />);
-      await new Promise(r => setTimeout(r, 200));
-      await triggerPrint();
-      if (i < toProcess.length - 1) {
-        await new Promise(r => setTimeout(r, 300));
-      }
+    const allPreviews: InvoiceData[] = [];
+    for (const inv of toProcess) {
+      const preview = await buildInvoiceData(inv);
+      if (preview) allPreviews.push(preview);
     }
 
+    if (allPreviews.length === 0) { setBulkPrinting(false); toast.error('No invoices to print'); return; }
+
+    // Render all invoices in a single print area with page breaks between them
+    printContent(
+      <div>
+        {allPreviews.map((preview, idx) => (
+          <div key={preview.id} style={{ pageBreakAfter: idx < allPreviews.length - 1 ? 'always' : 'auto' }}>
+            <InvoicePrintBody invoice={preview} shop={shop} />
+          </div>
+        ))}
+      </div>
+    );
+
+    await new Promise(r => setTimeout(r, 300));
+    await triggerPrint();
     clearContent();
     setBulkPrinting(false);
     setSelectedIds(new Set());
-    toast.success(`Printed ${toProcess.length} invoice(s)`);
+    toast.success(`PDF ready with ${allPreviews.length} invoice(s)`);
   };
 
   const toggleSelect = (id: string) => {
