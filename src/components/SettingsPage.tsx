@@ -516,7 +516,10 @@ export const SettingsPage: React.FC = () => {
               {BILL_TEMPLATES.map(t => (
                 <button
                   key={t.id}
-                  onClick={() => setSelectedTemplate(t.id)}
+                  onClick={() => {
+                    setSelectedTemplate(t.id);
+                    try { localStorage.setItem('bill_template', t.id); } catch {}
+                  }}
                   className={`rounded-xl border p-4 text-left transition-all ${selectedTemplate === t.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:bg-accent/30'}`}
                 >
                   <div className="flex items-center justify-between mb-2">
