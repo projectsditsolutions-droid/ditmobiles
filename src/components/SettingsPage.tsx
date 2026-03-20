@@ -555,7 +555,7 @@ export const SettingsPage: React.FC = () => {
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-3 bg-accent/40 px-3 py-2 rounded-lg">
-              💡 Template selection is saved locally. Full template customization is coming soon.
+              💡 Template selection is saved and applied to all invoice previews and prints.
             </p>
           </div>
 
