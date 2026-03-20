@@ -23,16 +23,25 @@ const DEFAULT_TERMS = [
 export { triggerPrint as triggerInvoicePrint };
 
 /** Standalone print body — can be used outside InvoicePreview (e.g. bulk print) */
-export const InvoicePrintBody: React.FC<{ invoice: InvoiceData; shop: any }> = ({ invoice, shop }) => {
+export const InvoicePrintBody: React.FC<{ invoice: InvoiceData; shop: any; template?: string }> = ({ invoice, shop, template = 'classic' }) => {
   const businessName = invoice.billing_business_name || shop.name;
   const businessAddress = invoice.billing_address || shop.address;
   const businessPhone = invoice.billing_phone || shop.phone;
   const businessGST = invoice.billing_gst_number || shop.gst_number;
   const subHeading = invoice.billing_sub_heading || (shop as any).sub_heading || '';
-  const logoUrl = (invoice as any).billing_logo_url || (invoice as any).billing_profile_logo_url || shop.logo_url;
+  const logoUrl = (invoice as any).billing_logo_url || shop.logo_url;
   const terms = (shop.terms_and_conditions && shop.terms_and_conditions.length > 0)
     ? shop.terms_and_conditions
     : DEFAULT_TERMS;
+
+  if (template === 'modern') {
+    return <ModernInvoiceBody invoice={invoice} businessName={businessName} businessAddress={businessAddress}
+      businessPhone={businessPhone} businessGST={businessGST} subHeading={subHeading} logoUrl={logoUrl} terms={terms} />;
+  }
+  if (template === 'compact') {
+    return <CompactInvoiceBody invoice={invoice} businessName={businessName} businessAddress={businessAddress}
+      businessPhone={businessPhone} businessGST={businessGST} subHeading={subHeading} logoUrl={logoUrl} terms={terms} />;
+  }
 
   return (
     <InvoiceBodyInner invoice={invoice} businessName={businessName} businessAddress={businessAddress}
