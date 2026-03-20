@@ -32,7 +32,7 @@ export const InvoicePreview: React.FC<Props> = ({ invoice, onClose }) => {
   const businessPhone = invoice.billing_phone || shop.phone;
   const businessGST = invoice.billing_gst_number || shop.gst_number;
   const subHeading = invoice.billing_sub_heading || (shop as any).sub_heading || '';
-  const logoUrl = (invoice as any).billing_logo_url || shop.logo_url;
+  const logoUrl = (invoice as any).billing_logo_url || (invoice as any).billing_profile_logo_url || shop.logo_url;
 
   const terms = (shop.terms_and_conditions && shop.terms_and_conditions.length > 0)
     ? shop.terms_and_conditions

@@ -502,6 +502,7 @@ export type Database = {
           invoice_prefix: string
           is_default: boolean
           last_invoice_number: number
+          logo_url: string | null
           phone: string
           profile_name: string
           profile_type: string
@@ -518,6 +519,7 @@ export type Database = {
           invoice_prefix?: string
           is_default?: boolean
           last_invoice_number?: number
+          logo_url?: string | null
           phone?: string
           profile_name?: string
           profile_type?: string
@@ -534,6 +536,7 @@ export type Database = {
           invoice_prefix?: string
           is_default?: boolean
           last_invoice_number?: number
+          logo_url?: string | null
           phone?: string
           profile_name?: string
           profile_type?: string
