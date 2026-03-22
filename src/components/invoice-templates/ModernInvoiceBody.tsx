@@ -1,5 +1,5 @@
 import React from 'react';
-import { amountInWords, calculateGST, calculateExclusiveGST } from '@/lib/store';
+import { amountInWords, calculateGST } from '@/lib/store';
 import type { InvoiceData } from '../POSBilling';
 
 interface Props {

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useShop } from '@/contexts/ShopContext';
-import { amountInWords, calculateGST, calculateExclusiveGST } from '@/lib/store';
+import { amountInWords, calculateGST } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { X, Printer, Download, CheckCircle2 } from 'lucide-react';
 import { usePrint, triggerPrint } from '@/components/PrintPortal';
