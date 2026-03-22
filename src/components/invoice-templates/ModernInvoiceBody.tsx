@@ -1,5 +1,5 @@
 import React from 'react';
-import { amountInWords, calculateGST, calculateExclusiveGST } from '@/lib/store';
+import { amountInWords, calculateGST } from '@/lib/store';
 import type { InvoiceData } from '../POSBilling';
 
 interface Props {
@@ -13,8 +13,8 @@ interface Props {
   terms: string[];
 }
 
-const calcItemGST = (total: number, gstPercent: number, bearer: string) =>
-  bearer === 'seller' ? calculateGST(total, gstPercent) : calculateExclusiveGST(total, gstPercent);
+// Prices are always inclusive of GST — always extract taxable from price
+const calcItemGST = (total: number, gstPercent: number) => calculateGST(total, gstPercent);
 
 export const ModernInvoiceBody: React.FC<Props> = ({
   invoice, businessName, businessAddress, businessPhone, businessGST, subHeading, logoUrl, terms,
@@ -77,10 +77,7 @@ export const ModernInvoiceBody: React.FC<Props> = ({
       </thead>
       <tbody>
         {invoice.items.map((item, idx) => {
-          const gst = invoice.is_gst_bill ? calcItemGST(item.total, Number(item.product.gst_percent), invoice.gst_bearer) : null;
-          const displayAmount = gst && invoice.gst_bearer !== 'seller'
-            ? item.total + gst.totalGST
-            : item.total;
+          const gst = invoice.is_gst_bill ? calcItemGST(item.total, Number(item.product.gst_percent)) : null;
           return (
             <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb', background: idx % 2 === 0 ? '#fafafa' : '#fff' }}>
               <td style={{ padding: '6px', verticalAlign: 'top' }}>{idx + 1}</td>
@@ -107,7 +104,7 @@ export const ModernInvoiceBody: React.FC<Props> = ({
                   </td>
                 </>
               )}
-              <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 700 }}>₹{displayAmount.toLocaleString('en-IN')}</td>
+              <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 700 }}>₹{item.total.toLocaleString('en-IN')}</td>
             </tr>
           );
         })}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { amountInWords, calculateGST, calculateExclusiveGST } from '@/lib/store';
+import { amountInWords, calculateGST } from '@/lib/store';
 import type { InvoiceData } from '../POSBilling';
 
 interface Props {
@@ -13,8 +13,8 @@ interface Props {
   terms: string[];
 }
 
-const calcItemGST = (total: number, gstPercent: number, bearer: string) =>
-  bearer === 'seller' ? calculateGST(total, gstPercent) : calculateExclusiveGST(total, gstPercent);
+// Prices are always inclusive of GST — always extract taxable from price
+const calcItemGST = (total: number, gstPercent: number) => calculateGST(total, gstPercent);
 
 export const CompactInvoiceBody: React.FC<Props> = ({
   invoice, businessName, businessAddress, businessPhone, businessGST, subHeading, logoUrl, terms,
@@ -57,10 +57,7 @@ export const CompactInvoiceBody: React.FC<Props> = ({
         <span>Amount</span>
       </div>
       {invoice.items.map((item) => {
-        const gst = invoice.is_gst_bill ? calcItemGST(item.total, Number(item.product.gst_percent), invoice.gst_bearer) : null;
-        const displayAmount = gst && invoice.gst_bearer !== 'seller'
-          ? item.total + gst.totalGST
-          : item.total;
+        const gst = invoice.is_gst_bill ? calcItemGST(item.total, Number(item.product.gst_percent)) : null;
         return (
           <div key={item.id} style={{ padding: '3px 0', borderTop: '1px dotted #e5e7eb', fontSize: '9px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -71,7 +68,7 @@ export const CompactInvoiceBody: React.FC<Props> = ({
                   {item.discount > 0 ? ` | Disc: ₹${item.discount}` : ''}
                 </div>
               </div>
-              <div style={{ fontWeight: 700, whiteSpace: 'nowrap', paddingLeft: '8px' }}>₹{displayAmount.toLocaleString('en-IN')}</div>
+              <div style={{ fontWeight: 700, whiteSpace: 'nowrap', paddingLeft: '8px' }}>₹{item.total.toLocaleString('en-IN')}</div>
             </div>
             {invoice.is_gst_bill && gst && (
               <div style={{ fontSize: '7.5px', color: '#888', display: 'flex', gap: '6px', marginTop: '1px' }}>
