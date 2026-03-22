@@ -117,8 +117,23 @@
     background: hsl(var(--border));
     border-radius: 2px;
   }
-}
+  }
 
+  .checkout-input {
+    background: hsl(var(--checkout-input-bg));
+    color: hsl(var(--checkout-input-fg));
+    border: 1px solid hsl(var(--checkout-fg) / 0.15);
+  }
+
+  .checkout-input::placeholder {
+    color: hsl(var(--checkout-input-placeholder));
+  }
+
+  .checkout-input:focus {
+    outline: none;
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.25);
+  }
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
