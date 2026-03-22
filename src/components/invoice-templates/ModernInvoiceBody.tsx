@@ -13,8 +13,8 @@ interface Props {
   terms: string[];
 }
 
-const calcItemGST = (total: number, gstPercent: number, bearer: string) =>
-  bearer === 'seller' ? calculateGST(total, gstPercent) : calculateExclusiveGST(total, gstPercent);
+// Prices are always inclusive of GST — always extract taxable from price
+const calcItemGST = (total: number, gstPercent: number) => calculateGST(total, gstPercent);
 
 export const ModernInvoiceBody: React.FC<Props> = ({
   invoice, businessName, businessAddress, businessPhone, businessGST, subHeading, logoUrl, terms,

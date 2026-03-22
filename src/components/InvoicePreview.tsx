@@ -124,15 +124,10 @@ const InvoiceBodyInner: React.FC<{
       </thead>
       <tbody>
         {invoice.items.map((item, idx) => {
+          // Prices are always inclusive of GST — extract taxable amount from price
           const gst = invoice.is_gst_bill
-            ? (invoice.gst_bearer === 'seller'
-                ? calculateGST(item.total, Number(item.product.gst_percent))
-                : calculateExclusiveGST(item.total, Number(item.product.gst_percent)))
+            ? calculateGST(item.total, Number(item.product.gst_percent))
             : null;
-          // For exclusive GST, the final amount = price + GST; for inclusive, amount = price (already includes GST)
-          const displayAmount = gst && invoice.gst_bearer !== 'seller'
-            ? item.total + gst.totalGST
-            : item.total;
           return (
             <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
               <td style={{ padding: '5px 4px', verticalAlign: 'top' }}>{idx + 1}</td>
@@ -162,7 +157,7 @@ const InvoiceBodyInner: React.FC<{
                   </td>
                 </>
               )}
-              <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 700 }}>₹{displayAmount.toLocaleString('en-IN')}</td>
+              <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 700 }}>₹{item.total.toLocaleString('en-IN')}</td>
             </tr>
           );
         })}
