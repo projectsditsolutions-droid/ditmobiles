@@ -68,7 +68,7 @@ export const CompactInvoiceBody: React.FC<Props> = ({
                   {item.discount > 0 ? ` | Disc: ₹${item.discount}` : ''}
                 </div>
               </div>
-              <div style={{ fontWeight: 700, whiteSpace: 'nowrap', paddingLeft: '8px' }}>₹{displayAmount.toLocaleString('en-IN')}</div>
+              <div style={{ fontWeight: 700, whiteSpace: 'nowrap', paddingLeft: '8px' }}>₹{item.total.toLocaleString('en-IN')}</div>
             </div>
             {invoice.is_gst_bill && gst && (
               <div style={{ fontSize: '7.5px', color: '#888', display: 'flex', gap: '6px', marginTop: '1px' }}>

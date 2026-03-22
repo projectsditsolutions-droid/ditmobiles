@@ -104,7 +104,7 @@ export const ModernInvoiceBody: React.FC<Props> = ({
                   </td>
                 </>
               )}
-              <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 700 }}>₹{displayAmount.toLocaleString('en-IN')}</td>
+              <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 700 }}>₹{item.total.toLocaleString('en-IN')}</td>
             </tr>
           );
         })}
