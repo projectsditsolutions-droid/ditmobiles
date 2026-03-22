@@ -58,6 +58,9 @@ export const CompactInvoiceBody: React.FC<Props> = ({
       </div>
       {invoice.items.map((item) => {
         const gst = invoice.is_gst_bill ? calcItemGST(item.total, Number(item.product.gst_percent), invoice.gst_bearer) : null;
+        const displayAmount = gst && invoice.gst_bearer !== 'seller'
+          ? item.total + gst.totalGST
+          : item.total;
         return (
           <div key={item.id} style={{ padding: '3px 0', borderTop: '1px dotted #e5e7eb', fontSize: '9px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -68,11 +71,11 @@ export const CompactInvoiceBody: React.FC<Props> = ({
                   {item.discount > 0 ? ` | Disc: ₹${item.discount}` : ''}
                 </div>
               </div>
-              <div style={{ fontWeight: 700, whiteSpace: 'nowrap', paddingLeft: '8px' }}>₹{item.total.toLocaleString('en-IN')}</div>
+              <div style={{ fontWeight: 700, whiteSpace: 'nowrap', paddingLeft: '8px' }}>₹{displayAmount.toLocaleString('en-IN')}</div>
             </div>
             {invoice.is_gst_bill && gst && (
               <div style={{ fontSize: '7.5px', color: '#888', display: 'flex', gap: '6px', marginTop: '1px' }}>
-                <span>Base: ₹{gst.taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                <span>Taxable: ₹{gst.taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 <span>C: ₹{gst.cgst.toFixed(2)} @{(Number(item.product.gst_percent) / 2).toFixed(1)}%</span>
                 <span>S: ₹{gst.sgst.toFixed(2)} @{(Number(item.product.gst_percent) / 2).toFixed(1)}%</span>
               </div>
