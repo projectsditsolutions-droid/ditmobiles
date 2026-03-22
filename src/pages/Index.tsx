@@ -135,6 +135,7 @@ const Index = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         {activeModule === 'billing' && <POSBilling />}
         {activeModule === 'inventory' && <InventoryManagement />}
+        {activeModule === 'purchases' && <PurchaseEntry />}
         {activeModule === 'dealers' && <DealerLedger />}
         {activeModule === 'customers' && <CustomerManagement />}
         {activeModule === 'reports' && <ReportsPage />}
