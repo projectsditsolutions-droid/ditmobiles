@@ -77,10 +77,7 @@ export const ModernInvoiceBody: React.FC<Props> = ({
       </thead>
       <tbody>
         {invoice.items.map((item, idx) => {
-          const gst = invoice.is_gst_bill ? calcItemGST(item.total, Number(item.product.gst_percent), invoice.gst_bearer) : null;
-          const displayAmount = gst && invoice.gst_bearer !== 'seller'
-            ? item.total + gst.totalGST
-            : item.total;
+          const gst = invoice.is_gst_bill ? calcItemGST(item.total, Number(item.product.gst_percent)) : null;
           return (
             <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb', background: idx % 2 === 0 ? '#fafafa' : '#fff' }}>
               <td style={{ padding: '6px', verticalAlign: 'top' }}>{idx + 1}</td>

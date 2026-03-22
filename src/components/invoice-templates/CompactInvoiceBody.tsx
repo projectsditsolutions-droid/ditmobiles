@@ -57,10 +57,7 @@ export const CompactInvoiceBody: React.FC<Props> = ({
         <span>Amount</span>
       </div>
       {invoice.items.map((item) => {
-        const gst = invoice.is_gst_bill ? calcItemGST(item.total, Number(item.product.gst_percent), invoice.gst_bearer) : null;
-        const displayAmount = gst && invoice.gst_bearer !== 'seller'
-          ? item.total + gst.totalGST
-          : item.total;
+        const gst = invoice.is_gst_bill ? calcItemGST(item.total, Number(item.product.gst_percent)) : null;
         return (
           <div key={item.id} style={{ padding: '3px 0', borderTop: '1px dotted #e5e7eb', fontSize: '9px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
