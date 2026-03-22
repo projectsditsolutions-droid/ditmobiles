@@ -6,6 +6,7 @@ import Onboarding from './Onboarding';
 import { POSBilling } from '@/components/POSBilling';
 import { InventoryManagement } from '@/components/InventoryManagement';
 import { DealerLedger } from '@/components/DealerLedger';
+import { PurchaseEntry } from '@/components/PurchaseEntry';
 import { CustomerManagement } from '@/components/CustomerManagement';
 import { ReportsPage } from '@/components/ReportsPage';
 import { SettingsPage } from '@/components/SettingsPage';
