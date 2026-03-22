@@ -14,7 +14,7 @@ import { PinModal } from '@/components/PinModal';
 import { usePinLock } from '@/hooks/use-pin-lock';
 import {
   Receipt, Package, Users, BarChart3, Settings, Lock, Unlock,
-  ChevronLeft, ChevronRight, Loader2, LogOut, Zap, UserCircle,
+  ChevronLeft, ChevronRight, Loader2, LogOut, Zap, UserCircle, ArrowDownLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
