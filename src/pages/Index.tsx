@@ -18,11 +18,12 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-type AppModule = 'billing' | 'inventory' | 'dealers' | 'customers' | 'reports' | 'settings';
+type AppModule = 'billing' | 'inventory' | 'purchases' | 'dealers' | 'customers' | 'reports' | 'settings';
 
 const MODULES: { key: AppModule; label: string; icon: React.ElementType; protected: boolean; color: string }[] = [
   { key: 'billing', label: 'Billing', icon: Receipt, protected: false, color: 'text-primary' },
   { key: 'inventory', label: 'Inventory', icon: Package, protected: true, color: 'text-warning' },
+  { key: 'purchases', label: 'Purchases', icon: ArrowDownLeft, protected: true, color: 'text-success' },
   { key: 'dealers', label: 'Dealers', icon: Users, protected: true, color: 'text-success' },
   { key: 'customers', label: 'Customers', icon: UserCircle, protected: false, color: 'text-primary' },
   { key: 'reports', label: 'Reports', icon: BarChart3, protected: true, color: 'text-destructive' },
