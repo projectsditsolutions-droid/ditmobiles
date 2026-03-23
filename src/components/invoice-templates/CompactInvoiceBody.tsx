@@ -38,6 +38,7 @@ export const CompactInvoiceBody: React.FC<Props> = ({
       <strong>{invoice.customer_name}</strong>
       {invoice.customer_phone && <span> | {invoice.customer_phone}</span>}
       {invoice.customer_gst && <div style={{ fontSize: '8px' }}>GST: {invoice.customer_gst}</div>}
+      {(invoice as any).customer_address && <div style={{ fontSize: '8px', color: '#888' }}>{(invoice as any).customer_address}</div>}
     </div>
 
     <div style={{ textAlign: 'center', marginBottom: '6px' }}>
