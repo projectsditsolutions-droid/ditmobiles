@@ -212,6 +212,7 @@ export const CustomerManagement: React.FC = () => {
       billing_gst_number: fullInvoice.billing_gst_number || undefined,
       warranty_mobile: fullInvoice.warranty_mobile || undefined,
       warranty_accessories: fullInvoice.warranty_accessories || undefined,
+      customer_address: fullInvoice.customer_address || undefined,
     };
 
     setSelectedInvoice(invoiceData);
