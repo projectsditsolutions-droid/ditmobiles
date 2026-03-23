@@ -51,7 +51,7 @@ export const ModernInvoiceBody: React.FC<Props> = ({
 
     {invoice.gst_bearer === 'seller' && (
       <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-        <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '9px', fontWeight: 700, border: '1px solid #fcd34d', background: '#fffbeb', color: '#92400e' }}>GST Borne by Seller</span>
+        <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '10px', fontWeight: 700, border: '1px solid #fcd34d', background: '#fffbeb', color: '#92400e' }}>GST Borne by Seller</span>
       </div>
     )}
 
