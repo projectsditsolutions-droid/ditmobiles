@@ -63,7 +63,7 @@ const InvoiceBodyInner: React.FC<{
   invoice: InvoiceData; businessName: string; businessAddress: string;
   businessPhone: string; businessGST: string; subHeading: string; logoUrl: string; terms: string[];
 }> = ({ invoice, businessName, businessAddress, businessPhone, businessGST, subHeading, logoUrl, terms }) => (
-  <div className="invoice-page" style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: '11px', color: '#111', background: '#fff', padding: '0' }}>
+  <div className="invoice-page" style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: '12px', color: '#111', background: '#fff', padding: '0' }}>
     {/* Header */}
     <div style={{ textAlign: 'center', borderBottom: '2px solid #222', paddingBottom: '12px', marginBottom: '10px' }}>
       {logoUrl && (
@@ -71,15 +71,15 @@ const InvoiceBodyInner: React.FC<{
           <img src={logoUrl} alt="Logo" style={{ height: '60px', maxWidth: '180px', objectFit: 'contain' }} crossOrigin="anonymous" />
         </div>
       )}
-      <div style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.5px' }}>{businessName}</div>
-      {subHeading && <div style={{ fontSize: '10px', color: '#555', marginTop: '2px', fontWeight: 600 }}>{subHeading}</div>}
-      <div style={{ fontSize: '9.5px', color: '#555', marginTop: '4px' }}>{businessAddress}</div>
-      <div style={{ fontSize: '9.5px', color: '#555' }}>Phone: {businessPhone}</div>
-      <div style={{ fontSize: '9.5px', fontWeight: 700, marginTop: '2px' }}>GSTIN: {businessGST}</div>
+      <div style={{ fontSize: '26px', fontWeight: 900, letterSpacing: '-0.5px' }}>{businessName}</div>
+      {subHeading && <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', fontWeight: 600 }}>{subHeading}</div>}
+      <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>{businessAddress}</div>
+      <div style={{ fontSize: '11px', color: '#555' }}>Phone: {businessPhone}</div>
+      <div style={{ fontSize: '11px', fontWeight: 700, marginTop: '2px' }}>GSTIN: {businessGST}</div>
     </div>
 
     {/* Invoice Meta */}
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '10px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '11px' }}>
       <div>
         <div><strong>Invoice:</strong> {invoice.invoice_number}</div>
         <div><strong>Date:</strong> {new Date(invoice.date).toLocaleString('en-IN')}</div>
@@ -88,24 +88,24 @@ const InvoiceBodyInner: React.FC<{
         <div><strong>Customer:</strong> {invoice.customer_name}</div>
         {invoice.customer_phone && <div><strong>Phone:</strong> {invoice.customer_phone}</div>}
         {invoice.customer_gst && <div><strong>GSTIN:</strong> {invoice.customer_gst}</div>}
-        {invoice.customer_address && <div style={{ fontSize: '9px', color: '#6b7280' }}><strong>Address:</strong> {invoice.customer_address}</div>}
+        {invoice.customer_address && <div style={{ fontSize: '10px', color: '#6b7280' }}><strong>Address:</strong> {invoice.customer_address}</div>}
       </div>
     </div>
 
     {/* Bill Type Badge */}
     <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-      <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '9px', fontWeight: 700, border: '1px solid #ccc', background: invoice.is_gst_bill ? '#eef2ff' : '#f3f4f6', color: invoice.is_gst_bill ? '#3730a3' : '#374151' }}>
+      <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '10px', fontWeight: 700, border: '1px solid #ccc', background: invoice.is_gst_bill ? '#eef2ff' : '#f3f4f6', color: invoice.is_gst_bill ? '#3730a3' : '#374151' }}>
         {invoice.is_gst_bill ? (invoice.customer_gst ? 'TAX INVOICE (B2B)' : 'TAX INVOICE (B2C)') : 'BILL OF SUPPLY'}
       </span>
       {invoice.gst_bearer === 'seller' && (
-        <span style={{ marginLeft: '6px', display: 'inline-block', padding: '2px 8px', borderRadius: '999px', fontSize: '9px', fontWeight: 700, border: '1px solid #fcd34d', background: '#fffbeb', color: '#92400e' }}>GST Borne by Seller</span>
+        <span style={{ marginLeft: '6px', display: 'inline-block', padding: '2px 8px', borderRadius: '999px', fontSize: '10px', fontWeight: 700, border: '1px solid #fcd34d', background: '#fffbeb', color: '#92400e' }}>GST Borne by Seller</span>
       )}
     </div>
 
     {/* Product Table */}
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px', marginBottom: '12px' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', marginBottom: '12px' }}>
       <thead>
-        <tr style={{ borderTop: '1px solid #ccc', borderBottom: '1px solid #ccc', color: '#555', fontWeight: 700, textTransform: 'uppercase', fontSize: '8.5px' }}>
+        <tr style={{ borderTop: '1px solid #ccc', borderBottom: '1px solid #ccc', color: '#555', fontWeight: 700, textTransform: 'uppercase', fontSize: '10px' }}>
           <th style={{ padding: '5px 4px', textAlign: 'left' }}>S.No</th>
           <th style={{ padding: '5px 4px', textAlign: 'left' }}>Product</th>
           <th style={{ padding: '5px 4px', textAlign: 'left' }}>HSN</th>
@@ -124,7 +124,6 @@ const InvoiceBodyInner: React.FC<{
       </thead>
       <tbody>
         {invoice.items.map((item, idx) => {
-          // Prices are always inclusive of GST — extract taxable amount from price
           const gst = invoice.is_gst_bill
             ? calculateGST(item.total, Number(item.product.gst_percent))
             : null;
@@ -133,11 +132,11 @@ const InvoiceBodyInner: React.FC<{
               <td style={{ padding: '5px 4px', verticalAlign: 'top' }}>{idx + 1}</td>
               <td style={{ padding: '5px 4px', verticalAlign: 'top' }}>
                 <div style={{ fontWeight: 700 }}>{item.product.brand} {item.product.model}</div>
-                <div style={{ color: '#6b7280', fontSize: '8.5px' }}>{item.product.variant} · {item.product.color}</div>
-                <div style={{ color: '#9ca3af', fontSize: '8px' }}>{item.product.category}</div>
+                <div style={{ color: '#6b7280', fontSize: '10px' }}>{item.product.variant} · {item.product.color}</div>
+                <div style={{ color: '#9ca3af', fontSize: '9px' }}>{item.product.category}</div>
               </td>
-              <td style={{ padding: '5px 4px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '8.5px' }}>{item.product.hsn_code || '—'}</td>
-              <td style={{ padding: '5px 4px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '8.5px' }}>{item.imei || '—'}</td>
+              <td style={{ padding: '5px 4px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '10px' }}>{item.product.hsn_code || '—'}</td>
+              <td style={{ padding: '5px 4px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '10px' }}>{item.imei || '—'}</td>
               <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top' }}>
                 ₹{item.unitPrice.toLocaleString('en-IN')}
               </td>
@@ -147,13 +146,13 @@ const InvoiceBodyInner: React.FC<{
                   <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280' }}>
                     ₹{gst.taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
-                  <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '8.5px' }}>
+                  <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '10px' }}>
                     ₹{gst.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    <div style={{ fontSize: '7px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
+                    <div style={{ fontSize: '8px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
                   </td>
-                  <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '8.5px' }}>
+                  <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '10px' }}>
                     ₹{gst.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    <div style={{ fontSize: '7px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
+                    <div style={{ fontSize: '8px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
                   </td>
                 </>
               )}
@@ -166,7 +165,7 @@ const InvoiceBodyInner: React.FC<{
 
     {/* Summary */}
     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-      <div style={{ width: '220px', fontSize: '10px' }}>
+      <div style={{ width: '240px', fontSize: '11px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
           <span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString('en-IN')}</span>
         </div>
@@ -191,19 +190,19 @@ const InvoiceBodyInner: React.FC<{
             </div>
           </>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #222', marginTop: '4px', paddingTop: '4px', fontWeight: 900, fontSize: '13px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #222', marginTop: '4px', paddingTop: '4px', fontWeight: 900, fontSize: '15px' }}>
           <span>Grand Total</span><span>₹{invoice.grand_total.toLocaleString('en-IN')}</span>
         </div>
       </div>
     </div>
 
-    <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#6b7280', marginBottom: '12px' }}>{amountInWords(invoice.grand_total)}</div>
+    <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#6b7280', marginBottom: '12px' }}>{amountInWords(invoice.grand_total)}</div>
 
     {/* Payment Breakdown */}
     {invoice.payment_method === 'mixed' && (invoice as any).payment_details && (
       <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px', marginBottom: '12px' }}>
-        <div style={{ fontWeight: 700, fontSize: '10px', marginBottom: '6px' }}>Payment Breakdown:</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '9.5px' }}>
+        <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '6px' }}>Payment Breakdown:</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '11px' }}>
           {Object.entries((invoice as any).payment_details as Record<string, number>).map(([key, val]) =>
             (val as number) > 0 ? (
               <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 8px', background: '#f3f4f6', borderRadius: '4px' }}>
@@ -219,8 +218,8 @@ const InvoiceBodyInner: React.FC<{
     {/* Warranty Details */}
     {(invoice.warranty_mobile || invoice.warranty_accessories) && (
       <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px', marginBottom: '12px' }}>
-        <div style={{ fontWeight: 700, fontSize: '10px', marginBottom: '4px' }}>Warranty Details:</div>
-        <div style={{ fontSize: '9.5px', lineHeight: '1.6' }}>
+        <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '4px' }}>Warranty Details:</div>
+        <div style={{ fontSize: '11px', lineHeight: '1.6' }}>
           {invoice.warranty_mobile && <div>Mobile: {invoice.warranty_mobile}</div>}
           {invoice.warranty_accessories && <div>Battery: {invoice.warranty_accessories}</div>}
         </div>
@@ -229,14 +228,14 @@ const InvoiceBodyInner: React.FC<{
 
     {/* Terms */}
     <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px', marginBottom: '14px' }}>
-      <div style={{ fontWeight: 700, fontSize: '10px', marginBottom: '4px' }}>நிபந்தனைகள் / Terms & Conditions:</div>
-      <div style={{ fontSize: '8.5px', color: '#6b7280', lineHeight: '1.7' }}>
+      <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '4px' }}>நிபந்தனைகள் / Terms & Conditions:</div>
+      <div style={{ fontSize: '10px', color: '#6b7280', lineHeight: '1.7' }}>
         {terms.map((t: string, i: number) => <div key={i}>{t}</div>)}
       </div>
     </div>
 
     {/* Signatures */}
-    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '24px', fontSize: '9px', color: '#6b7280' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '24px', fontSize: '10px', color: '#6b7280' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ width: '120px', borderTop: '1px solid #9ca3af', marginBottom: '4px' }} />
         <div>Customer Signature</div>
