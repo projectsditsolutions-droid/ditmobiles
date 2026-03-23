@@ -208,6 +208,8 @@ export const POSBilling: React.FC = () => {
   const [gstProfiles, setGstProfiles] = useState<GSTProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const imeiRef = useRef<HTMLInputElement>(null);
+  const imeiAutoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [imeiFlash, setImeiFlash] = useState(false);
 
   // Reset customer GST when switching to B2C
   useEffect(() => {
