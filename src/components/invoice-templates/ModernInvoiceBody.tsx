@@ -19,7 +19,7 @@ const calcItemGST = (total: number, gstPercent: number) => calculateGST(total, g
 export const ModernInvoiceBody: React.FC<Props> = ({
   invoice, businessName, businessAddress, businessPhone, businessGST, subHeading, logoUrl, terms,
 }) => (
-  <div style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: '11px', color: '#111', background: '#fff', padding: '0' }}>
+  <div style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: '12px', color: '#111', background: '#fff', padding: '0' }}>
     {/* Header - Modern split layout */}
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '3px solid #4338ca', paddingBottom: '14px', marginBottom: '14px' }}>
       <div>
