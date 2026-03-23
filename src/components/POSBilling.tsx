@@ -297,8 +297,8 @@ export const POSBilling: React.FC = () => {
     return () => window.removeEventListener('keydown', handler);
   }, [items, customerName, customerPhone, customerGST, billDiscount, billDiscountType, paymentMethod, isGSTBill, gstBearer]);
 
-  const handleIMEIScan = useCallback(async () => {
-    const imei = imeiInput.trim();
+  const handleIMEIScan = useCallback(async (overrideImei?: string) => {
+    const imei = (overrideImei || imeiInput).trim();
     if (!imei || !activeShopId) return;
 
     if (items.some(i => i.imei === imei)) {
@@ -330,8 +330,24 @@ export const POSBilling: React.FC = () => {
 
     addNewItem(product, imei);
     setImeiInput('');
+    setImeiFlash(true);
+    setTimeout(() => setImeiFlash(false), 600);
     toast.success(`Added: ${product.brand} ${product.model}`);
   }, [imeiInput, items, activeShopId]);
+
+  const handleImeiInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/[^0-9]/g, '');
+    setImeiInput(val);
+    if (imeiAutoRef.current) clearTimeout(imeiAutoRef.current);
+    if (val.length >= 15) {
+      const imei = val.slice(0, 15);
+      imeiAutoRef.current = setTimeout(() => handleIMEIScan(imei), 50);
+    }
+  }, [handleIMEIScan]);
+
+  useEffect(() => {
+    return () => { if (imeiAutoRef.current) clearTimeout(imeiAutoRef.current); };
+  }, []);
 
   useEffect(() => {
     const runSearch = async () => {
