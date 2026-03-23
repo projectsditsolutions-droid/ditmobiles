@@ -31,12 +31,12 @@ export const ModernInvoiceBody: React.FC<Props> = ({
         </div>
       </div>
       <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: '10px', background: '#4338ca', color: '#fff', padding: '4px 12px', borderRadius: '4px', fontWeight: 700, display: 'inline-block', marginBottom: '6px' }}>
+        <div style={{ fontSize: '11px', background: '#4338ca', color: '#fff', padding: '4px 12px', borderRadius: '4px', fontWeight: 700, display: 'inline-block', marginBottom: '6px' }}>
           {invoice.is_gst_bill ? (invoice.customer_gst ? 'TAX INVOICE (B2B)' : 'TAX INVOICE (B2C)') : 'BILL OF SUPPLY'}
         </div>
-        <div style={{ fontSize: '10px', marginTop: '4px' }}><strong>Invoice:</strong> {invoice.invoice_number}</div>
-        <div style={{ fontSize: '10px' }}><strong>Date:</strong> {new Date(invoice.date).toLocaleString('en-IN')}</div>
-        <div style={{ fontSize: '9px', fontWeight: 700, marginTop: '4px', color: '#4338ca' }}>GSTIN: {businessGST}</div>
+        <div style={{ fontSize: '11px', marginTop: '4px' }}><strong>Invoice:</strong> {invoice.invoice_number}</div>
+        <div style={{ fontSize: '11px' }}><strong>Date:</strong> {new Date(invoice.date).toLocaleString('en-IN')}</div>
+        <div style={{ fontSize: '11px', fontWeight: 700, marginTop: '4px', color: '#4338ca' }}>GSTIN: {businessGST}</div>
       </div>
     </div>
 
