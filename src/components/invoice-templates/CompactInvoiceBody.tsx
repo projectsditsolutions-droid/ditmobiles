@@ -131,7 +131,7 @@ export const CompactInvoiceBody: React.FC<Props> = ({
     {(invoice.warranty_mobile || invoice.warranty_accessories) && (
       <div style={{ fontSize: '8px', borderTop: '1px dashed #ccc', paddingTop: '6px', marginBottom: '6px' }}>
         <strong>Warranty:</strong> {invoice.warranty_mobile && `Mobile: ${invoice.warranty_mobile}`}
-        {invoice.warranty_accessories && ` | Acc: ${invoice.warranty_accessories}`}
+        {invoice.warranty_accessories && ` | Battery: ${invoice.warranty_accessories}`}
       </div>
     )}
 
