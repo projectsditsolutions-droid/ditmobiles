@@ -103,9 +103,9 @@ const InvoiceBodyInner: React.FC<{
     </div>
 
     {/* Product Table */}
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px', marginBottom: '12px' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', marginBottom: '12px' }}>
       <thead>
-        <tr style={{ borderTop: '1px solid #ccc', borderBottom: '1px solid #ccc', color: '#555', fontWeight: 700, textTransform: 'uppercase', fontSize: '8.5px' }}>
+        <tr style={{ borderTop: '1px solid #ccc', borderBottom: '1px solid #ccc', color: '#555', fontWeight: 700, textTransform: 'uppercase', fontSize: '10px' }}>
           <th style={{ padding: '5px 4px', textAlign: 'left' }}>S.No</th>
           <th style={{ padding: '5px 4px', textAlign: 'left' }}>Product</th>
           <th style={{ padding: '5px 4px', textAlign: 'left' }}>HSN</th>
@@ -124,7 +124,6 @@ const InvoiceBodyInner: React.FC<{
       </thead>
       <tbody>
         {invoice.items.map((item, idx) => {
-          // Prices are always inclusive of GST — extract taxable amount from price
           const gst = invoice.is_gst_bill
             ? calculateGST(item.total, Number(item.product.gst_percent))
             : null;
@@ -133,11 +132,11 @@ const InvoiceBodyInner: React.FC<{
               <td style={{ padding: '5px 4px', verticalAlign: 'top' }}>{idx + 1}</td>
               <td style={{ padding: '5px 4px', verticalAlign: 'top' }}>
                 <div style={{ fontWeight: 700 }}>{item.product.brand} {item.product.model}</div>
-                <div style={{ color: '#6b7280', fontSize: '8.5px' }}>{item.product.variant} · {item.product.color}</div>
-                <div style={{ color: '#9ca3af', fontSize: '8px' }}>{item.product.category}</div>
+                <div style={{ color: '#6b7280', fontSize: '10px' }}>{item.product.variant} · {item.product.color}</div>
+                <div style={{ color: '#9ca3af', fontSize: '9px' }}>{item.product.category}</div>
               </td>
-              <td style={{ padding: '5px 4px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '8.5px' }}>{item.product.hsn_code || '—'}</td>
-              <td style={{ padding: '5px 4px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '8.5px' }}>{item.imei || '—'}</td>
+              <td style={{ padding: '5px 4px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '10px' }}>{item.product.hsn_code || '—'}</td>
+              <td style={{ padding: '5px 4px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '10px' }}>{item.imei || '—'}</td>
               <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top' }}>
                 ₹{item.unitPrice.toLocaleString('en-IN')}
               </td>
@@ -147,13 +146,13 @@ const InvoiceBodyInner: React.FC<{
                   <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280' }}>
                     ₹{gst.taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
-                  <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '8.5px' }}>
+                  <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '10px' }}>
                     ₹{gst.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    <div style={{ fontSize: '7px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
+                    <div style={{ fontSize: '8px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
                   </td>
-                  <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '8.5px' }}>
+                  <td style={{ padding: '5px 4px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '10px' }}>
                     ₹{gst.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    <div style={{ fontSize: '7px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
+                    <div style={{ fontSize: '8px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
                   </td>
                 </>
               )}
