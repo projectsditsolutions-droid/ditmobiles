@@ -94,11 +94,11 @@ const InvoiceBodyInner: React.FC<{
 
     {/* Bill Type Badge */}
     <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-      <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '9px', fontWeight: 700, border: '1px solid #ccc', background: invoice.is_gst_bill ? '#eef2ff' : '#f3f4f6', color: invoice.is_gst_bill ? '#3730a3' : '#374151' }}>
+      <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '10px', fontWeight: 700, border: '1px solid #ccc', background: invoice.is_gst_bill ? '#eef2ff' : '#f3f4f6', color: invoice.is_gst_bill ? '#3730a3' : '#374151' }}>
         {invoice.is_gst_bill ? (invoice.customer_gst ? 'TAX INVOICE (B2B)' : 'TAX INVOICE (B2C)') : 'BILL OF SUPPLY'}
       </span>
       {invoice.gst_bearer === 'seller' && (
-        <span style={{ marginLeft: '6px', display: 'inline-block', padding: '2px 8px', borderRadius: '999px', fontSize: '9px', fontWeight: 700, border: '1px solid #fcd34d', background: '#fffbeb', color: '#92400e' }}>GST Borne by Seller</span>
+        <span style={{ marginLeft: '6px', display: 'inline-block', padding: '2px 8px', borderRadius: '999px', fontSize: '10px', fontWeight: 700, border: '1px solid #fcd34d', background: '#fffbeb', color: '#92400e' }}>GST Borne by Seller</span>
       )}
     </div>
 
