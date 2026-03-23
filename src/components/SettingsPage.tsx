@@ -431,8 +431,41 @@ export const SettingsPage: React.FC = () => {
                   <Input value={profile.gst_number || ''} onChange={e => updateGstProfile(idx, 'gst_number', e.target.value.toUpperCase())} className="h-10 font-mono tracking-wider" placeholder="22AAAAA0000A1Z5" maxLength={15} />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Phone</label>
-                  <Input value={profile.phone || ''} onChange={e => updateGstProfile(idx, 'phone', e.target.value)} className="h-10" placeholder="Phone number" />
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Phone Number(s)</label>
+                  {(profile.phone || '').split(',').map((ph, phIdx, arr) => (
+                    <div key={phIdx} className="flex items-center gap-1.5 mb-1.5">
+                      <Input
+                        value={ph.trim()}
+                        onChange={e => {
+                          const phones = (profile.phone || '').split(',').map(p => p.trim());
+                          phones[phIdx] = e.target.value;
+                          updateGstProfile(idx, 'phone', phones.join(', '));
+                        }}
+                        className="h-10"
+                        placeholder={phIdx === 0 ? 'Primary phone' : 'Additional phone'}
+                      />
+                      {arr.length > 1 && (
+                        <button
+                          onClick={() => {
+                            const phones = (profile.phone || '').split(',').map(p => p.trim()).filter((_, i) => i !== phIdx);
+                            updateGstProfile(idx, 'phone', phones.join(', '));
+                          }}
+                          className="w-8 h-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all flex-shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      const current = profile.phone || '';
+                      updateGstProfile(idx, 'phone', current ? current + ', ' : '');
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-display font-semibold text-primary hover:text-primary/80 transition-colors mt-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Phone Number
+                  </button>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Address</label>
