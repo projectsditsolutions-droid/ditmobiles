@@ -24,9 +24,9 @@ export const ModernInvoiceBody: React.FC<Props> = ({
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '3px solid #4338ca', paddingBottom: '14px', marginBottom: '14px' }}>
       <div>
         {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: '50px', maxWidth: '150px', objectFit: 'contain', marginBottom: '6px' }} crossOrigin="anonymous" />}
-        <div style={{ fontSize: '22px', fontWeight: 900, color: '#4338ca', letterSpacing: '-0.5px' }}>{businessName}</div>
-        {subHeading && <div style={{ fontSize: '10px', color: '#6366f1', fontWeight: 600, marginTop: '2px' }}>{subHeading}</div>}
-        <div style={{ fontSize: '9px', color: '#6b7280', marginTop: '4px', lineHeight: '1.5' }}>
+        <div style={{ fontSize: '26px', fontWeight: 900, color: '#4338ca', letterSpacing: '-0.5px' }}>{businessName}</div>
+        {subHeading && <div style={{ fontSize: '12px', color: '#6366f1', fontWeight: 600, marginTop: '2px' }}>{subHeading}</div>}
+        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', lineHeight: '1.5' }}>
           {businessAddress}<br />Phone: {businessPhone}
         </div>
       </div>
