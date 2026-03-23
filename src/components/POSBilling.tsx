@@ -76,6 +76,7 @@ export interface InvoiceData {
   profile_type?: string;
   warranty_mobile?: string;
   warranty_accessories?: string;
+  customer_address?: string;
 }
 
 // ─── GST Profile Card Selector ───────────────────────────────────────────────
