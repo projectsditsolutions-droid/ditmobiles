@@ -457,6 +457,7 @@ export const POSBilling: React.FC = () => {
       profile_type: selectedProfile?.profile_type,
       warranty_mobile: warrantyMobile || undefined,
       warranty_accessories: warrantyAccessories || undefined,
+      customer_address: customerAddress || undefined,
     };
     setPreviewInvoice(preview);
   }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, selectedProfile, warrantyMobile, warrantyAccessories]);
