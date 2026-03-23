@@ -9,6 +9,7 @@ import {
   Smartphone, Tag, HardDrive, Palette, Hash, ArrowDownLeft, Eye, EyeOff
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { BulkIMEIScanner } from '@/components/BulkIMEIScanner';
 import type { Database } from '@/integrations/supabase/types';
 
 type Dealer = Database['public']['Tables']['dealers']['Row'];
