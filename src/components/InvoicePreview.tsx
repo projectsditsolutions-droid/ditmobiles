@@ -165,7 +165,7 @@ const InvoiceBodyInner: React.FC<{
 
     {/* Summary */}
     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-      <div style={{ width: '220px', fontSize: '10px' }}>
+      <div style={{ width: '240px', fontSize: '11px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
           <span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString('en-IN')}</span>
         </div>
@@ -190,19 +190,19 @@ const InvoiceBodyInner: React.FC<{
             </div>
           </>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #222', marginTop: '4px', paddingTop: '4px', fontWeight: 900, fontSize: '13px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #222', marginTop: '4px', paddingTop: '4px', fontWeight: 900, fontSize: '15px' }}>
           <span>Grand Total</span><span>₹{invoice.grand_total.toLocaleString('en-IN')}</span>
         </div>
       </div>
     </div>
 
-    <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#6b7280', marginBottom: '12px' }}>{amountInWords(invoice.grand_total)}</div>
+    <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#6b7280', marginBottom: '12px' }}>{amountInWords(invoice.grand_total)}</div>
 
     {/* Payment Breakdown */}
     {invoice.payment_method === 'mixed' && (invoice as any).payment_details && (
       <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px', marginBottom: '12px' }}>
-        <div style={{ fontWeight: 700, fontSize: '10px', marginBottom: '6px' }}>Payment Breakdown:</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '9.5px' }}>
+        <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '6px' }}>Payment Breakdown:</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '11px' }}>
           {Object.entries((invoice as any).payment_details as Record<string, number>).map(([key, val]) =>
             (val as number) > 0 ? (
               <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 8px', background: '#f3f4f6', borderRadius: '4px' }}>
@@ -218,8 +218,8 @@ const InvoiceBodyInner: React.FC<{
     {/* Warranty Details */}
     {(invoice.warranty_mobile || invoice.warranty_accessories) && (
       <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px', marginBottom: '12px' }}>
-        <div style={{ fontWeight: 700, fontSize: '10px', marginBottom: '4px' }}>Warranty Details:</div>
-        <div style={{ fontSize: '9.5px', lineHeight: '1.6' }}>
+        <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '4px' }}>Warranty Details:</div>
+        <div style={{ fontSize: '11px', lineHeight: '1.6' }}>
           {invoice.warranty_mobile && <div>Mobile: {invoice.warranty_mobile}</div>}
           {invoice.warranty_accessories && <div>Battery: {invoice.warranty_accessories}</div>}
         </div>
@@ -228,14 +228,14 @@ const InvoiceBodyInner: React.FC<{
 
     {/* Terms */}
     <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px', marginBottom: '14px' }}>
-      <div style={{ fontWeight: 700, fontSize: '10px', marginBottom: '4px' }}>நிபந்தனைகள் / Terms & Conditions:</div>
-      <div style={{ fontSize: '8.5px', color: '#6b7280', lineHeight: '1.7' }}>
+      <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '4px' }}>நிபந்தனைகள் / Terms & Conditions:</div>
+      <div style={{ fontSize: '10px', color: '#6b7280', lineHeight: '1.7' }}>
         {terms.map((t: string, i: number) => <div key={i}>{t}</div>)}
       </div>
     </div>
 
     {/* Signatures */}
-    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '24px', fontSize: '9px', color: '#6b7280' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '24px', fontSize: '10px', color: '#6b7280' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ width: '120px', borderTop: '1px solid #9ca3af', marginBottom: '4px' }} />
         <div>Customer Signature</div>
