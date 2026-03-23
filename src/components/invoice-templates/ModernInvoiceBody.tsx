@@ -41,8 +41,8 @@ export const ModernInvoiceBody: React.FC<Props> = ({
     </div>
 
     {/* Customer Info */}
-    <div style={{ background: '#f5f3ff', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '10px' }}>
-      <div style={{ fontWeight: 700, color: '#4338ca', marginBottom: '4px', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bill To</div>
+    <div style={{ background: '#f5f3ff', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '11px' }}>
+      <div style={{ fontWeight: 700, color: '#4338ca', marginBottom: '4px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bill To</div>
       <div style={{ fontWeight: 700 }}>{invoice.customer_name}</div>
       {invoice.customer_phone && <div>Phone: {invoice.customer_phone}</div>}
       {invoice.customer_gst && <div>GSTIN: {invoice.customer_gst}</div>}
