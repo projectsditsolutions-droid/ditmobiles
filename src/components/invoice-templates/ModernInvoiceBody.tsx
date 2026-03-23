@@ -56,7 +56,7 @@ export const ModernInvoiceBody: React.FC<Props> = ({
     )}
 
     {/* Product Table */}
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px', marginBottom: '14px' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', marginBottom: '14px' }}>
       <thead>
         <tr style={{ background: '#4338ca', color: '#fff' }}>
           <th style={{ padding: '6px 6px', textAlign: 'left', borderRadius: '4px 0 0 0' }}>S.No</th>
@@ -83,10 +83,10 @@ export const ModernInvoiceBody: React.FC<Props> = ({
               <td style={{ padding: '6px', verticalAlign: 'top' }}>{idx + 1}</td>
               <td style={{ padding: '6px', verticalAlign: 'top' }}>
                 <div style={{ fontWeight: 700 }}>{item.product.brand} {item.product.model}</div>
-                <div style={{ color: '#6b7280', fontSize: '8.5px' }}>{item.product.variant} · {item.product.color}</div>
+                <div style={{ color: '#6b7280', fontSize: '10px' }}>{item.product.variant} · {item.product.color}</div>
               </td>
-              <td style={{ padding: '6px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '8.5px' }}>{item.product.hsn_code || '—'}</td>
-              <td style={{ padding: '6px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '8.5px' }}>{item.imei || '—'}</td>
+              <td style={{ padding: '6px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '10px' }}>{item.product.hsn_code || '—'}</td>
+              <td style={{ padding: '6px', verticalAlign: 'top', fontFamily: 'monospace', fontSize: '10px' }}>{item.imei || '—'}</td>
               <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>₹{item.unitPrice.toLocaleString('en-IN')}</td>
               <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>{item.discount > 0 ? `₹${item.discount}` : '—'}</td>
               {invoice.is_gst_bill && gst && (
@@ -94,13 +94,13 @@ export const ModernInvoiceBody: React.FC<Props> = ({
                   <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280' }}>
                     ₹{gst.taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
-                  <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '8.5px' }}>
+                  <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '10px' }}>
                     ₹{gst.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    <div style={{ fontSize: '7px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
+                    <div style={{ fontSize: '8px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
                   </td>
-                  <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '8.5px' }}>
+                  <td style={{ padding: '6px', textAlign: 'right', verticalAlign: 'top', color: '#6b7280', fontSize: '10px' }}>
                     ₹{gst.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    <div style={{ fontSize: '7px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
+                    <div style={{ fontSize: '8px' }}>@{(Number(item.product.gst_percent) / 2).toFixed(1)}%</div>
                   </td>
                 </>
               )}
