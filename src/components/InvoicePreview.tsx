@@ -63,7 +63,7 @@ const InvoiceBodyInner: React.FC<{
   invoice: InvoiceData; businessName: string; businessAddress: string;
   businessPhone: string; businessGST: string; subHeading: string; logoUrl: string; terms: string[];
 }> = ({ invoice, businessName, businessAddress, businessPhone, businessGST, subHeading, logoUrl, terms }) => (
-  <div className="invoice-page" style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: '11px', color: '#111', background: '#fff', padding: '0' }}>
+  <div className="invoice-page" style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: '12px', color: '#111', background: '#fff', padding: '0' }}>
     {/* Header */}
     <div style={{ textAlign: 'center', borderBottom: '2px solid #222', paddingBottom: '12px', marginBottom: '10px' }}>
       {logoUrl && (
@@ -71,11 +71,11 @@ const InvoiceBodyInner: React.FC<{
           <img src={logoUrl} alt="Logo" style={{ height: '60px', maxWidth: '180px', objectFit: 'contain' }} crossOrigin="anonymous" />
         </div>
       )}
-      <div style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.5px' }}>{businessName}</div>
-      {subHeading && <div style={{ fontSize: '10px', color: '#555', marginTop: '2px', fontWeight: 600 }}>{subHeading}</div>}
-      <div style={{ fontSize: '9.5px', color: '#555', marginTop: '4px' }}>{businessAddress}</div>
-      <div style={{ fontSize: '9.5px', color: '#555' }}>Phone: {businessPhone}</div>
-      <div style={{ fontSize: '9.5px', fontWeight: 700, marginTop: '2px' }}>GSTIN: {businessGST}</div>
+      <div style={{ fontSize: '26px', fontWeight: 900, letterSpacing: '-0.5px' }}>{businessName}</div>
+      {subHeading && <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', fontWeight: 600 }}>{subHeading}</div>}
+      <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>{businessAddress}</div>
+      <div style={{ fontSize: '11px', color: '#555' }}>Phone: {businessPhone}</div>
+      <div style={{ fontSize: '11px', fontWeight: 700, marginTop: '2px' }}>GSTIN: {businessGST}</div>
     </div>
 
     {/* Invoice Meta */}
