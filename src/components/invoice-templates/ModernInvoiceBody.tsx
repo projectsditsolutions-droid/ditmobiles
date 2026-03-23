@@ -46,7 +46,7 @@ export const ModernInvoiceBody: React.FC<Props> = ({
       <div style={{ fontWeight: 700 }}>{invoice.customer_name}</div>
       {invoice.customer_phone && <div>Phone: {invoice.customer_phone}</div>}
       {invoice.customer_gst && <div>GSTIN: {invoice.customer_gst}</div>}
-      {(invoice as any).customer_address && <div style={{ color: '#6b7280' }}>{(invoice as any).customer_address}</div>}
+      {invoice.customer_address && <div style={{ color: '#6b7280' }}>Address: {invoice.customer_address}</div>}
     </div>
 
     {invoice.gst_bearer === 'seller' && (
