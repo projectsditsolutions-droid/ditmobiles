@@ -79,7 +79,7 @@ const InvoiceBodyInner: React.FC<{
     </div>
 
     {/* Invoice Meta */}
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '10px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '11px' }}>
       <div>
         <div><strong>Invoice:</strong> {invoice.invoice_number}</div>
         <div><strong>Date:</strong> {new Date(invoice.date).toLocaleString('en-IN')}</div>
@@ -88,7 +88,7 @@ const InvoiceBodyInner: React.FC<{
         <div><strong>Customer:</strong> {invoice.customer_name}</div>
         {invoice.customer_phone && <div><strong>Phone:</strong> {invoice.customer_phone}</div>}
         {invoice.customer_gst && <div><strong>GSTIN:</strong> {invoice.customer_gst}</div>}
-        {invoice.customer_address && <div style={{ fontSize: '9px', color: '#6b7280' }}><strong>Address:</strong> {invoice.customer_address}</div>}
+        {invoice.customer_address && <div style={{ fontSize: '10px', color: '#6b7280' }}><strong>Address:</strong> {invoice.customer_address}</div>}
       </div>
     </div>
 
