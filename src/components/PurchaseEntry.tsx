@@ -9,6 +9,7 @@ import {
   Smartphone, Tag, HardDrive, Palette, Hash, ArrowDownLeft, Eye, EyeOff
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { BulkIMEIScanner } from '@/components/BulkIMEIScanner';
 import type { Database } from '@/integrations/supabase/types';
 
 type Dealer = Database['public']['Tables']['dealers']['Row'];
@@ -414,21 +415,12 @@ export const PurchaseEntry: React.FC = () => {
                       )}
 
                       {li.product && (
-                        <div>
-                          <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">IMEI Numbers (one per line, 15 digits)</label>
-                          <textarea
-                            value={li.imeis}
-                            onChange={e => updateLine(li.id, { imeis: e.target.value })}
-                            placeholder={"123456789012345\n123456789012346\n123456789012347"}
-                            rows={4}
-                            className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                          />
-                          {imeiCount > 0 && (
-                            <p className="text-xs text-success mt-1 font-display font-semibold">
-                              Line total: {imeiCount} × {fmt(li.unit_price)} = {fmt(imeiCount * li.unit_price)}
-                            </p>
-                          )}
-                        </div>
+                        <BulkIMEIScanner
+                          imeis={li.imeis}
+                          onChange={val => updateLine(li.id, { imeis: val })}
+                          unitPrice={li.unit_price}
+                          imeiCount={imeiCount}
+                        />
                       )}
                     </div>
                   );
