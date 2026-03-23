@@ -19,14 +19,14 @@ const calcItemGST = (total: number, gstPercent: number) => calculateGST(total, g
 export const CompactInvoiceBody: React.FC<Props> = ({
   invoice, businessName, businessAddress, businessPhone, businessGST, subHeading, logoUrl, terms,
 }) => (
-  <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#111', background: '#fff', padding: '0', maxWidth: '380px', margin: '0 auto' }}>
+  <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#111', background: '#fff', padding: '0', maxWidth: '380px', margin: '0 auto' }}>
     {/* Header */}
     <div style={{ textAlign: 'center', borderBottom: '1px dashed #999', paddingBottom: '8px', marginBottom: '8px' }}>
       {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: '40px', maxWidth: '120px', objectFit: 'contain', margin: '0 auto 4px' }} crossOrigin="anonymous" />}
-      <div style={{ fontSize: '14px', fontWeight: 900 }}>{businessName}</div>
-      {subHeading && <div style={{ fontSize: '8px', color: '#666', fontWeight: 600 }}>{subHeading}</div>}
-      <div style={{ fontSize: '8px', color: '#666', marginTop: '2px' }}>{businessAddress}</div>
-      <div style={{ fontSize: '8px', color: '#666' }}>Ph: {businessPhone} | GST: {businessGST}</div>
+      <div style={{ fontSize: '18px', fontWeight: 900 }}>{businessName}</div>
+      {subHeading && <div style={{ fontSize: '10px', color: '#666', fontWeight: 600 }}>{subHeading}</div>}
+      <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>{businessAddress}</div>
+      <div style={{ fontSize: '9px', color: '#666' }}>Ph: {businessPhone} | GST: {businessGST}</div>
     </div>
 
     {/* Invoice info */}
