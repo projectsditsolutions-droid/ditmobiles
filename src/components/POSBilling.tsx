@@ -208,6 +208,8 @@ export const POSBilling: React.FC = () => {
   const [gstProfiles, setGstProfiles] = useState<GSTProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const imeiRef = useRef<HTMLInputElement>(null);
+  const imeiAutoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [imeiFlash, setImeiFlash] = useState(false);
 
   // Reset customer GST when switching to B2C
   useEffect(() => {
@@ -295,8 +297,8 @@ export const POSBilling: React.FC = () => {
     return () => window.removeEventListener('keydown', handler);
   }, [items, customerName, customerPhone, customerGST, billDiscount, billDiscountType, paymentMethod, isGSTBill, gstBearer]);
 
-  const handleIMEIScan = useCallback(async () => {
-    const imei = imeiInput.trim();
+  const handleIMEIScan = useCallback(async (overrideImei?: string) => {
+    const imei = (overrideImei || imeiInput).trim();
     if (!imei || !activeShopId) return;
 
     if (items.some(i => i.imei === imei)) {
@@ -328,8 +330,24 @@ export const POSBilling: React.FC = () => {
 
     addNewItem(product, imei);
     setImeiInput('');
+    setImeiFlash(true);
+    setTimeout(() => setImeiFlash(false), 600);
     toast.success(`Added: ${product.brand} ${product.model}`);
   }, [imeiInput, items, activeShopId]);
+
+  const handleImeiInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/[^0-9]/g, '');
+    setImeiInput(val);
+    if (imeiAutoRef.current) clearTimeout(imeiAutoRef.current);
+    if (val.length >= 15) {
+      const imei = val.slice(0, 15);
+      imeiAutoRef.current = setTimeout(() => handleIMEIScan(imei), 50);
+    }
+  }, [handleIMEIScan]);
+
+  useEffect(() => {
+    return () => { if (imeiAutoRef.current) clearTimeout(imeiAutoRef.current); };
+  }, []);
 
   useEffect(() => {
     const runSearch = async () => {
@@ -708,18 +726,22 @@ export const POSBilling: React.FC = () => {
         {/* ── IMEI Scan Bar ────────────────────────────────────────────── */}
         <div className="px-4 py-3 bg-card border-b">
           <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <ScanLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+            <div className={`flex-1 relative transition-all duration-300 ${imeiFlash ? 'ring-2 ring-green-500/60 rounded-xl' : ''}`}>
+              <ScanLine className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${imeiFlash ? 'text-green-500' : 'text-primary'}`} />
               <input
                 ref={imeiRef}
                 value={imeiInput}
-                onChange={e => setImeiInput(e.target.value.replace(/\s/g, ''))}
+                onChange={handleImeiInputChange}
                 onKeyDown={e => { if (e.key === 'Enter') handleIMEIScan(); }}
-                placeholder="Scan IMEI barcode or type IMEI..."
-                className="w-full h-12 pl-12 pr-4 rounded-xl border-2 border-primary/20 bg-accent/30 font-display text-lg tracking-wider focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 placeholder:text-muted-foreground/40 placeholder:tracking-normal placeholder:text-sm transition-all"
+                placeholder="Scan IMEI barcode — auto-adds at 15 digits"
+                inputMode="numeric"
+                className="w-full h-12 pl-12 pr-16 rounded-xl border-2 border-primary/20 bg-accent/30 font-display text-lg tracking-wider focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 placeholder:text-muted-foreground/40 placeholder:tracking-normal placeholder:text-sm transition-all"
               />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-muted-foreground">
+                {imeiInput.length}/15
+              </span>
             </div>
-            <Button size="lg" className="h-12 px-6 gradient-primary border-0 text-primary-foreground shadow-sm" onClick={handleIMEIScan}>
+            <Button size="lg" className="h-12 px-6 gradient-primary border-0 text-primary-foreground shadow-sm" onClick={() => handleIMEIScan()}>
               <Barcode className="w-5 h-5 mr-2" /> Add
             </Button>
             <Button variant="outline" size="lg" className="h-12" onClick={() => setShowSearch(!showSearch)}>
