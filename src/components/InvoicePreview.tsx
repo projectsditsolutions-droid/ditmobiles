@@ -222,7 +222,7 @@ const InvoiceBodyInner: React.FC<{
         <div style={{ fontWeight: 700, fontSize: '10px', marginBottom: '4px' }}>Warranty Details:</div>
         <div style={{ fontSize: '9.5px', lineHeight: '1.6' }}>
           {invoice.warranty_mobile && <div>Mobile: {invoice.warranty_mobile}</div>}
-          {invoice.warranty_accessories && <div>Accessories: {invoice.warranty_accessories}</div>}
+          {invoice.warranty_accessories && <div>Battery: {invoice.warranty_accessories}</div>}
         </div>
       </div>
     )}

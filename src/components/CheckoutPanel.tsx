@@ -244,7 +244,7 @@ export const CheckoutPanel: React.FC<Props> = ({
             />
           </div>
           <div>
-            <label className="text-[9px] text-checkout-foreground/45 mb-1 block">🎧 Accessories Warranty</label>
+            <label className="text-[9px] text-checkout-foreground/45 mb-1 block">🔋 Battery Warranty</label>
             <input
               value={warrantyAccessories}
               onChange={e => onWarrantyAccessoriesChange(e.target.value)}
