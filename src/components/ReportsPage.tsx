@@ -594,19 +594,21 @@ export const ReportsPage: React.FC = () => {
           {(() => {
             const totalRevenue = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
             const totalGST = invoices.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
+            const totalDiscount = invoices.reduce((s, i) => s + Number(i.total_discount) + Number(i.bill_discount), 0);
             const netRevenue = totalRevenue - totalGST;
             const totalCost = stockData.reduce((s, p) => s + (p.sold * Number(p.purchase_price)), 0);
-            const profit = netRevenue - totalCost;
+            const profit = netRevenue - totalCost - totalDiscount;
             return (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Gross Revenue</p><p className="font-display text-xl font-extrabold">₹{totalRevenue.toLocaleString('en-IN')}</p></div>
                   <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">GST Liability</p><p className="font-display text-xl font-extrabold text-warning">₹{totalGST.toLocaleString('en-IN')}</p></div>
+                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Total Discount</p><p className="font-display text-xl font-extrabold text-orange-500">₹{totalDiscount.toLocaleString('en-IN')}</p></div>
                   <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Est. Cost</p><p className="font-display text-xl font-extrabold text-destructive">₹{totalCost.toLocaleString('en-IN')}</p></div>
                   <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Est. Profit</p><p className={`font-display text-xl font-extrabold ${profit >= 0 ? 'text-success' : 'text-destructive'}`}>₹{profit.toLocaleString('en-IN')}</p></div>
                 </div>
                 <div className="p-4 rounded-lg bg-secondary/30 text-xs text-muted-foreground">
-                  Profit = Gross Revenue − GST − Est. Cost of Sold Items
+                  Profit = Gross Revenue − GST − Discounts − Est. Cost of Sold Items
                 </div>
               </div>
             );
