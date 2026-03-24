@@ -22,6 +22,7 @@ interface Props {
   mixedPayment: { cash: number; upi: number; card: number; emi: number };
   warrantyMobile: string;
   warrantyAccessories: string;
+  emiLendingPartner: string;
   onBillDiscountChange: (v: number) => void;
   onBillDiscountTypeChange: (v: 'percentage' | 'flat') => void;
   onPaymentMethodChange: (v: 'cash' | 'upi' | 'card' | 'mixed' | 'emi') => void;
@@ -32,6 +33,7 @@ interface Props {
   onMixedPaymentChange: (v: { cash: number; upi: number; card: number; emi: number }) => void;
   onWarrantyMobileChange: (v: string) => void;
   onWarrantyAccessoriesChange: (v: string) => void;
+  onEmiLendingPartnerChange: (v: string) => void;
   onCompleteSale: () => void;
   onPreviewBill?: () => void;
   discountEnabled: boolean;
@@ -41,10 +43,10 @@ export const CheckoutPanel: React.FC<Props> = ({
   items, subtotal, itemDiscountTotal, billDiscount, billDiscountType, billDiscountAmount,
   gstCalc, grandTotal, isGSTBill, gstBearer, customerType, paymentMethod,
   customerName, customerPhone, customerGST, customerAddress,
-  mixedPayment, warrantyMobile, warrantyAccessories,
+  mixedPayment, warrantyMobile, warrantyAccessories, emiLendingPartner,
   onBillDiscountChange, onBillDiscountTypeChange, onPaymentMethodChange,
   onCustomerNameChange, onCustomerPhoneChange, onCustomerGSTChange, onCustomerAddressChange,
-  onMixedPaymentChange, onWarrantyMobileChange, onWarrantyAccessoriesChange,
+  onMixedPaymentChange, onWarrantyMobileChange, onWarrantyAccessoriesChange, onEmiLendingPartnerChange,
   onCompleteSale, onPreviewBill, discountEnabled,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
