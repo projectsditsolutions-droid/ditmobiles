@@ -346,6 +346,7 @@ export const CheckoutPanel: React.FC<Props> = ({
             />
           </div>
         )}
+      </div>
 
       {/* ── Grand Total + Complete ────────────────────────────────── */}
       <div className="p-4 border-t border-checkout-foreground/8 bg-checkout-foreground/5 flex-shrink-0">
