@@ -117,6 +117,12 @@ export const CompactInvoiceBody: React.FC<Props> = ({
     <div style={{ fontSize: '8px', fontStyle: 'italic', color: '#888', marginBottom: '8px', textAlign: 'center' }}>{amountInWords(invoice.grand_total)}</div>
 
     {/* Payment */}
+    {invoice.payment_method === 'emi' && (
+      <div style={{ fontSize: '8px', borderTop: '1px dashed #ccc', paddingTop: '6px', marginBottom: '6px' }}>
+        <strong>Payment: EMI</strong>
+        {invoice.emi_lending_partner && ` | Lending Partner: ${invoice.emi_lending_partner}`}
+      </div>
+    )}
     {invoice.payment_method === 'mixed' && (invoice as any).payment_details && (
       <div style={{ fontSize: '8px', borderTop: '1px dashed #ccc', paddingTop: '6px', marginBottom: '6px' }}>
         <strong>Payment: </strong>
@@ -124,6 +130,12 @@ export const CompactInvoiceBody: React.FC<Props> = ({
           .filter(([, v]) => (v as number) > 0)
           .map(([k, v]) => `${k}: ₹${Number(v).toLocaleString('en-IN')}`)
           .join(' | ')}
+        {invoice.emi_lending_partner && ` | Lending: ${invoice.emi_lending_partner}`}
+      </div>
+    )}
+    {invoice.payment_method !== 'emi' && invoice.payment_method !== 'mixed' && (
+      <div style={{ fontSize: '8px', borderTop: '1px dashed #ccc', paddingTop: '6px', marginBottom: '6px' }}>
+        <strong>Payment: </strong>{invoice.payment_method.toUpperCase()}
       </div>
     )}
 
