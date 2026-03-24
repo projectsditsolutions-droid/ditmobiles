@@ -553,6 +553,7 @@ export const POSBilling: React.FC = () => {
       billing_logo_url: selectedProfile?.logo_url || activeShop.logo_url || '',
       warranty_mobile: warrantyMobile || '',
       warranty_accessories: warrantyAccessories || '',
+      emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : '',
     } as any).select().single();
 
     if (invError || !invoice) {
@@ -645,6 +646,8 @@ export const POSBilling: React.FC = () => {
       profile_type: selectedProfile?.profile_type,
       warranty_mobile: warrantyMobile || undefined,
       warranty_accessories: warrantyAccessories || undefined,
+      customer_address: customerAddress || undefined,
+      emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
     };
 
     setShowInvoice(invoiceData);
