@@ -77,6 +77,7 @@ export interface InvoiceData {
   warranty_mobile?: string;
   warranty_accessories?: string;
   customer_address?: string;
+  emi_lending_partner?: string;
 }
 
 // ─── GST Profile Card Selector ───────────────────────────────────────────────
@@ -198,6 +199,7 @@ export const POSBilling: React.FC = () => {
   const [mixedPayment, setMixedPayment] = useState({ cash: 0, upi: 0, card: 0, emi: 0 });
   const [warrantyMobile, setWarrantyMobile] = useState('1 Year Manufacturer Warranty');
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
+  const [emiLendingPartner, setEmiLendingPartner] = useState('');
 
   const [billDiscount, setBillDiscount] = useState(0);
   const [billDiscountType, setBillDiscountType] = useState<'percentage' | 'flat'>('flat');
