@@ -129,6 +129,7 @@ export const ReportsPage: React.FC = () => {
       billing_logo_url: (invoice as any).billing_logo_url || undefined,
       warranty_mobile: (invoice as any).warranty_mobile || undefined,
       warranty_accessories: (invoice as any).warranty_accessories || undefined,
+      emi_lending_partner: (invoice as any).emi_lending_partner || undefined,
     };
     (preview as any).payment_details = invoice.payment_details;
     return preview;
