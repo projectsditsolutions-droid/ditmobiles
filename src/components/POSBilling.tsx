@@ -898,8 +898,10 @@ export const POSBilling: React.FC = () => {
         onMixedPaymentChange={setMixedPayment}
         warrantyMobile={warrantyMobile}
         warrantyAccessories={warrantyAccessories}
+        emiLendingPartner={emiLendingPartner}
         onWarrantyMobileChange={setWarrantyMobile}
         onWarrantyAccessoriesChange={setWarrantyAccessories}
+        onEmiLendingPartnerChange={setEmiLendingPartner}
         onCompleteSale={handleCompleteSale}
         onPreviewBill={handlePreviewBill}
         discountEnabled={settings?.discount_enabled ?? true}

@@ -333,7 +333,19 @@ export const CheckoutPanel: React.FC<Props> = ({
             </div>
           </div>
         )}
-      </div>
+
+        {/* EMI Lending Partner */}
+        {(paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) && (
+          <div className="mt-3 p-3 rounded-xl bg-checkout-foreground/5 border border-checkout-foreground/8 space-y-2">
+            <p className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">EMI Lending Partner</p>
+            <input
+              value={emiLendingPartner}
+              onChange={e => onEmiLendingPartnerChange(e.target.value)}
+              placeholder="e.g. Bajaj Finance, HDFC, etc."
+              className="checkout-input w-full h-9 px-3 rounded-lg text-sm"
+            />
+          </div>
+        )}
 
       {/* ── Grand Total + Complete ────────────────────────────────── */}
       <div className="p-4 border-t border-checkout-foreground/8 bg-checkout-foreground/5 flex-shrink-0">
