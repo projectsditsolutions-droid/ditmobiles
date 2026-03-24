@@ -129,6 +129,7 @@ export const ReportsPage: React.FC = () => {
       billing_logo_url: (invoice as any).billing_logo_url || undefined,
       warranty_mobile: (invoice as any).warranty_mobile || undefined,
       warranty_accessories: (invoice as any).warranty_accessories || undefined,
+      emi_lending_partner: (invoice as any).emi_lending_partner || undefined,
     };
     (preview as any).payment_details = invoice.payment_details;
     return preview;
@@ -463,6 +464,9 @@ export const ReportsPage: React.FC = () => {
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold capitalize ${PAYMENT_COLORS[inv.payment_method] || 'bg-secondary text-secondary-foreground'}`}>
                           {inv.payment_method}
                         </span>
+                        {inv.payment_method === 'emi' && (inv as any).emi_lending_partner && (
+                          <span className="text-[9px] text-muted-foreground font-medium">({(inv as any).emi_lending_partner})</span>
+                        )}
                         {inv.payment_details && (
                           expandedPaymentId === inv.id ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />
                         )}

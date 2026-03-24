@@ -77,6 +77,7 @@ export interface InvoiceData {
   warranty_mobile?: string;
   warranty_accessories?: string;
   customer_address?: string;
+  emi_lending_partner?: string;
 }
 
 // ─── GST Profile Card Selector ───────────────────────────────────────────────
@@ -198,6 +199,7 @@ export const POSBilling: React.FC = () => {
   const [mixedPayment, setMixedPayment] = useState({ cash: 0, upi: 0, card: 0, emi: 0 });
   const [warrantyMobile, setWarrantyMobile] = useState('1 Year Manufacturer Warranty');
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
+  const [emiLendingPartner, setEmiLendingPartner] = useState('');
 
   const [billDiscount, setBillDiscount] = useState(0);
   const [billDiscountType, setBillDiscountType] = useState<'percentage' | 'flat'>('flat');
@@ -458,9 +460,10 @@ export const POSBilling: React.FC = () => {
       warranty_mobile: warrantyMobile || undefined,
       warranty_accessories: warrantyAccessories || undefined,
       customer_address: customerAddress || undefined,
+      emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
     };
     setPreviewInvoice(preview);
-  }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, selectedProfile, warrantyMobile, warrantyAccessories]);
+  }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, selectedProfile, warrantyMobile, warrantyAccessories, emiLendingPartner, mixedPayment]);
 
   const handleCompleteSale = useCallback(async () => {
     if (items.length === 0) { toast.error('Add items to bill first'); return; }
@@ -550,6 +553,7 @@ export const POSBilling: React.FC = () => {
       billing_logo_url: selectedProfile?.logo_url || activeShop.logo_url || '',
       warranty_mobile: warrantyMobile || '',
       warranty_accessories: warrantyAccessories || '',
+      emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : '',
     } as any).select().single();
 
     if (invError || !invoice) {
@@ -642,6 +646,8 @@ export const POSBilling: React.FC = () => {
       profile_type: selectedProfile?.profile_type,
       warranty_mobile: warrantyMobile || undefined,
       warranty_accessories: warrantyAccessories || undefined,
+      customer_address: customerAddress || undefined,
+      emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
     };
 
     setShowInvoice(invoiceData);
@@ -656,7 +662,8 @@ export const POSBilling: React.FC = () => {
     setBillDiscount(0);
     setWarrantyMobile('1 Year Manufacturer Warranty');
     setWarrantyAccessories('6 Months Warranty');
-  }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories, mixedPayment]);
+    setEmiLendingPartner('');
+  }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories, mixedPayment, emiLendingPartner]);
 
   return (
     <div className="flex h-full flex-col md:flex-row">
@@ -891,8 +898,10 @@ export const POSBilling: React.FC = () => {
         onMixedPaymentChange={setMixedPayment}
         warrantyMobile={warrantyMobile}
         warrantyAccessories={warrantyAccessories}
+        emiLendingPartner={emiLendingPartner}
         onWarrantyMobileChange={setWarrantyMobile}
         onWarrantyAccessoriesChange={setWarrantyAccessories}
+        onEmiLendingPartnerChange={setEmiLendingPartner}
         onCompleteSale={handleCompleteSale}
         onPreviewBill={handlePreviewBill}
         discountEnabled={settings?.discount_enabled ?? true}

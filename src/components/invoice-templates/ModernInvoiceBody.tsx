@@ -146,20 +146,37 @@ export const ModernInvoiceBody: React.FC<Props> = ({
 
     <div style={{ fontSize: '11px', fontStyle: 'italic', color: '#6b7280', marginBottom: '12px' }}>{amountInWords(invoice.grand_total)}</div>
 
-    {/* Payment Breakdown */}
-    {invoice.payment_method === 'mixed' && (invoice as any).payment_details && (
+    {/* Payment Info */}
+    {(invoice.payment_method === 'emi' || invoice.payment_method === 'mixed') && (
       <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px', marginBottom: '12px' }}>
-        <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '6px' }}>Payment Breakdown:</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '11px' }}>
-          {Object.entries((invoice as any).payment_details as Record<string, number>).map(([key, val]) =>
-            (val as number) > 0 ? (
-              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 8px', background: '#f5f3ff', borderRadius: '4px' }}>
-                <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{key}</span>
-                <span>₹{Number(val).toLocaleString('en-IN')}</span>
-              </div>
-            ) : null
-          )}
-        </div>
+        {invoice.payment_method !== 'mixed' && (
+          <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '6px' }}>Payment Mode: EMI</div>
+        )}
+        {invoice.emi_lending_partner && (
+          <div style={{ fontSize: '11px', marginBottom: '6px', padding: '4px 10px', background: '#f5f3ff', borderRadius: '6px', display: 'inline-block' }}>
+            <strong>Lending Partner:</strong> {invoice.emi_lending_partner}
+          </div>
+        )}
+        {invoice.payment_method === 'mixed' && (invoice as any).payment_details && (
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '6px' }}>Payment Breakdown:</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '11px' }}>
+              {Object.entries((invoice as any).payment_details as Record<string, number>).map(([key, val]) =>
+                (val as number) > 0 ? (
+                  <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 8px', background: '#f5f3ff', borderRadius: '4px' }}>
+                    <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{key}</span>
+                    <span>₹{Number(val).toLocaleString('en-IN')}</span>
+                  </div>
+                ) : null
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+    {invoice.payment_method !== 'emi' && invoice.payment_method !== 'mixed' && (
+      <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px', marginBottom: '12px' }}>
+        <div style={{ fontSize: '11px' }}><strong>Payment Mode:</strong> {invoice.payment_method.toUpperCase()}</div>
       </div>
     )}
 
