@@ -460,9 +460,10 @@ export const POSBilling: React.FC = () => {
       warranty_mobile: warrantyMobile || undefined,
       warranty_accessories: warrantyAccessories || undefined,
       customer_address: customerAddress || undefined,
+      emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
     };
     setPreviewInvoice(preview);
-  }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, selectedProfile, warrantyMobile, warrantyAccessories]);
+  }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, selectedProfile, warrantyMobile, warrantyAccessories, emiLendingPartner, mixedPayment]);
 
   const handleCompleteSale = useCallback(async () => {
     if (items.length === 0) { toast.error('Add items to bill first'); return; }
