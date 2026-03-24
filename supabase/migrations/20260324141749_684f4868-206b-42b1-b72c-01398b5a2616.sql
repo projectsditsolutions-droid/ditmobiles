@@ -1,0 +1,1 @@
+ALTER TABLE public.invoices ADD COLUMN emi_lending_partner text NOT NULL DEFAULT '';
