@@ -281,18 +281,28 @@ export const ReportsPage: React.FC = () => {
   };
 
   const renderPaymentDetail = (inv: Invoice) => {
-    if (!inv.payment_details) return null;
-    const details = inv.payment_details as Record<string, number>;
+    const lendingPartner = (inv as any).emi_lending_partner;
+    const hasPaymentDetails = inv.payment_details && Object.values(inv.payment_details as Record<string, number>).some(v => Number(v) > 0);
+    const showLending = lendingPartner && (inv.payment_method === 'emi' || inv.payment_method === 'mixed');
+    
+    if (!hasPaymentDetails && !showLending) return null;
+    
+    const details = (inv.payment_details || {}) as Record<string, number>;
     return (
       <div className="px-6 py-3 bg-accent/20 border-t text-xs">
         <p className="font-display font-semibold text-foreground mb-1.5">Payment Breakdown:</p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {Object.entries(details).map(([key, val]) =>
             Number(val) > 0 ? (
               <span key={key} className="px-2 py-1 rounded-full bg-secondary font-display font-bold capitalize">
                 {key}: ₹{Number(val).toLocaleString('en-IN')}
               </span>
             ) : null
+          )}
+          {showLending && (
+            <span className="px-2 py-1 rounded-full bg-warning/10 text-warning font-display font-bold text-[10px]">
+              Lending: {lendingPartner}
+            </span>
           )}
         </div>
       </div>
@@ -484,7 +494,7 @@ export const ReportsPage: React.FC = () => {
                       </div>
                     </td>
                   </tr>
-                  {expandedPaymentId === inv.id && inv.payment_details && (
+                  {expandedPaymentId === inv.id && (inv.payment_details || (inv as any).emi_lending_partner) && (
                     <tr>
                       <td colSpan={8}>{renderPaymentDetail(inv)}</td>
                     </tr>
