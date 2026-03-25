@@ -8,6 +8,7 @@ import { ShopProvider } from "@/contexts/ShopContext";
 import { PrintProvider } from "@/components/PrintPortal";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
+import Install from "./pages/Install.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
