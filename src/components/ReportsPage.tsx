@@ -130,6 +130,7 @@ export const ReportsPage: React.FC = () => {
       warranty_mobile: (invoice as any).warranty_mobile || undefined,
       warranty_accessories: (invoice as any).warranty_accessories || undefined,
       emi_lending_partner: (invoice as any).emi_lending_partner || undefined,
+      customer_address: (invoice as any).customer_address || undefined,
     };
     (preview as any).payment_details = invoice.payment_details;
     return preview;
