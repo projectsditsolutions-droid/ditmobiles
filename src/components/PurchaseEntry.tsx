@@ -459,7 +459,7 @@ export const PurchaseEntry: React.FC = () => {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display font-semibold text-sm">Purchase Summary</h3>
               </div>
-              <div className="grid grid-cols-3 gap-4 mb-5">
+              <div className="grid grid-cols-5 gap-3 mb-5">
                 <div className="bg-accent/50 rounded-xl p-3 text-center">
                   <p className="text-xs text-muted-foreground font-display">Products</p>
                   <p className="font-display font-bold text-lg">{lineItems.filter(l => l.product_id).length}</p>
@@ -468,19 +468,27 @@ export const PurchaseEntry: React.FC = () => {
                   <p className="text-xs text-muted-foreground font-display">Total Units</p>
                   <p className="font-display font-bold text-lg">{totalItems}</p>
                 </div>
-                <div className="bg-primary/10 rounded-xl p-3 text-center">
-                  <p className="text-xs text-muted-foreground font-display">Total Value</p>
-                  <p className="font-display font-bold text-lg text-primary">{fmt(totalValue)}</p>
+                <div className="bg-destructive/10 rounded-xl p-3 text-center">
+                  <p className="text-xs text-destructive font-display">Cost Value</p>
+                  <p className="font-display font-bold text-lg text-destructive">{fmt(totalCostValue)}</p>
+                </div>
+                <div className="bg-emerald-500/10 rounded-xl p-3 text-center">
+                  <p className="text-xs text-emerald-600 font-display">Sale Value</p>
+                  <p className="font-display font-bold text-lg text-emerald-600">{fmt(totalSaleValue)}</p>
+                </div>
+                <div className={`${totalMargin >= 0 ? 'bg-emerald-500/10' : 'bg-destructive/10'} rounded-xl p-3 text-center`}>
+                  <p className={`text-xs font-display ${totalMargin >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>Expected Margin</p>
+                  <p className={`font-display font-bold text-lg ${totalMargin >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{fmt(totalMargin)}</p>
                 </div>
               </div>
               {selectedDealer && (
                 <div className="text-xs text-muted-foreground mb-4 p-3 rounded-lg bg-warning/10 border border-warning/20">
                   <IndianRupee className="w-3.5 h-3.5 inline mr-1" />
-                  Dealer balance will update: {fmt(Number(selectedDealer.total_credit))} → <span className="font-bold text-foreground">{fmt(Number(selectedDealer.total_credit) + totalValue)}</span>
+                  Dealer balance will update: {fmt(Number(selectedDealer.total_credit))} → <span className="font-bold text-foreground">{fmt(Number(selectedDealer.total_credit) + totalCostValue)}</span>
                 </div>
               )}
               <Button onClick={handleSave} disabled={saving || !selectedDealerId} size="lg" className="w-full h-12 font-display font-bold text-base gradient-primary border-0 text-primary-foreground">
-                {saving ? 'Saving...' : `Save Purchase — ${totalItems} units, ${fmt(totalValue)}`}
+                {saving ? 'Saving...' : `Save Purchase — ${totalItems} units, ${fmt(totalCostValue)}`}
               </Button>
             </div>
           )}
