@@ -911,6 +911,7 @@ export const POSBilling: React.FC = () => {
         onCompleteSale={handleCompleteSale}
         onPreviewBill={handlePreviewBill}
         discountEnabled={settings?.discount_enabled ?? true}
+        saving={saving}
       />
 
       {showInvoice && (
