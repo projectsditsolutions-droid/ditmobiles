@@ -618,11 +618,17 @@ export const PurchaseEntry: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Sale Price</label>
-              <Input type="number" value={newProductForm.sale_price || ''} onChange={e => setNewProductForm(f => ({ ...f, sale_price: parseFloat(e.target.value) || 0 }))} className="h-10" />
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Purchase Price (₹) *</label>
+              <Input type="number" value={newProductForm.purchase_price || ''} onChange={e => setNewProductForm(f => ({ ...f, purchase_price: parseFloat(e.target.value) || 0 }))} className="h-10" placeholder="Cost price" />
             </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Sale Price (₹) *</label>
+              <Input type="number" value={newProductForm.sale_price || ''} onChange={e => setNewProductForm(f => ({ ...f, sale_price: parseFloat(e.target.value) || 0 }))} className="h-10" placeholder="Selling price" />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">GST %</label>
               <Input type="number" value={newProductForm.gst_percent} onChange={e => setNewProductForm(f => ({ ...f, gst_percent: parseFloat(e.target.value) || 0 }))} className="h-10" />
@@ -631,16 +637,24 @@ export const PurchaseEntry: React.FC = () => {
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">HSN Code</label>
               <Input value={newProductForm.hsn_code} onChange={e => setNewProductForm(f => ({ ...f, hsn_code: e.target.value }))} placeholder="8517" className="h-10 font-mono" />
             </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Category</label>
+              <select value={newProductForm.category} onChange={e => setNewProductForm(f => ({ ...f, category: e.target.value }))}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+                <option value="mobile">📱 Mobile</option>
+                <option value="accessory">🎧 Accessory</option>
+                <option value="other">📦 Other</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Category</label>
-            <select value={newProductForm.category} onChange={e => setNewProductForm(f => ({ ...f, category: e.target.value }))}
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
-              <option value="mobile">Mobile</option>
-              <option value="accessory">Accessory</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
+          {newProductForm.purchase_price > 0 && newProductForm.sale_price > 0 && (
+            <div className="flex items-center gap-3 text-xs p-2 rounded-lg bg-success/10 border border-success/20">
+              <span className="text-muted-foreground">Margin:</span>
+              <span className="font-display font-bold text-success">
+                {fmt(newProductForm.sale_price - newProductForm.purchase_price)} ({((newProductForm.sale_price - newProductForm.purchase_price) / newProductForm.purchase_price * 100).toFixed(1)}%)
+              </span>
+            </div>
+          )}
           <Button onClick={handleCreateProduct} className="w-full h-11 mt-2 font-display font-bold gradient-primary border-0 text-primary-foreground">
             Create Product
           </Button>
