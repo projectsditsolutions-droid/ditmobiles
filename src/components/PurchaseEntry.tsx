@@ -22,6 +22,7 @@ interface PurchaseLineItem {
   product: Product | null;
   imeis: string;
   unit_price: number;
+  sale_price: number;
   hsn_code: string;
   quantity: number; // computed from IMEIs
 }
@@ -67,7 +68,7 @@ export const PurchaseEntry: React.FC = () => {
   // New product inline form
   const [showNewProduct, setShowNewProduct] = useState(false);
   const [newLineIndex, setNewLineIndex] = useState<number>(-1);
-  const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
+  const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', purchase_price: 0, sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
 
   // Product search per line
   const [lineSearches, setLineSearches] = useState<Record<string, string>>({});
@@ -104,7 +105,7 @@ export const PurchaseEntry: React.FC = () => {
   // Line item management
   const addLineItem = () => {
     const id = crypto.randomUUID();
-    setLineItems(prev => [...prev, { id, product_id: '', product: null, imeis: '', unit_price: 0, hsn_code: '', quantity: 0 }]);
+    setLineItems(prev => [...prev, { id, product_id: '', product: null, imeis: '', unit_price: 0, sale_price: 0, hsn_code: '', quantity: 0 }]);
   };
 
   const updateLine = (id: string, updates: Partial<PurchaseLineItem>) => {
@@ -128,6 +129,7 @@ export const PurchaseEntry: React.FC = () => {
       product_id: product.id,
       product,
       unit_price: Number(product.purchase_price) || 0,
+      sale_price: Number(product.sale_price) || 0,
       hsn_code: product.hsn_code || '',
     });
     setLineSearches(prev => ({ ...prev, [lineId]: `${product.brand} ${product.model} ${product.variant}` }));
@@ -173,11 +175,13 @@ export const PurchaseEntry: React.FC = () => {
         }
 
         if (added > 0) {
-          // Update product stock & HSN
+          // Update product stock, prices & HSN
           const product = products.find(p => p.id === li.product_id);
           if (product) {
             const updateData: Record<string, any> = { stock_quantity: product.stock_quantity + added };
             if (li.hsn_code) updateData.hsn_code = li.hsn_code;
+            if (li.unit_price > 0) updateData.purchase_price = li.unit_price;
+            if (li.sale_price > 0) updateData.sale_price = li.sale_price;
             await supabase.from('products').update(updateData).eq('id', product.id);
           }
           totalAdded += added;
@@ -223,7 +227,7 @@ export const PurchaseEntry: React.FC = () => {
     if (!activeShopId || !newProductForm.brand || !newProductForm.model) { toast.error('Brand & Model required'); return; }
     const { data, error } = await supabase.from('products').insert({
       brand: newProductForm.brand, model: newProductForm.model, variant: newProductForm.variant,
-      color: newProductForm.color, purchase_price: 0, sale_price: newProductForm.sale_price,
+      color: newProductForm.color, purchase_price: newProductForm.purchase_price, sale_price: newProductForm.sale_price,
       gst_percent: newProductForm.gst_percent, hsn_code: newProductForm.hsn_code,
       category: newProductForm.category, shop_id: activeShopId, stock_quantity: 0,
     } as any).select().single();
@@ -232,7 +236,7 @@ export const PurchaseEntry: React.FC = () => {
       selectProduct(lineItems[newLineIndex].id, data as Product);
     }
     setShowNewProduct(false);
-    setNewProductForm({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
+    setNewProductForm({ brand: '', model: '', variant: '', color: '', purchase_price: 0, sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
     toast.success('Product created');
     fetchAll();
   };
