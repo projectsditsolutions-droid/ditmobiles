@@ -22,6 +22,7 @@ interface PurchaseLineItem {
   product: Product | null;
   imeis: string;
   unit_price: number;
+  sale_price: number;
   hsn_code: string;
   quantity: number; // computed from IMEIs
 }
@@ -104,7 +105,7 @@ export const PurchaseEntry: React.FC = () => {
   // Line item management
   const addLineItem = () => {
     const id = crypto.randomUUID();
-    setLineItems(prev => [...prev, { id, product_id: '', product: null, imeis: '', unit_price: 0, hsn_code: '', quantity: 0 }]);
+    setLineItems(prev => [...prev, { id, product_id: '', product: null, imeis: '', unit_price: 0, sale_price: 0, hsn_code: '', quantity: 0 }]);
   };
 
   const updateLine = (id: string, updates: Partial<PurchaseLineItem>) => {
@@ -128,6 +129,7 @@ export const PurchaseEntry: React.FC = () => {
       product_id: product.id,
       product,
       unit_price: Number(product.purchase_price) || 0,
+      sale_price: Number(product.sale_price) || 0,
       hsn_code: product.hsn_code || '',
     });
     setLineSearches(prev => ({ ...prev, [lineId]: `${product.brand} ${product.model} ${product.variant}` }));
