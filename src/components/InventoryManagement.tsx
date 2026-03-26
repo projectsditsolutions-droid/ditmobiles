@@ -30,11 +30,21 @@ export const InventoryManagement: React.FC = () => {
 
   const fetchProducts = async () => {
     if (!activeShopId && !isAllShops) return;
-    let query = supabase.from('products').select('*');
-    if (isAllShops) query = query.in('shop_id', allShopIds);
-    else query = query.eq('shop_id', activeShopId!);
-    const { data } = await query.order('brand');
-    if (data) setProducts(data);
+    let baseQuery = supabase.from('products').select('*');
+    if (isAllShops) baseQuery = baseQuery.in('shop_id', allShopIds);
+    else baseQuery = baseQuery.eq('shop_id', activeShopId!);
+    // Paginate past 1000 limit
+    let allData: Product[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data } = await baseQuery.order('brand').range(from, from + pageSize - 1);
+      if (!data || data.length === 0) break;
+      allData = allData.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    setProducts(allData);
   };
 
   const fetchIMEIs = async () => {
