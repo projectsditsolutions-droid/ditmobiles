@@ -711,23 +711,60 @@ export const DealerLedger: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Purchase Price / Unit (₹)</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Cost Price / Unit (₹)</label>
               <Input type="number" value={stockForm.unit_price || ''} onChange={e => setStockForm({ ...stockForm, unit_price: parseFloat(e.target.value) || 0 })} className="h-10" placeholder="0" />
             </div>
             <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Selling Price / Unit (₹)</label>
+              <Input type="number" value={stockForm.sale_price || ''} onChange={e => setStockForm({ ...stockForm, sale_price: parseFloat(e.target.value) || 0 })} className="h-10" placeholder="0" />
+            </div>
+          </div>
+          {stockForm.unit_price > 0 && stockForm.sale_price > 0 && (
+            <div className="text-xs text-muted-foreground">
+              Margin per unit: &nbsp;
+              <span className={`font-display font-bold ${stockForm.sale_price - stockForm.unit_price >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                {fmt(stockForm.sale_price - stockForm.unit_price)} ({((stockForm.sale_price - stockForm.unit_price) / stockForm.unit_price * 100).toFixed(1)}%)
+              </span>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">HSN Code</label>
               <Input value={stockForm.hsn_code} onChange={e => setStockForm({ ...stockForm, hsn_code: e.target.value })} className="h-10" placeholder="8517" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">IMEIs Scanned</label>
+              <div className="h-10 flex items-center px-3 rounded-md border bg-accent/50 text-sm font-display font-bold">
+                {stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length} units
+              </div>
             </div>
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">IMEI Numbers (one per line)</label>
             <Textarea value={stockForm.imeis} onChange={e => setStockForm({ ...stockForm, imeis: e.target.value })} rows={5} className="font-mono text-xs" placeholder={"123456789012345\n987654321098765"} />
-            <p className="text-[10px] text-muted-foreground mt-1">{stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length} valid IMEIs</p>
           </div>
-          <div className="rounded-xl bg-secondary/50 p-3 text-sm">
-            <p className="font-display font-semibold mb-1">Ledger Impact</p>
-            <p className="text-muted-foreground">Balance will increase by <span className="text-destructive font-bold">{fmt(stockForm.unit_price * stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length)}</span></p>
-          </div>
+          {(() => {
+            const imeiCount = stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length;
+            const costVal = stockForm.unit_price * imeiCount;
+            const saleVal = stockForm.sale_price * imeiCount;
+            const margin = saleVal - costVal;
+            return (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-destructive/10 rounded-xl p-2.5 text-center">
+                  <p className="text-[10px] text-destructive font-display">Cost Value</p>
+                  <p className="font-display font-bold text-sm text-destructive">{fmt(costVal)}</p>
+                </div>
+                <div className="bg-emerald-500/10 rounded-xl p-2.5 text-center">
+                  <p className="text-[10px] text-emerald-600 font-display">Sale Value</p>
+                  <p className="font-display font-bold text-sm text-emerald-600">{fmt(saleVal)}</p>
+                </div>
+                <div className={`${margin >= 0 ? 'bg-emerald-500/10' : 'bg-destructive/10'} rounded-xl p-2.5 text-center`}>
+                  <p className={`text-[10px] font-display ${margin >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>Expected Margin</p>
+                  <p className={`font-display font-bold text-sm ${margin >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{fmt(margin)}</p>
+                </div>
+              </div>
+            );
+          })()}
           <Button onClick={handleStockEntry} className="w-full gradient-primary border-0 text-primary-foreground">Add to Inventory</Button>
         </div>
       </Modal>
