@@ -149,8 +149,9 @@ export const DealerLedger: React.FC = () => {
     const payment = selectedTxns.filter(t => t.type === 'payment').reduce((s, t) => s + Number(t.amount), 0);
     const sold = selectedTxns.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
+    const adjustments = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    const opening = current - purchase + payment + returned;
+    const opening = current - purchase + payment + returned - adjustments;
     const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => {
       const bothMatch = t.description.match(/Sold Cost: ₹([\d,]+)/);
       if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
@@ -591,7 +592,7 @@ export const DealerLedger: React.FC = () => {
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <span className={`font-display font-bold ${meta.colorClass}`}>
-                                  {txn.type === 'purchase' ? '+' : txn.type === 'payment' || txn.type === 'stock_return' ? '−' : ''}{fmt(Number(txn.amount))}
+                                  {txn.type === 'purchase' || (txn.type === 'opening_adjustment' && Number(txn.amount) > 0) ? '+' : txn.type === 'payment' || txn.type === 'stock_return' || (txn.type === 'opening_adjustment' && Number(txn.amount) < 0) ? '−' : ''}{fmt(Number(txn.amount))}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-right font-display font-extrabold text-sm">{fmt(Number(txn.running_balance))}</td>
