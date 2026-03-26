@@ -138,6 +138,7 @@ export const PurchaseEntry: React.FC = () => {
   // Totals
   const totalItems = lineItems.reduce((s, li) => s + li.quantity, 0);
   const totalValue = lineItems.reduce((s, li) => s + li.quantity * li.unit_price, 0);
+  const totalSaleValue = lineItems.reduce((s, li) => s + li.quantity * li.sale_price, 0);
 
   // Save purchase
   const handleSave = async () => {
