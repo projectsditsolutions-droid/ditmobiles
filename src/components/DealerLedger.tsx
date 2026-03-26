@@ -725,14 +725,25 @@ export const DealerLedger: React.FC = () => {
               <Input value={stockForm.hsn_code} onChange={e => setStockForm({ ...stockForm, hsn_code: e.target.value })} className="h-10" placeholder="8517" />
             </div>
           </div>
+          {stockForm.unit_price > 0 && stockForm.sale_price > 0 && (
+            <div className="flex items-center gap-3 text-xs p-2.5 rounded-xl bg-success/10 border border-success/20">
+              <span className="text-muted-foreground">Margin per unit:</span>
+              <span className="font-display font-bold text-success">
+                {fmt(stockForm.sale_price - stockForm.unit_price)} ({((stockForm.sale_price - stockForm.unit_price) / stockForm.unit_price * 100).toFixed(1)}%)
+              </span>
+            </div>
+          )}
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">IMEI Numbers (one per line)</label>
             <Textarea value={stockForm.imeis} onChange={e => setStockForm({ ...stockForm, imeis: e.target.value })} rows={5} className="font-mono text-xs" placeholder={"123456789012345\n987654321098765"} />
             <p className="text-[10px] text-muted-foreground mt-1">{stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length} valid IMEIs</p>
           </div>
-          <div className="rounded-xl bg-secondary/50 p-3 text-sm">
-            <p className="font-display font-semibold mb-1">Ledger Impact</p>
+          <div className="rounded-xl bg-secondary/50 p-3 text-sm space-y-1">
+            <p className="font-display font-semibold">Ledger Impact</p>
             <p className="text-muted-foreground">Balance will increase by <span className="text-destructive font-bold">{fmt(stockForm.unit_price * stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length)}</span></p>
+            {stockForm.sale_price > 0 && stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length > 0 && (
+              <p className="text-muted-foreground">Expected sale value: <span className="text-primary font-bold">{fmt(stockForm.sale_price * stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length)}</span></p>
+            )}
           </div>
           <Button onClick={handleStockEntry} className="w-full gradient-primary border-0 text-primary-foreground">Add to Inventory</Button>
         </div>
