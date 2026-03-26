@@ -275,12 +275,13 @@ export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) =
         {/* Statement preview */}
         <div className="flex-1 overflow-y-auto p-5 pos-scrollable">
           {/* Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
+          <div className={`grid grid-cols-2 ${periodAdjustment !== 0 ? 'sm:grid-cols-6' : 'sm:grid-cols-5'} gap-3 mb-5`}>
             {[
               { label: 'Opening Balance', value: fmt(openingBalance), color: 'text-muted-foreground' },
               { label: 'Purchases', value: `+${fmt(periodPurchase)}`, color: 'text-destructive' },
               { label: 'Payments', value: `-${fmt(periodPayment)}`, color: 'text-success' },
               { label: 'Returns', value: `-${fmt(periodReturn)}`, color: 'text-warning' },
+              ...(periodAdjustment !== 0 ? [{ label: 'Adjustment', value: `${periodAdjustment > 0 ? '+' : '-'}${fmt(periodAdjustment)}`, color: 'text-primary' }] : []),
               { label: 'Closing Balance', value: fmt(closingBalance), color: closingBalance > 100000 ? 'text-destructive' : closingBalance > 30000 ? 'text-warning' : 'text-success' },
             ].map(c => (
               <div key={c.label} className="bg-background rounded-xl border p-3 text-center">
