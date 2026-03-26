@@ -667,7 +667,7 @@ export const DealerLedger: React.FC = () => {
             {stockSearch && !stockForm.product_id && (
               <div className="mt-1 border rounded-xl bg-card shadow-sm max-h-48 overflow-auto">
                 {filteredProducts.slice(0, 10).map(p => (
-                  <button key={p.id} onClick={() => { setStockForm({ ...stockForm, product_id: p.id, hsn_code: p.hsn_code }); setStockSearch(`${p.brand} ${p.model} ${p.variant}`); }} className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors border-b last:border-0">
+                  <button key={p.id} onClick={() => { setStockForm({ ...stockForm, product_id: p.id, unit_price: Number(p.purchase_price) || 0, sale_price: Number(p.sale_price) || 0, hsn_code: p.hsn_code }); setStockSearch(`${p.brand} ${p.model} ${p.variant}`); }} className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors border-b last:border-0">
                     <div className="font-display font-semibold text-sm">{p.brand} {p.model}</div>
                     <div className="text-xs text-muted-foreground">{p.variant} {p.color} · Stock: {p.stock_quantity}</div>
                   </button>
