@@ -68,7 +68,7 @@ export const DealerLedger: React.FC = () => {
   const [sortBy, setSortBy] = useState<'credit_desc' | 'credit_asc' | 'recent'>('credit_desc');
   const [txnFilter, setTxnFilter] = useState<'all' | 'purchase' | 'payment' | 'sale_deduction' | 'stock_return'>('all');
   const [dealerForm, setDealerForm] = useState({ brand_name: '', dealer_name: '', phone: '', address: '', gstin: '', total_credit: 0 });
-  const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, imeis: '', hsn_code: '' });
+  const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
   const [stockSearch, setStockSearch] = useState('');
   const [showNewProductInStock, setShowNewProductInStock] = useState(false);
   const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
@@ -272,7 +272,7 @@ export const DealerLedger: React.FC = () => {
     if (imeiList.length === 0) { toast.error('Enter valid 15-digit IMEIs'); return; }
     let added = 0;
     for (const imei of imeiList) {
-      const { error } = await supabase.from('imei_records').insert({ imei, product_id: stockForm.product_id, shop_id: activeShopId, dealer_id: selectedDealer.id, status: 'in_stock', purchase_price: stockForm.unit_price });
+      const { error } = await supabase.from('imei_records').insert({ imei, product_id: stockForm.product_id, shop_id: activeShopId, dealer_id: selectedDealer.id, status: 'in_stock', purchase_price: stockForm.unit_price, sale_price: stockForm.sale_price });
       if (!error) added++;
     }
     if (added === 0) { toast.error('No IMEIs were added (duplicates?)'); return; }
@@ -287,7 +287,7 @@ export const DealerLedger: React.FC = () => {
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
     await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'purchase', amount: purchaseValue, running_balance: newBalance, description: `Purchase ${added} × ${product?.brand || ''} ${product?.model || ''} @ ₹${stockForm.unit_price.toLocaleString('en-IN')}` });
     setShowStockEntry(false);
-    setStockForm({ product_id: '', unit_price: 0, imeis: '', hsn_code: '' });
+    setStockForm({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
     setShowNewProductInStock(false);
     setNewProductForm({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
     setStockSearch('');
