@@ -22,6 +22,7 @@ interface PurchaseLineItem {
   product: Product | null;
   imeis: string;
   unit_price: number;
+  sale_price: number;
   hsn_code: string;
   quantity: number; // computed from IMEIs
 }
@@ -104,7 +105,7 @@ export const PurchaseEntry: React.FC = () => {
   // Line item management
   const addLineItem = () => {
     const id = crypto.randomUUID();
-    setLineItems(prev => [...prev, { id, product_id: '', product: null, imeis: '', unit_price: 0, hsn_code: '', quantity: 0 }]);
+    setLineItems(prev => [...prev, { id, product_id: '', product: null, imeis: '', unit_price: 0, sale_price: 0, hsn_code: '', quantity: 0 }]);
   };
 
   const updateLine = (id: string, updates: Partial<PurchaseLineItem>) => {
@@ -128,6 +129,7 @@ export const PurchaseEntry: React.FC = () => {
       product_id: product.id,
       product,
       unit_price: Number(product.purchase_price) || 0,
+      sale_price: Number(product.sale_price) || 0,
       hsn_code: product.hsn_code || '',
     });
     setLineSearches(prev => ({ ...prev, [lineId]: `${product.brand} ${product.model} ${product.variant}` }));
@@ -135,7 +137,9 @@ export const PurchaseEntry: React.FC = () => {
 
   // Totals
   const totalItems = lineItems.reduce((s, li) => s + li.quantity, 0);
-  const totalValue = lineItems.reduce((s, li) => s + li.quantity * li.unit_price, 0);
+  const totalCostValue = lineItems.reduce((s, li) => s + li.quantity * li.unit_price, 0);
+  const totalSaleValue = lineItems.reduce((s, li) => s + li.quantity * li.sale_price, 0);
+  const totalMargin = totalSaleValue - totalCostValue;
 
   // Save purchase
   const handleSave = async () => {
@@ -168,6 +172,7 @@ export const PurchaseEntry: React.FC = () => {
             dealer_id: selectedDealerId,
             status: 'in_stock',
             purchase_price: li.unit_price,
+            sale_price: li.sale_price,
           });
           if (!error) added++;
         }
@@ -386,32 +391,51 @@ export const PurchaseEntry: React.FC = () => {
                       </div>
 
                       {li.product && (
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Purchase Price (₹)</label>
-                            <Input
-                              type="number"
-                              value={li.unit_price || ''}
-                              onChange={e => updateLine(li.id, { unit_price: parseFloat(e.target.value) || 0 })}
-                              className="h-10"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">HSN Code</label>
-                            <Input
-                              value={li.hsn_code}
-                              onChange={e => updateLine(li.id, { hsn_code: e.target.value })}
-                              placeholder={li.product.hsn_code || 'HSN'}
-                              className="h-10 font-mono"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">IMEIs Scanned</label>
-                            <div className="h-10 flex items-center px-3 rounded-md border bg-accent/50 text-sm font-display font-bold">
-                              <ScanLine className="w-4 h-4 mr-2 text-primary" />{imeiCount} unit{imeiCount !== 1 ? 's' : ''}
+                        <>
+                          <div className="grid grid-cols-4 gap-3">
+                            <div>
+                              <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Cost Price (₹)</label>
+                              <Input
+                                type="number"
+                                value={li.unit_price || ''}
+                                onChange={e => updateLine(li.id, { unit_price: parseFloat(e.target.value) || 0 })}
+                                className="h-10"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Selling Price (₹)</label>
+                              <Input
+                                type="number"
+                                value={li.sale_price || ''}
+                                onChange={e => updateLine(li.id, { sale_price: parseFloat(e.target.value) || 0 })}
+                                className="h-10"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">HSN Code</label>
+                              <Input
+                                value={li.hsn_code}
+                                onChange={e => updateLine(li.id, { hsn_code: e.target.value })}
+                                placeholder={li.product.hsn_code || 'HSN'}
+                                className="h-10 font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">IMEIs Scanned</label>
+                              <div className="h-10 flex items-center px-3 rounded-md border bg-accent/50 text-sm font-display font-bold">
+                                <ScanLine className="w-4 h-4 mr-2 text-primary" />{imeiCount} unit{imeiCount !== 1 ? 's' : ''}
+                              </div>
                             </div>
                           </div>
-                        </div>
+                          {li.unit_price > 0 && li.sale_price > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              Margin per unit: &nbsp;
+                              <span className={`font-display font-bold ${li.sale_price - li.unit_price >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                                {fmt(li.sale_price - li.unit_price)} ({((li.sale_price - li.unit_price) / li.unit_price * 100).toFixed(1)}%)
+                              </span>
+                            </div>
+                          )}
+                        </>
                       )}
 
                       {li.product && (
@@ -435,7 +459,7 @@ export const PurchaseEntry: React.FC = () => {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display font-semibold text-sm">Purchase Summary</h3>
               </div>
-              <div className="grid grid-cols-3 gap-4 mb-5">
+              <div className="grid grid-cols-5 gap-3 mb-5">
                 <div className="bg-accent/50 rounded-xl p-3 text-center">
                   <p className="text-xs text-muted-foreground font-display">Products</p>
                   <p className="font-display font-bold text-lg">{lineItems.filter(l => l.product_id).length}</p>
@@ -444,19 +468,27 @@ export const PurchaseEntry: React.FC = () => {
                   <p className="text-xs text-muted-foreground font-display">Total Units</p>
                   <p className="font-display font-bold text-lg">{totalItems}</p>
                 </div>
-                <div className="bg-primary/10 rounded-xl p-3 text-center">
-                  <p className="text-xs text-muted-foreground font-display">Total Value</p>
-                  <p className="font-display font-bold text-lg text-primary">{fmt(totalValue)}</p>
+                <div className="bg-destructive/10 rounded-xl p-3 text-center">
+                  <p className="text-xs text-destructive font-display">Cost Value</p>
+                  <p className="font-display font-bold text-lg text-destructive">{fmt(totalCostValue)}</p>
+                </div>
+                <div className="bg-emerald-500/10 rounded-xl p-3 text-center">
+                  <p className="text-xs text-emerald-600 font-display">Sale Value</p>
+                  <p className="font-display font-bold text-lg text-emerald-600">{fmt(totalSaleValue)}</p>
+                </div>
+                <div className={`${totalMargin >= 0 ? 'bg-emerald-500/10' : 'bg-destructive/10'} rounded-xl p-3 text-center`}>
+                  <p className={`text-xs font-display ${totalMargin >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>Expected Margin</p>
+                  <p className={`font-display font-bold text-lg ${totalMargin >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{fmt(totalMargin)}</p>
                 </div>
               </div>
               {selectedDealer && (
                 <div className="text-xs text-muted-foreground mb-4 p-3 rounded-lg bg-warning/10 border border-warning/20">
                   <IndianRupee className="w-3.5 h-3.5 inline mr-1" />
-                  Dealer balance will update: {fmt(Number(selectedDealer.total_credit))} → <span className="font-bold text-foreground">{fmt(Number(selectedDealer.total_credit) + totalValue)}</span>
+                  Dealer balance will update: {fmt(Number(selectedDealer.total_credit))} → <span className="font-bold text-foreground">{fmt(Number(selectedDealer.total_credit) + totalCostValue)}</span>
                 </div>
               )}
               <Button onClick={handleSave} disabled={saving || !selectedDealerId} size="lg" className="w-full h-12 font-display font-bold text-base gradient-primary border-0 text-primary-foreground">
-                {saving ? 'Saving...' : `Save Purchase — ${totalItems} units, ${fmt(totalValue)}`}
+                {saving ? 'Saving...' : `Save Purchase — ${totalItems} units, ${fmt(totalCostValue)}`}
               </Button>
             </div>
           )}
