@@ -22,7 +22,6 @@ interface PurchaseLineItem {
   product: Product | null;
   imeis: string;
   unit_price: number;
-  sale_price: number;
   hsn_code: string;
   quantity: number; // computed from IMEIs
 }
@@ -68,7 +67,7 @@ export const PurchaseEntry: React.FC = () => {
   // New product inline form
   const [showNewProduct, setShowNewProduct] = useState(false);
   const [newLineIndex, setNewLineIndex] = useState<number>(-1);
-  const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', purchase_price: 0, sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
+  const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
 
   // Product search per line
   const [lineSearches, setLineSearches] = useState<Record<string, string>>({});
@@ -105,7 +104,7 @@ export const PurchaseEntry: React.FC = () => {
   // Line item management
   const addLineItem = () => {
     const id = crypto.randomUUID();
-    setLineItems(prev => [...prev, { id, product_id: '', product: null, imeis: '', unit_price: 0, sale_price: 0, hsn_code: '', quantity: 0 }]);
+    setLineItems(prev => [...prev, { id, product_id: '', product: null, imeis: '', unit_price: 0, hsn_code: '', quantity: 0 }]);
   };
 
   const updateLine = (id: string, updates: Partial<PurchaseLineItem>) => {
@@ -129,7 +128,6 @@ export const PurchaseEntry: React.FC = () => {
       product_id: product.id,
       product,
       unit_price: Number(product.purchase_price) || 0,
-      sale_price: Number(product.sale_price) || 0,
       hsn_code: product.hsn_code || '',
     });
     setLineSearches(prev => ({ ...prev, [lineId]: `${product.brand} ${product.model} ${product.variant}` }));
@@ -138,7 +136,6 @@ export const PurchaseEntry: React.FC = () => {
   // Totals
   const totalItems = lineItems.reduce((s, li) => s + li.quantity, 0);
   const totalValue = lineItems.reduce((s, li) => s + li.quantity * li.unit_price, 0);
-  const totalSaleValue = lineItems.reduce((s, li) => s + li.quantity * li.sale_price, 0);
 
   // Save purchase
   const handleSave = async () => {
@@ -176,13 +173,11 @@ export const PurchaseEntry: React.FC = () => {
         }
 
         if (added > 0) {
-          // Update product stock, prices & HSN
+          // Update product stock & HSN
           const product = products.find(p => p.id === li.product_id);
           if (product) {
             const updateData: Record<string, any> = { stock_quantity: product.stock_quantity + added };
             if (li.hsn_code) updateData.hsn_code = li.hsn_code;
-            if (li.unit_price > 0) updateData.purchase_price = li.unit_price;
-            if (li.sale_price > 0) updateData.sale_price = li.sale_price;
             await supabase.from('products').update(updateData).eq('id', product.id);
           }
           totalAdded += added;
@@ -228,7 +223,7 @@ export const PurchaseEntry: React.FC = () => {
     if (!activeShopId || !newProductForm.brand || !newProductForm.model) { toast.error('Brand & Model required'); return; }
     const { data, error } = await supabase.from('products').insert({
       brand: newProductForm.brand, model: newProductForm.model, variant: newProductForm.variant,
-      color: newProductForm.color, purchase_price: newProductForm.purchase_price, sale_price: newProductForm.sale_price,
+      color: newProductForm.color, purchase_price: 0, sale_price: newProductForm.sale_price,
       gst_percent: newProductForm.gst_percent, hsn_code: newProductForm.hsn_code,
       category: newProductForm.category, shop_id: activeShopId, stock_quantity: 0,
     } as any).select().single();
@@ -237,7 +232,7 @@ export const PurchaseEntry: React.FC = () => {
       selectProduct(lineItems[newLineIndex].id, data as Product);
     }
     setShowNewProduct(false);
-    setNewProductForm({ brand: '', model: '', variant: '', color: '', purchase_price: 0, sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
+    setNewProductForm({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
     toast.success('Product created');
     fetchAll();
   };
@@ -391,25 +386,14 @@ export const PurchaseEntry: React.FC = () => {
                       </div>
 
                       {li.product && (
-                        <div className="grid grid-cols-4 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
                           <div>
-                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Cost Price (₹)</label>
+                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Purchase Price (₹)</label>
                             <Input
                               type="number"
                               value={li.unit_price || ''}
                               onChange={e => updateLine(li.id, { unit_price: parseFloat(e.target.value) || 0 })}
                               className="h-10"
-                              placeholder="Purchase price"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Selling Price (₹)</label>
-                            <Input
-                              type="number"
-                              value={li.sale_price || ''}
-                              onChange={e => updateLine(li.id, { sale_price: parseFloat(e.target.value) || 0 })}
-                              className="h-10"
-                              placeholder="Sale price"
                             />
                           </div>
                           <div>
@@ -427,19 +411,6 @@ export const PurchaseEntry: React.FC = () => {
                               <ScanLine className="w-4 h-4 mr-2 text-primary" />{imeiCount} unit{imeiCount !== 1 ? 's' : ''}
                             </div>
                           </div>
-                          {li.unit_price > 0 && li.sale_price > 0 && (
-                            <div className="col-span-4 flex items-center gap-4 text-xs px-1">
-                              <span className="text-muted-foreground">Margin per unit:</span>
-                              <span className="font-display font-bold text-success">
-                                {fmt(li.sale_price - li.unit_price)} ({((li.sale_price - li.unit_price) / li.unit_price * 100).toFixed(1)}%)
-                              </span>
-                              {imeiCount > 0 && (
-                                <span className="text-muted-foreground ml-auto">
-                                  Total: <span className="font-bold text-foreground">{fmt(li.unit_price * imeiCount)}</span> cost · <span className="font-bold text-foreground">{fmt(li.sale_price * imeiCount)}</span> sale
-                                </span>
-                              )}
-                            </div>
-                          )}
                         </div>
                       )}
 
@@ -464,7 +435,7 @@ export const PurchaseEntry: React.FC = () => {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display font-semibold text-sm">Purchase Summary</h3>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+              <div className="grid grid-cols-3 gap-4 mb-5">
                 <div className="bg-accent/50 rounded-xl p-3 text-center">
                   <p className="text-xs text-muted-foreground font-display">Products</p>
                   <p className="font-display font-bold text-lg">{lineItems.filter(l => l.product_id).length}</p>
@@ -473,17 +444,9 @@ export const PurchaseEntry: React.FC = () => {
                   <p className="text-xs text-muted-foreground font-display">Total Units</p>
                   <p className="font-display font-bold text-lg">{totalItems}</p>
                 </div>
-                <div className="bg-destructive/10 rounded-xl p-3 text-center">
-                  <p className="text-xs text-muted-foreground font-display">Cost Value</p>
-                  <p className="font-display font-bold text-lg text-destructive">{fmt(totalValue)}</p>
-                </div>
                 <div className="bg-primary/10 rounded-xl p-3 text-center">
-                  <p className="text-xs text-muted-foreground font-display">Sale Value</p>
-                  <p className="font-display font-bold text-lg text-primary">{fmt(totalSaleValue)}</p>
-                </div>
-                <div className="bg-success/10 rounded-xl p-3 text-center">
-                  <p className="text-xs text-muted-foreground font-display">Expected Margin</p>
-                  <p className="font-display font-bold text-lg text-success">{fmt(totalSaleValue - totalValue)}</p>
+                  <p className="text-xs text-muted-foreground font-display">Total Value</p>
+                  <p className="font-display font-bold text-lg text-primary">{fmt(totalValue)}</p>
                 </div>
               </div>
               {selectedDealer && (
@@ -627,17 +590,11 @@ export const PurchaseEntry: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Purchase Price (₹) *</label>
-              <Input type="number" value={newProductForm.purchase_price || ''} onChange={e => setNewProductForm(f => ({ ...f, purchase_price: parseFloat(e.target.value) || 0 }))} className="h-10" placeholder="Cost price" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Sale Price (₹) *</label>
-              <Input type="number" value={newProductForm.sale_price || ''} onChange={e => setNewProductForm(f => ({ ...f, sale_price: parseFloat(e.target.value) || 0 }))} className="h-10" placeholder="Selling price" />
-            </div>
-          </div>
           <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Sale Price</label>
+              <Input type="number" value={newProductForm.sale_price || ''} onChange={e => setNewProductForm(f => ({ ...f, sale_price: parseFloat(e.target.value) || 0 }))} className="h-10" />
+            </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">GST %</label>
               <Input type="number" value={newProductForm.gst_percent} onChange={e => setNewProductForm(f => ({ ...f, gst_percent: parseFloat(e.target.value) || 0 }))} className="h-10" />
@@ -646,24 +603,16 @@ export const PurchaseEntry: React.FC = () => {
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">HSN Code</label>
               <Input value={newProductForm.hsn_code} onChange={e => setNewProductForm(f => ({ ...f, hsn_code: e.target.value }))} placeholder="8517" className="h-10 font-mono" />
             </div>
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Category</label>
-              <select value={newProductForm.category} onChange={e => setNewProductForm(f => ({ ...f, category: e.target.value }))}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
-                <option value="mobile">📱 Mobile</option>
-                <option value="accessory">🎧 Accessory</option>
-                <option value="other">📦 Other</option>
-              </select>
-            </div>
           </div>
-          {newProductForm.purchase_price > 0 && newProductForm.sale_price > 0 && (
-            <div className="flex items-center gap-3 text-xs p-2 rounded-lg bg-success/10 border border-success/20">
-              <span className="text-muted-foreground">Margin:</span>
-              <span className="font-display font-bold text-success">
-                {fmt(newProductForm.sale_price - newProductForm.purchase_price)} ({((newProductForm.sale_price - newProductForm.purchase_price) / newProductForm.purchase_price * 100).toFixed(1)}%)
-              </span>
-            </div>
-          )}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Category</label>
+            <select value={newProductForm.category} onChange={e => setNewProductForm(f => ({ ...f, category: e.target.value }))}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+              <option value="mobile">Mobile</option>
+              <option value="accessory">Accessory</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
           <Button onClick={handleCreateProduct} className="w-full h-11 mt-2 font-display font-bold gradient-primary border-0 text-primary-foreground">
             Create Product
           </Button>
