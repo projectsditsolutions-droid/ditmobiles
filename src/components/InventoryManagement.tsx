@@ -171,7 +171,8 @@ export const InventoryManagement: React.FC = () => {
   const getStockCount = (productId: string) => imeis.filter(r => r.product_id === productId && r.status === 'in_stock').length;
   const lowStockProducts = products.filter(p => getStockCount(p.id) <= p.low_stock_threshold);
   const totalStockValue = products.reduce((s, p) => s + Number(p.purchase_price) * getStockCount(p.id), 0);
-  
+  const totalSaleValue = products.reduce((s, p) => s + Number(p.sale_price) * getStockCount(p.id), 0);
+  const totalMargin = totalSaleValue - totalStockValue;
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto overflow-y-auto h-full">
@@ -185,7 +186,7 @@ export const InventoryManagement: React.FC = () => {
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
           <div className="stat-card">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -215,12 +216,30 @@ export const InventoryManagement: React.FC = () => {
           </div>
           <div className="stat-card">
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
-                <IndianRupee className="w-4 h-4 text-accent-foreground" />
+              <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <IndianRupee className="w-4 h-4 text-destructive" />
               </div>
-              <span className="text-xs text-muted-foreground font-medium">Stock Value</span>
+              <span className="text-xs text-muted-foreground font-medium">Cost Value</span>
             </div>
             <p className="font-display text-lg font-extrabold">₹{totalStockValue.toLocaleString('en-IN')}</p>
+          </div>
+          <div className="stat-card">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Tag className="w-4 h-4 text-primary" />
+              </div>
+              <span className="text-xs text-muted-foreground font-medium">Sale Value</span>
+            </div>
+            <p className="font-display text-lg font-extrabold text-primary">₹{totalSaleValue.toLocaleString('en-IN')}</p>
+          </div>
+          <div className="stat-card">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                <BarChart3 className="w-4 h-4 text-success" />
+              </div>
+              <span className="text-xs text-muted-foreground font-medium">Expected Margin</span>
+            </div>
+            <p className="font-display text-lg font-extrabold text-success">₹{totalMargin.toLocaleString('en-IN')}</p>
           </div>
         </div>
 
