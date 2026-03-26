@@ -442,7 +442,7 @@ export const InventoryManagement: React.FC = () => {
                   );
                 })}
                 {filteredProducts.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
+                  <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">
                     <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="font-display font-medium">No products found</p>
                     <p className="text-xs mt-1">Add a product to get started</p>
