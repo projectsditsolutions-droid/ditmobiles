@@ -388,32 +388,51 @@ export const PurchaseEntry: React.FC = () => {
                       </div>
 
                       {li.product && (
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Purchase Price (₹)</label>
-                            <Input
-                              type="number"
-                              value={li.unit_price || ''}
-                              onChange={e => updateLine(li.id, { unit_price: parseFloat(e.target.value) || 0 })}
-                              className="h-10"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">HSN Code</label>
-                            <Input
-                              value={li.hsn_code}
-                              onChange={e => updateLine(li.id, { hsn_code: e.target.value })}
-                              placeholder={li.product.hsn_code || 'HSN'}
-                              className="h-10 font-mono"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">IMEIs Scanned</label>
-                            <div className="h-10 flex items-center px-3 rounded-md border bg-accent/50 text-sm font-display font-bold">
-                              <ScanLine className="w-4 h-4 mr-2 text-primary" />{imeiCount} unit{imeiCount !== 1 ? 's' : ''}
+                        <>
+                          <div className="grid grid-cols-4 gap-3">
+                            <div>
+                              <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Cost Price (₹)</label>
+                              <Input
+                                type="number"
+                                value={li.unit_price || ''}
+                                onChange={e => updateLine(li.id, { unit_price: parseFloat(e.target.value) || 0 })}
+                                className="h-10"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Selling Price (₹)</label>
+                              <Input
+                                type="number"
+                                value={li.sale_price || ''}
+                                onChange={e => updateLine(li.id, { sale_price: parseFloat(e.target.value) || 0 })}
+                                className="h-10"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">HSN Code</label>
+                              <Input
+                                value={li.hsn_code}
+                                onChange={e => updateLine(li.id, { hsn_code: e.target.value })}
+                                placeholder={li.product.hsn_code || 'HSN'}
+                                className="h-10 font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">IMEIs Scanned</label>
+                              <div className="h-10 flex items-center px-3 rounded-md border bg-accent/50 text-sm font-display font-bold">
+                                <ScanLine className="w-4 h-4 mr-2 text-primary" />{imeiCount} unit{imeiCount !== 1 ? 's' : ''}
+                              </div>
                             </div>
                           </div>
-                        </div>
+                          {li.unit_price > 0 && li.sale_price > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              Margin per unit: &nbsp;
+                              <span className={`font-display font-bold ${li.sale_price - li.unit_price >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                                {fmt(li.sale_price - li.unit_price)} ({((li.sale_price - li.unit_price) / li.unit_price * 100).toFixed(1)}%)
+                              </span>
+                            </div>
+                          )}
+                        </>
                       )}
 
                       {li.product && (
