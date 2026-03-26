@@ -390,14 +390,25 @@ export const PurchaseEntry: React.FC = () => {
                       </div>
 
                       {li.product && (
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-4 gap-3">
                           <div>
-                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Purchase Price (₹)</label>
+                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Cost Price (₹)</label>
                             <Input
                               type="number"
                               value={li.unit_price || ''}
                               onChange={e => updateLine(li.id, { unit_price: parseFloat(e.target.value) || 0 })}
                               className="h-10"
+                              placeholder="Purchase price"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Selling Price (₹)</label>
+                            <Input
+                              type="number"
+                              value={li.sale_price || ''}
+                              onChange={e => updateLine(li.id, { sale_price: parseFloat(e.target.value) || 0 })}
+                              className="h-10"
+                              placeholder="Sale price"
                             />
                           </div>
                           <div>
@@ -415,6 +426,19 @@ export const PurchaseEntry: React.FC = () => {
                               <ScanLine className="w-4 h-4 mr-2 text-primary" />{imeiCount} unit{imeiCount !== 1 ? 's' : ''}
                             </div>
                           </div>
+                          {li.unit_price > 0 && li.sale_price > 0 && (
+                            <div className="col-span-4 flex items-center gap-4 text-xs px-1">
+                              <span className="text-muted-foreground">Margin per unit:</span>
+                              <span className="font-display font-bold text-success">
+                                {fmt(li.sale_price - li.unit_price)} ({((li.sale_price - li.unit_price) / li.unit_price * 100).toFixed(1)}%)
+                              </span>
+                              {imeiCount > 0 && (
+                                <span className="text-muted-foreground ml-auto">
+                                  Total: <span className="font-bold text-foreground">{fmt(li.unit_price * imeiCount)}</span> cost · <span className="font-bold text-foreground">{fmt(li.sale_price * imeiCount)}</span> sale
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 
