@@ -464,7 +464,7 @@ export const PurchaseEntry: React.FC = () => {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display font-semibold text-sm">Purchase Summary</h3>
               </div>
-              <div className="grid grid-cols-3 gap-4 mb-5">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
                 <div className="bg-accent/50 rounded-xl p-3 text-center">
                   <p className="text-xs text-muted-foreground font-display">Products</p>
                   <p className="font-display font-bold text-lg">{lineItems.filter(l => l.product_id).length}</p>
@@ -473,9 +473,17 @@ export const PurchaseEntry: React.FC = () => {
                   <p className="text-xs text-muted-foreground font-display">Total Units</p>
                   <p className="font-display font-bold text-lg">{totalItems}</p>
                 </div>
+                <div className="bg-destructive/10 rounded-xl p-3 text-center">
+                  <p className="text-xs text-muted-foreground font-display">Cost Value</p>
+                  <p className="font-display font-bold text-lg text-destructive">{fmt(totalValue)}</p>
+                </div>
                 <div className="bg-primary/10 rounded-xl p-3 text-center">
-                  <p className="text-xs text-muted-foreground font-display">Total Value</p>
-                  <p className="font-display font-bold text-lg text-primary">{fmt(totalValue)}</p>
+                  <p className="text-xs text-muted-foreground font-display">Sale Value</p>
+                  <p className="font-display font-bold text-lg text-primary">{fmt(totalSaleValue)}</p>
+                </div>
+                <div className="bg-success/10 rounded-xl p-3 text-center">
+                  <p className="text-xs text-muted-foreground font-display">Expected Margin</p>
+                  <p className="font-display font-bold text-lg text-success">{fmt(totalSaleValue - totalValue)}</p>
                 </div>
               </div>
               {selectedDealer && (
