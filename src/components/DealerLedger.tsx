@@ -68,7 +68,7 @@ export const DealerLedger: React.FC = () => {
   const [sortBy, setSortBy] = useState<'credit_desc' | 'credit_asc' | 'recent'>('credit_desc');
   const [txnFilter, setTxnFilter] = useState<'all' | 'purchase' | 'payment' | 'sale_deduction' | 'stock_return'>('all');
   const [dealerForm, setDealerForm] = useState({ brand_name: '', dealer_name: '', phone: '', address: '', gstin: '', total_credit: 0 });
-  const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, imeis: '', hsn_code: '' });
+  const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
   const [stockSearch, setStockSearch] = useState('');
   const [showNewProductInStock, setShowNewProductInStock] = useState(false);
   const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
@@ -272,7 +272,7 @@ export const DealerLedger: React.FC = () => {
     if (imeiList.length === 0) { toast.error('Enter valid 15-digit IMEIs'); return; }
     let added = 0;
     for (const imei of imeiList) {
-      const { error } = await supabase.from('imei_records').insert({ imei, product_id: stockForm.product_id, shop_id: activeShopId, dealer_id: selectedDealer.id, status: 'in_stock', purchase_price: stockForm.unit_price });
+      const { error } = await supabase.from('imei_records').insert({ imei, product_id: stockForm.product_id, shop_id: activeShopId, dealer_id: selectedDealer.id, status: 'in_stock', purchase_price: stockForm.unit_price, sale_price: stockForm.sale_price } as any);
       if (!error) added++;
     }
     if (added === 0) { toast.error('No IMEIs were added (duplicates?)'); return; }
@@ -280,6 +280,8 @@ export const DealerLedger: React.FC = () => {
     if (product) {
       const updateData: any = { stock_quantity: product.stock_quantity + added };
       if (stockForm.hsn_code) updateData.hsn_code = stockForm.hsn_code;
+      if (stockForm.unit_price > 0) updateData.purchase_price = stockForm.unit_price;
+      if (stockForm.sale_price > 0) updateData.sale_price = stockForm.sale_price;
       await supabase.from('products').update(updateData).eq('id', product.id);
     }
     const purchaseValue = added * stockForm.unit_price;
@@ -287,7 +289,7 @@ export const DealerLedger: React.FC = () => {
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
     await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'purchase', amount: purchaseValue, running_balance: newBalance, description: `Purchase ${added} × ${product?.brand || ''} ${product?.model || ''} @ ₹${stockForm.unit_price.toLocaleString('en-IN')}` });
     setShowStockEntry(false);
-    setStockForm({ product_id: '', unit_price: 0, imeis: '', hsn_code: '' });
+    setStockForm({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
     setShowNewProductInStock(false);
     setNewProductForm({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
     setStockSearch('');
@@ -667,7 +669,7 @@ export const DealerLedger: React.FC = () => {
             {stockSearch && !stockForm.product_id && (
               <div className="mt-1 border rounded-xl bg-card shadow-sm max-h-48 overflow-auto">
                 {filteredProducts.slice(0, 10).map(p => (
-                  <button key={p.id} onClick={() => { setStockForm({ ...stockForm, product_id: p.id, hsn_code: p.hsn_code }); setStockSearch(`${p.brand} ${p.model} ${p.variant}`); }} className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors border-b last:border-0">
+                  <button key={p.id} onClick={() => { setStockForm({ ...stockForm, product_id: p.id, hsn_code: p.hsn_code, unit_price: Number(p.purchase_price) || 0, sale_price: Number(p.sale_price) || 0 }); setStockSearch(`${p.brand} ${p.model} ${p.variant}`); }} className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors border-b last:border-0">
                     <div className="font-display font-semibold text-sm">{p.brand} {p.model}</div>
                     <div className="text-xs text-muted-foreground">{p.variant} {p.color} · Stock: {p.stock_quantity}</div>
                   </button>
@@ -709,10 +711,14 @@ export const DealerLedger: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Purchase Price / Unit (₹)</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Cost Price / Unit (₹)</label>
               <Input type="number" value={stockForm.unit_price || ''} onChange={e => setStockForm({ ...stockForm, unit_price: parseFloat(e.target.value) || 0 })} className="h-10" placeholder="0" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Sale Price / Unit (₹)</label>
+              <Input type="number" value={stockForm.sale_price || ''} onChange={e => setStockForm({ ...stockForm, sale_price: parseFloat(e.target.value) || 0 })} className="h-10" placeholder="0" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">HSN Code</label>
