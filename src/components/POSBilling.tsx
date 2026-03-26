@@ -247,7 +247,7 @@ export const POSBilling: React.FC = () => {
     setTimeout(() => setFlashId(null), 500);
   };
 
-  const addNewItem = (product: Product, imei?: string) => {
+  const addNewItem = (product: Product, imei?: string, overrideSalePrice?: number) => {
     // Stock availability check
     const currentQtyInBill = items.filter(i => i.productId === product.id).reduce((sum, i) => sum + i.quantity, 0);
     if (product.stock_quantity <= currentQtyInBill) {
@@ -255,17 +255,18 @@ export const POSBilling: React.FC = () => {
       return null;
     }
 
+    const salePrice = overrideSalePrice ?? Number(product.sale_price);
     const newItem: BillItem = {
       id: crypto.randomUUID(),
       productId: product.id,
       product,
       imei,
       quantity: 1,
-      unitPrice: Number(product.sale_price),
+      unitPrice: salePrice,
       discount: 0,
       discountType: 'flat',
       discountValue: 0,
-      total: Number(product.sale_price),
+      total: salePrice,
     };
     setItems(prev => [...prev, newItem]);
     flashItem(newItem.id);
@@ -332,7 +333,10 @@ export const POSBilling: React.FC = () => {
       return;
     }
 
-    addNewItem(product, imei);
+    // Use per-IMEI sale_price if available (day-specific pricing), fallback to product sale_price
+    const imeiSalePrice = Number((record as any).sale_price);
+    const salePrice = imeiSalePrice > 0 ? imeiSalePrice : Number(product.sale_price);
+    addNewItem(product, imei, salePrice);
     setImeiInput('');
     setImeiFlash(true);
     setTimeout(() => setImeiFlash(false), 600);
