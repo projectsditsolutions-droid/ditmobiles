@@ -491,8 +491,10 @@ export const InventoryManagement: React.FC = () => {
                 <tr className="text-left font-display text-[11px] text-muted-foreground uppercase tracking-wider">
                   <th className="px-4 py-3">IMEI</th>
                   <th className="px-4 py-3">Product</th>
+                  <th className="px-4 py-3">Dealer</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Purchase Price</th>
+                  <th className="px-4 py-3 text-right">Cost</th>
+                  <th className="px-4 py-3 text-right">Sale Price</th>
                   <th className="px-4 py-3">Added</th>
                   <th className="px-4 py-3">Sold</th>
                   <th className="px-4 py-3 w-12"></th>
@@ -501,6 +503,7 @@ export const InventoryManagement: React.FC = () => {
               <tbody>
                 {filteredIMEIs.map(r => {
                   const product = r.products as unknown as Product | undefined;
+                  const dealer = (r as any).dealers as { dealer_name: string; brand_name: string } | null;
                   const isDuplicate = (imeiCountMap.get(r.imei) || 0) > 1;
                   return (
                     <tr key={r.id} className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${isDuplicate ? 'bg-destructive/5' : ''}`}>
@@ -510,14 +513,26 @@ export const InventoryManagement: React.FC = () => {
                           {isDuplicate && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-display font-bold">DUP</span>}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 font-display text-sm">{product ? `${product.brand} ${product.model}` : 'Unknown'}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="font-display text-sm font-semibold">{product ? `${product.brand} ${product.model}` : 'Unknown'}</div>
+                        {product && <div className="text-[10px] text-muted-foreground">{product.variant} · {product.color}</div>}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs">
+                        {dealer ? (
+                          <div>
+                            <div className="font-medium">{dealer.dealer_name}</div>
+                            {dealer.brand_name && <div className="text-[10px] text-muted-foreground">{dealer.brand_name}</div>}
+                          </div>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
                       <td className="px-4 py-2.5">
                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-display font-bold ${
                           r.status === 'in_stock' ? 'bg-success/10 text-success' :
                           r.status === 'sold' ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
                         }`}>{r.status.replace('_', ' ')}</span>
                       </td>
-                      <td className="px-4 py-2.5 price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-2.5 text-right price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-2.5 text-right price-text text-xs text-primary">{product ? `₹${Number(product.sale_price).toLocaleString('en-IN')}` : '—'}</td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.sold_date ? new Date(r.sold_date).toLocaleDateString('en-IN') : '—'}</td>
                       <td className="px-4 py-2.5">
@@ -529,7 +544,7 @@ export const InventoryManagement: React.FC = () => {
                   );
                 })}
                 {filteredIMEIs.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
+                  <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">
                     <ScanLine className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="font-display font-medium">No IMEI records</p>
                   </td></tr>
