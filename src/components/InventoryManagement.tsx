@@ -39,7 +39,7 @@ export const InventoryManagement: React.FC = () => {
 
   const fetchIMEIs = async () => {
     if (!activeShopId && !isAllShops) return;
-    let query = supabase.from('imei_records').select('*, products(*)');
+    let query = supabase.from('imei_records').select('*, products(*), dealers:dealer_id(dealer_name, brand_name)');
     if (isAllShops) query = query.in('shop_id', allShopIds);
     else query = query.eq('shop_id', activeShopId!);
     const { data } = await query.order('created_at', { ascending: false });
@@ -171,7 +171,8 @@ export const InventoryManagement: React.FC = () => {
   const getStockCount = (productId: string) => imeis.filter(r => r.product_id === productId && r.status === 'in_stock').length;
   const lowStockProducts = products.filter(p => getStockCount(p.id) <= p.low_stock_threshold);
   const totalStockValue = products.reduce((s, p) => s + Number(p.purchase_price) * getStockCount(p.id), 0);
-  
+  const totalSaleValue = products.reduce((s, p) => s + Number(p.sale_price) * getStockCount(p.id), 0);
+  const totalMargin = totalSaleValue - totalStockValue;
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto overflow-y-auto h-full">
@@ -185,7 +186,7 @@ export const InventoryManagement: React.FC = () => {
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
           <div className="stat-card">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -215,12 +216,30 @@ export const InventoryManagement: React.FC = () => {
           </div>
           <div className="stat-card">
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
-                <IndianRupee className="w-4 h-4 text-accent-foreground" />
+              <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <IndianRupee className="w-4 h-4 text-destructive" />
               </div>
-              <span className="text-xs text-muted-foreground font-medium">Stock Value</span>
+              <span className="text-xs text-muted-foreground font-medium">Cost Value</span>
             </div>
             <p className="font-display text-lg font-extrabold">₹{totalStockValue.toLocaleString('en-IN')}</p>
+          </div>
+          <div className="stat-card">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Tag className="w-4 h-4 text-primary" />
+              </div>
+              <span className="text-xs text-muted-foreground font-medium">Sale Value</span>
+            </div>
+            <p className="font-display text-lg font-extrabold text-primary">₹{totalSaleValue.toLocaleString('en-IN')}</p>
+          </div>
+          <div className="stat-card">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                <BarChart3 className="w-4 h-4 text-success" />
+              </div>
+              <span className="text-xs text-muted-foreground font-medium">Expected Margin</span>
+            </div>
+            <p className="font-display text-lg font-extrabold text-success">₹{totalMargin.toLocaleString('en-IN')}</p>
           </div>
         </div>
 
@@ -378,6 +397,7 @@ export const InventoryManagement: React.FC = () => {
                   <th className="px-4 py-3">Variant</th>
                   <th className="px-4 py-3 text-right">Purchase</th>
                   <th className="px-4 py-3 text-right">Sale</th>
+                  <th className="px-4 py-3 text-right">Margin</th>
                   <th className="px-4 py-3 text-center">Stock</th>
                   <th className="px-4 py-3 text-center">IMEI</th>
                   <th className="px-4 py-3 w-20"></th>
@@ -396,6 +416,14 @@ export const InventoryManagement: React.FC = () => {
                       <td className="px-4 py-3 text-muted-foreground text-xs">{p.variant || '—'}</td>
                       <td className="px-4 py-3 text-right price-text text-xs">₹{Number(p.purchase_price).toLocaleString('en-IN')}</td>
                       <td className="px-4 py-3 text-right price-text text-sm">₹{Number(p.sale_price).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-3 text-right">
+                        {Number(p.purchase_price) > 0 ? (
+                          <div>
+                            <span className="font-display font-bold text-xs text-success">₹{(Number(p.sale_price) - Number(p.purchase_price)).toLocaleString('en-IN')}</span>
+                            <div className="text-[10px] text-muted-foreground">{((Number(p.sale_price) - Number(p.purchase_price)) / Number(p.purchase_price) * 100).toFixed(1)}%</div>
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </td>
                       <td className="px-4 py-3 text-center">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-display font-bold ${
                           stock === 0 ? 'bg-destructive/10 text-destructive' : isLow ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
@@ -433,7 +461,7 @@ export const InventoryManagement: React.FC = () => {
                   );
                 })}
                 {filteredProducts.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
+                  <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">
                     <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="font-display font-medium">No products found</p>
                     <p className="text-xs mt-1">Add a product to get started</p>
@@ -482,8 +510,10 @@ export const InventoryManagement: React.FC = () => {
                 <tr className="text-left font-display text-[11px] text-muted-foreground uppercase tracking-wider">
                   <th className="px-4 py-3">IMEI</th>
                   <th className="px-4 py-3">Product</th>
+                  <th className="px-4 py-3">Dealer</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Purchase Price</th>
+                  <th className="px-4 py-3 text-right">Cost</th>
+                  <th className="px-4 py-3 text-right">Sale Price</th>
                   <th className="px-4 py-3">Added</th>
                   <th className="px-4 py-3">Sold</th>
                   <th className="px-4 py-3 w-12"></th>
@@ -492,6 +522,7 @@ export const InventoryManagement: React.FC = () => {
               <tbody>
                 {filteredIMEIs.map(r => {
                   const product = r.products as unknown as Product | undefined;
+                  const dealer = (r as any).dealers as { dealer_name: string; brand_name: string } | null;
                   const isDuplicate = (imeiCountMap.get(r.imei) || 0) > 1;
                   return (
                     <tr key={r.id} className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${isDuplicate ? 'bg-destructive/5' : ''}`}>
@@ -501,14 +532,26 @@ export const InventoryManagement: React.FC = () => {
                           {isDuplicate && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-display font-bold">DUP</span>}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 font-display text-sm">{product ? `${product.brand} ${product.model}` : 'Unknown'}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="font-display text-sm font-semibold">{product ? `${product.brand} ${product.model}` : 'Unknown'}</div>
+                        {product && <div className="text-[10px] text-muted-foreground">{product.variant} · {product.color}</div>}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs">
+                        {dealer ? (
+                          <div>
+                            <div className="font-medium">{dealer.dealer_name}</div>
+                            {dealer.brand_name && <div className="text-[10px] text-muted-foreground">{dealer.brand_name}</div>}
+                          </div>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
                       <td className="px-4 py-2.5">
                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-display font-bold ${
                           r.status === 'in_stock' ? 'bg-success/10 text-success' :
                           r.status === 'sold' ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
                         }`}>{r.status.replace('_', ' ')}</span>
                       </td>
-                      <td className="px-4 py-2.5 price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-2.5 text-right price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-2.5 text-right price-text text-xs text-primary">{product ? `₹${Number(product.sale_price).toLocaleString('en-IN')}` : '—'}</td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.sold_date ? new Date(r.sold_date).toLocaleDateString('en-IN') : '—'}</td>
                       <td className="px-4 py-2.5">
@@ -520,7 +563,7 @@ export const InventoryManagement: React.FC = () => {
                   );
                 })}
                 {filteredIMEIs.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
+                  <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">
                     <ScanLine className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="font-display font-medium">No IMEI records</p>
                   </td></tr>
