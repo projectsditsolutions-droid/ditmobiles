@@ -39,7 +39,7 @@ export const InventoryManagement: React.FC = () => {
 
   const fetchIMEIs = async () => {
     if (!activeShopId && !isAllShops) return;
-    let query = supabase.from('imei_records').select('*, products(*)');
+    let query = supabase.from('imei_records').select('*, products(*), dealers:dealer_id(dealer_name, brand_name)');
     if (isAllShops) query = query.in('shop_id', allShopIds);
     else query = query.eq('shop_id', activeShopId!);
     const { data } = await query.order('created_at', { ascending: false });
