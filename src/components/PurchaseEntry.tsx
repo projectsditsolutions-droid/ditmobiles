@@ -172,6 +172,7 @@ export const PurchaseEntry: React.FC = () => {
             dealer_id: selectedDealerId,
             status: 'in_stock',
             purchase_price: li.unit_price,
+            sale_price: li.sale_price,
           });
           if (!error) added++;
         }
