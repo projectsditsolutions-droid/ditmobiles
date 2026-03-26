@@ -52,7 +52,35 @@ export const InventoryManagement: React.FC = () => {
     !searchQ || `${p.brand} ${p.model} ${p.variant} ${p.color}`.toLowerCase().includes(searchQ.toLowerCase())
   );
 
-  const filteredIMEIs = imeis.filter(r => imeiFilter === 'all' || r.status === imeiFilter);
+  const [imeiSearchQ, setImeiSearchQ] = useState('');
+
+  const filteredIMEIs = imeis.filter(r => {
+    const statusMatch = imeiFilter === 'all' || r.status === imeiFilter;
+    if (!statusMatch) return false;
+    if (!imeiSearchQ) return true;
+    const product = r.products as unknown as Product | undefined;
+    const searchStr = `${r.imei} ${product ? `${product.brand} ${product.model} ${product.variant} ${product.color}` : ''}`.toLowerCase();
+    return searchStr.includes(imeiSearchQ.toLowerCase());
+  });
+
+  // Detect duplicate IMEIs
+  const imeiCountMap = new Map<string, number>();
+  imeis.forEach(r => imeiCountMap.set(r.imei, (imeiCountMap.get(r.imei) || 0) + 1));
+  const duplicateIMEIs = filteredIMEIs.filter(r => (imeiCountMap.get(r.imei) || 0) > 1);
+
+  const handleDeleteIMEI = async (record: IMEIRecord & { products?: Product }) => {
+    if (!confirm(`Delete IMEI record ${record.imei}?`)) return;
+    const { error } = await supabase.from('imei_records').delete().eq('id', record.id);
+    if (error) { toast.error(error.message); return; }
+    if (record.status === 'in_stock') {
+      await supabase.from('products').update({
+        stock_quantity: Math.max(0, (products.find(p => p.id === record.product_id)?.stock_quantity || 1) - 1),
+      }).eq('id', record.product_id);
+      fetchProducts();
+    }
+    toast.success('IMEI record removed');
+    fetchIMEIs();
+  };
 
 
   const handleSaveProduct = async () => {
