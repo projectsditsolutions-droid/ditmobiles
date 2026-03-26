@@ -448,14 +448,34 @@ export const InventoryManagement: React.FC = () => {
       {/* ============ IMEI TAB ============ */}
       {tab === 'imei' && (
         <>
-          <div className="flex gap-2 mb-4">
-            {(['all', 'in_stock', 'sold'] as const).map(f => (
-              <button key={f} onClick={() => setImeiFilter(f)}
-                className={`px-4 py-2 rounded-lg text-xs font-display font-semibold transition-all ${imeiFilter === f ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>
-                {f === 'all' ? `All (${imeis.length})` : f === 'in_stock' ? `In Stock (${imeis.filter(r => r.status === 'in_stock').length})` : `Sold (${imeis.filter(r => r.status === 'sold').length})`}
-              </button>
-            ))}
+          {/* Search + Filters */}
+          <div className="flex flex-col md:flex-row gap-3 mb-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input value={imeiSearchQ} onChange={e => setImeiSearchQ(e.target.value)} placeholder="Search by IMEI, brand, model..."
+                className="w-full h-11 pl-11 pr-4 rounded-xl border-2 border-input bg-card text-sm font-mono focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/20 transition-all" />
+            </div>
+            <div className="flex gap-2">
+              {(['all', 'in_stock', 'sold'] as const).map(f => (
+                <button key={f} onClick={() => setImeiFilter(f)}
+                  className={`px-4 py-2 rounded-lg text-xs font-display font-semibold transition-all ${imeiFilter === f ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>
+                  {f === 'all' ? `All (${imeis.length})` : f === 'in_stock' ? `In Stock (${imeis.filter(r => r.status === 'in_stock').length})` : `Sold (${imeis.filter(r => r.status === 'sold').length})`}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Duplicate warning */}
+          {duplicateIMEIs.length > 0 && (
+            <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center gap-3 animate-in">
+              <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0" />
+              <div>
+                <p className="text-sm font-display font-semibold text-destructive">Duplicate IMEIs Detected ({new Set(duplicateIMEIs.map(r => r.imei)).size})</p>
+                <p className="text-xs text-muted-foreground">Use the delete button to remove duplicate entries</p>
+              </div>
+            </div>
+          )}
+
           <div className="bg-card rounded-xl border overflow-hidden shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-secondary/40">
@@ -466,14 +486,21 @@ export const InventoryManagement: React.FC = () => {
                   <th className="px-4 py-3">Purchase Price</th>
                   <th className="px-4 py-3">Added</th>
                   <th className="px-4 py-3">Sold</th>
+                  <th className="px-4 py-3 w-12"></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredIMEIs.map(r => {
                   const product = r.products as unknown as Product | undefined;
+                  const isDuplicate = (imeiCountMap.get(r.imei) || 0) > 1;
                   return (
-                    <tr key={r.id} className="border-t border-border/50 hover:bg-accent/30 transition-colors">
-                      <td className="px-4 py-2.5 font-mono text-xs font-semibold">{r.imei}</td>
+                    <tr key={r.id} className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${isDuplicate ? 'bg-destructive/5' : ''}`}>
+                      <td className="px-4 py-2.5 font-mono text-xs font-semibold">
+                        <span className="flex items-center gap-1.5">
+                          {r.imei}
+                          {isDuplicate && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-display font-bold">DUP</span>}
+                        </span>
+                      </td>
                       <td className="px-4 py-2.5 font-display text-sm">{product ? `${product.brand} ${product.model}` : 'Unknown'}</td>
                       <td className="px-4 py-2.5">
                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-display font-bold ${
@@ -484,11 +511,16 @@ export const InventoryManagement: React.FC = () => {
                       <td className="px-4 py-2.5 price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.sold_date ? new Date(r.sold_date).toLocaleDateString('en-IN') : '—'}</td>
+                      <td className="px-4 py-2.5">
+                        <button onClick={() => handleDeleteIMEI(r)} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
                 {filteredIMEIs.length === 0 && (
-                  <tr><td colSpan={6} className="text-center py-12 text-muted-foreground">
+                  <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
                     <ScanLine className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="font-display font-medium">No IMEI records</p>
                   </td></tr>
