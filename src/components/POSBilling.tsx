@@ -213,6 +213,7 @@ export const POSBilling: React.FC = () => {
   const imeiRef = useRef<HTMLInputElement>(null);
   const imeiAutoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [imeiFlash, setImeiFlash] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Reset customer GST when switching to B2C
   useEffect(() => {
@@ -466,8 +467,11 @@ export const POSBilling: React.FC = () => {
   }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, selectedProfile, warrantyMobile, warrantyAccessories, emiLendingPartner, mixedPayment]);
 
   const handleCompleteSale = useCallback(async () => {
+    if (saving) return;
     if (items.length === 0) { toast.error('Add items to bill first'); return; }
     if (!activeShop || !activeShopId || !user) return;
+    setSaving(true);
+    try {
 
     // Use ATOMIC DB functions to prevent duplicate invoice numbers under concurrent saves
     let invoiceNumber: string;
