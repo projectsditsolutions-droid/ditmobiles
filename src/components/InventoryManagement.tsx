@@ -30,21 +30,11 @@ export const InventoryManagement: React.FC = () => {
 
   const fetchProducts = async () => {
     if (!activeShopId && !isAllShops) return;
-    let baseQuery = supabase.from('products').select('*');
-    if (isAllShops) baseQuery = baseQuery.in('shop_id', allShopIds);
-    else baseQuery = baseQuery.eq('shop_id', activeShopId!);
-    // Paginate past 1000 limit
-    let allData: Product[] = [];
-    let from = 0;
-    const pageSize = 1000;
-    while (true) {
-      const { data } = await baseQuery.order('brand').range(from, from + pageSize - 1);
-      if (!data || data.length === 0) break;
-      allData = allData.concat(data);
-      if (data.length < pageSize) break;
-      from += pageSize;
-    }
-    setProducts(allData);
+    let query = supabase.from('products').select('*');
+    if (isAllShops) query = query.in('shop_id', allShopIds);
+    else query = query.eq('shop_id', activeShopId!);
+    const { data } = await query.order('brand');
+    if (data) setProducts(data);
   };
 
   const fetchIMEIs = async () => {
@@ -52,18 +42,8 @@ export const InventoryManagement: React.FC = () => {
     let query = supabase.from('imei_records').select('*, products(*), dealers:dealer_id(dealer_name, brand_name)');
     if (isAllShops) query = query.in('shop_id', allShopIds);
     else query = query.eq('shop_id', activeShopId!);
-    // Fetch all records (paginate past 1000 limit)
-    let allData: any[] = [];
-    let from = 0;
-    const pageSize = 1000;
-    while (true) {
-      const { data } = await query.order('created_at', { ascending: false }).range(from, from + pageSize - 1);
-      if (!data || data.length === 0) break;
-      allData = allData.concat(data);
-      if (data.length < pageSize) break;
-      from += pageSize;
-    }
-    setImeis(allData as any);
+    const { data } = await query.order('created_at', { ascending: false });
+    if (data) setImeis(data as any);
   };
 
   useEffect(() => { fetchProducts(); fetchIMEIs(); }, [activeShopId]);
@@ -571,7 +551,7 @@ export const InventoryManagement: React.FC = () => {
                         }`}>{r.status.replace('_', ' ')}</span>
                       </td>
                       <td className="px-4 py-2.5 text-right price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-2.5 text-right price-text text-xs text-primary">₹{Number((r as any).sale_price || product?.sale_price || 0).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-2.5 text-right price-text text-xs text-primary">{product ? `₹${Number(product.sale_price).toLocaleString('en-IN')}` : '—'}</td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.sold_date ? new Date(r.sold_date).toLocaleDateString('en-IN') : '—'}</td>
                       <td className="px-4 py-2.5">

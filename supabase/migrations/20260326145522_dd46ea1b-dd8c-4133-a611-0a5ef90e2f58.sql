@@ -1,1 +1,0 @@
-ALTER TABLE public.imei_records ADD COLUMN sale_price numeric NOT NULL DEFAULT 0;
