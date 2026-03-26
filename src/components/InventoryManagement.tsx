@@ -378,6 +378,7 @@ export const InventoryManagement: React.FC = () => {
                   <th className="px-4 py-3">Variant</th>
                   <th className="px-4 py-3 text-right">Purchase</th>
                   <th className="px-4 py-3 text-right">Sale</th>
+                  <th className="px-4 py-3 text-right">Margin</th>
                   <th className="px-4 py-3 text-center">Stock</th>
                   <th className="px-4 py-3 text-center">IMEI</th>
                   <th className="px-4 py-3 w-20"></th>
@@ -396,6 +397,14 @@ export const InventoryManagement: React.FC = () => {
                       <td className="px-4 py-3 text-muted-foreground text-xs">{p.variant || '—'}</td>
                       <td className="px-4 py-3 text-right price-text text-xs">₹{Number(p.purchase_price).toLocaleString('en-IN')}</td>
                       <td className="px-4 py-3 text-right price-text text-sm">₹{Number(p.sale_price).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-3 text-right">
+                        {Number(p.purchase_price) > 0 ? (
+                          <div>
+                            <span className="font-display font-bold text-xs text-success">₹{(Number(p.sale_price) - Number(p.purchase_price)).toLocaleString('en-IN')}</span>
+                            <div className="text-[10px] text-muted-foreground">{((Number(p.sale_price) - Number(p.purchase_price)) / Number(p.purchase_price) * 100).toFixed(1)}%</div>
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </td>
                       <td className="px-4 py-3 text-center">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-display font-bold ${
                           stock === 0 ? 'bg-destructive/10 text-destructive' : isLow ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
