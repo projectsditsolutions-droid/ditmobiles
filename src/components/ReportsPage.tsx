@@ -838,10 +838,86 @@ export const ReportsPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Generate button */}
-            <div className="flex items-center gap-3 pt-2">
+            {/* Generate buttons */}
+            <div className="flex items-center gap-3 pt-2 flex-wrap">
               <Button onClick={handleGenerate} className="gap-2">
-                <Download className="w-4 h-4" /> Download Report
+                <Download className="w-4 h-4" /> Download CSV
+              </Button>
+              <Button variant="outline" onClick={() => {
+                // Generate PDF via print
+                const filterByDateLocal = (list: Invoice[]) => {
+                  return list.filter(inv => {
+                    if (rptDateFrom && inv.date < rptDateFrom) return false;
+                    if (rptDateTo && inv.date > rptDateTo + 'T23:59:59') return false;
+                    return true;
+                  });
+                };
+                const filtered = filterByDateLocal(invoices);
+                if (filtered.length === 0 && rptType !== 'brand') { toast.error('No data for selected range'); return; }
+
+                const title = {
+                  sales: 'Sales Report',
+                  stock: 'Daily Summary Report',
+                  brand: `Brand Report${rptBrand !== 'all' ? ` - ${rptBrand}` : ''}`,
+                  gst: 'GST Report',
+                  profit: 'Profit Report',
+                }[rptType];
+                const period = rptDateFrom || rptDateTo
+                  ? `${rptDateFrom || 'Start'} to ${rptDateTo || 'Today'}`
+                  : 'All Time';
+
+                let tableRows = '';
+                if (rptType === 'sales') {
+                  tableRows = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Invoice</th><th style="padding:6px 8px;text-align:left">Date</th><th style="padding:6px 8px;text-align:left">Customer</th><th style="padding:6px 8px">Payment</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
+                  filtered.forEach(inv => {
+                    tableRows += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:5px 8px;font-size:11px">${inv.invoice_number}</td><td style="padding:5px 8px;font-size:11px">${new Date(inv.date).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'})}</td><td style="padding:5px 8px;font-size:11px">${inv.customer_name}</td><td style="padding:5px 8px;font-size:11px;text-align:center;text-transform:uppercase">${inv.payment_method}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${Number(inv.grand_total).toLocaleString('en-IN')}</td></tr>`;
+                  });
+                  const total = filtered.reduce((s, i) => s + Number(i.grand_total), 0);
+                  tableRows += `<tr style="border-top:2px solid #222;font-weight:900"><td colspan="4" style="padding:6px 8px;text-align:right">Total</td><td style="padding:6px 8px;text-align:right">₹${total.toLocaleString('en-IN')}</td></tr>`;
+                } else if (rptType === 'brand') {
+                  const brandData = stockData.filter((p: any) => rptBrand === 'all' || p.brand === rptBrand);
+                  tableRows = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Brand</th><th style="padding:6px 8px;text-align:left">Model</th><th style="padding:6px 8px;text-align:center">Purchased</th><th style="padding:6px 8px;text-align:center">In Stock</th><th style="padding:6px 8px;text-align:center">Sold</th><th style="padding:6px 8px;text-align:right">Stock Value</th></tr>`;
+                  brandData.forEach((p: any) => {
+                    tableRows += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:5px 8px;font-size:11px">${p.brand}</td><td style="padding:5px 8px;font-size:11px">${p.model} ${p.variant}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.total}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.inStock}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.sold}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${p.stockValue.toLocaleString('en-IN')}</td></tr>`;
+                  });
+                } else if (rptType === 'gst') {
+                  const gstFiltered = filtered.filter(i => i.is_gst_bill);
+                  tableRows = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Invoice</th><th style="padding:6px 8px;text-align:left">Customer</th><th style="padding:6px 8px">Type</th><th style="padding:6px 8px;text-align:right">Taxable</th><th style="padding:6px 8px;text-align:right">CGST</th><th style="padding:6px 8px;text-align:right">SGST</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
+                  gstFiltered.forEach(inv => {
+                    const taxable = Number(inv.grand_total) - Number(inv.cgst) - Number(inv.sgst);
+                    tableRows += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:5px 8px;font-size:11px">${inv.invoice_number}</td><td style="padding:5px 8px;font-size:11px">${inv.customer_name}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${inv.customer_gst ? 'B2B' : 'B2C'}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${taxable.toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${Number(inv.cgst).toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${Number(inv.sgst).toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${Number(inv.grand_total).toLocaleString('en-IN')}</td></tr>`;
+                  });
+                } else {
+                  // Daily summary or profit
+                  const dailyMap: Record<string, {count:number;total:number}> = {};
+                  filtered.forEach(inv => {
+                    const day = inv.date.slice(0, 10);
+                    if (!dailyMap[day]) dailyMap[day] = {count:0,total:0};
+                    dailyMap[day].count++;
+                    dailyMap[day].total += Number(inv.grand_total);
+                  });
+                  tableRows = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Date</th><th style="padding:6px 8px;text-align:center">Invoices</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
+                  Object.entries(dailyMap).sort(([a],[b]) => b.localeCompare(a)).forEach(([date, d]) => {
+                    tableRows += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:5px 8px;font-size:11px">${new Date(date).toLocaleDateString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${d.count}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${d.total.toLocaleString('en-IN')}</td></tr>`;
+                  });
+                }
+
+                const html = `<div style="font-family:Inter,Arial,sans-serif;padding:20px;max-width:800px;margin:auto">
+                  <div style="text-align:center;margin-bottom:20px;border-bottom:2px solid #222;padding-bottom:12px">
+                    <div style="font-size:22px;font-weight:900">${title}</div>
+                    <div style="font-size:11px;color:#666;margin-top:4px">Period: ${period} · Generated: ${new Date().toLocaleString('en-IN')}</div>
+                  </div>
+                  <table style="width:100%;border-collapse:collapse;font-size:11px">${tableRows}</table>
+                </div>`;
+
+                printContent(<div dangerouslySetInnerHTML={{ __html: html }} />);
+                setTimeout(async () => {
+                  await triggerPrint();
+                  clearContent();
+                }, 200);
+                toast.success('PDF report ready for download');
+              }} className="gap-2">
+                <FileDown className="w-4 h-4" /> Download PDF
               </Button>
               <span className="text-xs text-muted-foreground">
                 {rptDateFrom || rptDateTo
