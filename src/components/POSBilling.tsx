@@ -448,7 +448,7 @@ export const POSBilling: React.FC = () => {
       id: 'preview',
       invoice_number: 'PREVIEW',
       shop_id: activeShopId,
-      date: new Date().toISOString(),
+      date: new Date(billDate).toISOString(),
       customer_name: customerName || 'Walk-in Customer',
       customer_phone: customerPhone,
       customer_gst: customerType === 'B2B' ? (customerGST || undefined) : undefined,
