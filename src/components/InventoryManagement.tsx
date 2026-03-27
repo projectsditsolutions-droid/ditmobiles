@@ -171,9 +171,20 @@ export const InventoryManagement: React.FC = () => {
   };
 
   const getStockCount = (productId: string) => imeis.filter(r => r.product_id === productId && r.status === 'in_stock').length;
+  const getProductIMEIs = (productId: string) => imeis.filter(r => r.product_id === productId);
   const lowStockProducts = products.filter(p => getStockCount(p.id) <= p.low_stock_threshold);
   const totalStockValue = products.reduce((s, p) => s + Number(p.purchase_price) * getStockCount(p.id), 0);
-  
+
+  // Brand grouping
+  const brandGroups = useMemo(() => {
+    const groups = new Map<string, Product[]>();
+    filteredProducts.forEach(p => {
+      const brand = p.brand || 'Other';
+      if (!groups.has(brand)) groups.set(brand, []);
+      groups.get(brand)!.push(p);
+    });
+    return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filteredProducts]);
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto overflow-y-auto h-full">
