@@ -66,7 +66,7 @@ export const DealerLedger: React.FC = () => {
   const [searchQ, setSearchQ] = useState('');
   const [brandFilter, setBrandFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'credit_desc' | 'credit_asc' | 'recent'>('credit_desc');
-  const [txnFilter, setTxnFilter] = useState<'all' | 'purchase' | 'payment' | 'sale_deduction' | 'stock_return'>('all');
+  const [txnFilter, setTxnFilter] = useState<'all' | 'purchase' | 'payment' | 'sale_deduction' | 'stock_return' | 'opening_adjustment'>('all');
   const [dealerForm, setDealerForm] = useState({ brand_name: '', dealer_name: '', phone: '', address: '', gstin: '', total_credit: 0 });
   const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
   const [stockSearch, setStockSearch] = useState('');
@@ -556,6 +556,7 @@ export const DealerLedger: React.FC = () => {
                     <option value="sale_deduction">💰 Sales</option>
                     <option value="payment">✅ Payments</option>
                     <option value="stock_return">↩ Returns</option>
+                    <option value="opening_adjustment">✏️ Adjustments</option>
                   </select>
                 </div>
 
