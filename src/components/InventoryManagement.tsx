@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useShop } from '@/contexts/ShopContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Edit2, Trash2, Search, AlertTriangle, Package, Upload, ScanLine, Filter, X, BoxIcon, Smartphone, Cpu, HardDrive, Palette, IndianRupee, Tag, BarChart3 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, AlertTriangle, Package, Upload, ScanLine, Filter, X, BoxIcon, Smartphone, Cpu, HardDrive, Palette, IndianRupee, Tag, BarChart3, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
