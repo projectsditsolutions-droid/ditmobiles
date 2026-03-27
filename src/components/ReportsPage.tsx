@@ -20,7 +20,7 @@ type Invoice = Database['public']['Tables']['invoices']['Row'];
 export const ReportsPage: React.FC = () => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
   const { printContent, clearContent } = usePrint();
-  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit'>('daily');
+  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'generate'>('daily');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stockData, setStockData] = useState<any[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
