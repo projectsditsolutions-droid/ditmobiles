@@ -866,29 +866,29 @@ export const ReportsPage: React.FC = () => {
                   ? `${rptDateFrom || 'Start'} to ${rptDateTo || 'Today'}`
                   : 'All Time';
 
-                let tableRows = '';
+                let headerRow = '';
+                let bodyRows = '';
                 if (rptType === 'sales') {
-                  tableRows = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Invoice</th><th style="padding:6px 8px;text-align:left">Date</th><th style="padding:6px 8px;text-align:left">Customer</th><th style="padding:6px 8px">Payment</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
+                  headerRow = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Invoice</th><th style="padding:6px 8px;text-align:left">Date</th><th style="padding:6px 8px;text-align:left">Customer</th><th style="padding:6px 8px">Payment</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
                   filtered.forEach(inv => {
-                    tableRows += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:5px 8px;font-size:11px">${inv.invoice_number}</td><td style="padding:5px 8px;font-size:11px">${new Date(inv.date).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'})}</td><td style="padding:5px 8px;font-size:11px">${inv.customer_name}</td><td style="padding:5px 8px;font-size:11px;text-align:center;text-transform:uppercase">${inv.payment_method}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${Number(inv.grand_total).toLocaleString('en-IN')}</td></tr>`;
+                    bodyRows += `<tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid"><td style="padding:5px 8px;font-size:11px">${inv.invoice_number}</td><td style="padding:5px 8px;font-size:11px">${new Date(inv.date).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'})}</td><td style="padding:5px 8px;font-size:11px">${inv.customer_name}</td><td style="padding:5px 8px;font-size:11px;text-align:center;text-transform:uppercase">${inv.payment_method}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${Number(inv.grand_total).toLocaleString('en-IN')}</td></tr>`;
                   });
                   const total = filtered.reduce((s, i) => s + Number(i.grand_total), 0);
-                  tableRows += `<tr style="border-top:2px solid #222;font-weight:900"><td colspan="4" style="padding:6px 8px;text-align:right">Total</td><td style="padding:6px 8px;text-align:right">₹${total.toLocaleString('en-IN')}</td></tr>`;
+                  bodyRows += `<tr style="border-top:2px solid #222;font-weight:900"><td colspan="4" style="padding:6px 8px;text-align:right">Total</td><td style="padding:6px 8px;text-align:right">₹${total.toLocaleString('en-IN')}</td></tr>`;
                 } else if (rptType === 'brand') {
                   const brandData = stockData.filter((p: any) => rptBrand === 'all' || p.brand === rptBrand);
-                  tableRows = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Brand</th><th style="padding:6px 8px;text-align:left">Model</th><th style="padding:6px 8px;text-align:center">Purchased</th><th style="padding:6px 8px;text-align:center">In Stock</th><th style="padding:6px 8px;text-align:center">Sold</th><th style="padding:6px 8px;text-align:right">Stock Value</th></tr>`;
+                  headerRow = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Brand</th><th style="padding:6px 8px;text-align:left">Model</th><th style="padding:6px 8px;text-align:center">Purchased</th><th style="padding:6px 8px;text-align:center">In Stock</th><th style="padding:6px 8px;text-align:center">Sold</th><th style="padding:6px 8px;text-align:right">Stock Value</th></tr>`;
                   brandData.forEach((p: any) => {
-                    tableRows += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:5px 8px;font-size:11px">${p.brand}</td><td style="padding:5px 8px;font-size:11px">${p.model} ${p.variant}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.total}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.inStock}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.sold}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${p.stockValue.toLocaleString('en-IN')}</td></tr>`;
+                    bodyRows += `<tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid"><td style="padding:5px 8px;font-size:11px">${p.brand}</td><td style="padding:5px 8px;font-size:11px">${p.model} ${p.variant}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.total}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.inStock}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.sold}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${p.stockValue.toLocaleString('en-IN')}</td></tr>`;
                   });
                 } else if (rptType === 'gst') {
                   const gstFiltered = filtered.filter(i => i.is_gst_bill);
-                  tableRows = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Invoice</th><th style="padding:6px 8px;text-align:left">Customer</th><th style="padding:6px 8px">Type</th><th style="padding:6px 8px;text-align:right">Taxable</th><th style="padding:6px 8px;text-align:right">CGST</th><th style="padding:6px 8px;text-align:right">SGST</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
+                  headerRow = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Invoice</th><th style="padding:6px 8px;text-align:left">Customer</th><th style="padding:6px 8px">Type</th><th style="padding:6px 8px;text-align:right">Taxable</th><th style="padding:6px 8px;text-align:right">CGST</th><th style="padding:6px 8px;text-align:right">SGST</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
                   gstFiltered.forEach(inv => {
                     const taxable = Number(inv.grand_total) - Number(inv.cgst) - Number(inv.sgst);
-                    tableRows += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:5px 8px;font-size:11px">${inv.invoice_number}</td><td style="padding:5px 8px;font-size:11px">${inv.customer_name}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${inv.customer_gst ? 'B2B' : 'B2C'}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${taxable.toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${Number(inv.cgst).toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${Number(inv.sgst).toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${Number(inv.grand_total).toLocaleString('en-IN')}</td></tr>`;
+                    bodyRows += `<tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid"><td style="padding:5px 8px;font-size:11px">${inv.invoice_number}</td><td style="padding:5px 8px;font-size:11px">${inv.customer_name}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${inv.customer_gst ? 'B2B' : 'B2C'}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${taxable.toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${Number(inv.cgst).toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${Number(inv.sgst).toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${Number(inv.grand_total).toLocaleString('en-IN')}</td></tr>`;
                   });
                 } else {
-                  // Daily summary or profit
                   const dailyMap: Record<string, {count:number;total:number}> = {};
                   filtered.forEach(inv => {
                     const day = inv.date.slice(0, 10);
@@ -896,9 +896,9 @@ export const ReportsPage: React.FC = () => {
                     dailyMap[day].count++;
                     dailyMap[day].total += Number(inv.grand_total);
                   });
-                  tableRows = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Date</th><th style="padding:6px 8px;text-align:center">Invoices</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
+                  headerRow = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Date</th><th style="padding:6px 8px;text-align:center">Invoices</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
                   Object.entries(dailyMap).sort(([a],[b]) => b.localeCompare(a)).forEach(([date, d]) => {
-                    tableRows += `<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:5px 8px;font-size:11px">${new Date(date).toLocaleDateString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${d.count}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${d.total.toLocaleString('en-IN')}</td></tr>`;
+                    bodyRows += `<tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid"><td style="padding:5px 8px;font-size:11px">${new Date(date).toLocaleDateString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${d.count}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${d.total.toLocaleString('en-IN')}</td></tr>`;
                   });
                 }
 
@@ -908,8 +908,8 @@ export const ReportsPage: React.FC = () => {
                     <div style="font-size:10px;color:#666;margin-top:4px">Period: ${period} · Generated: ${new Date().toLocaleString('en-IN')}</div>
                   </div>
                   <table style="width:100%;border-collapse:collapse;font-size:10px">
-                    <thead>${tableRows.slice(0, tableRows.indexOf('</tr>') + 5)}</thead>
-                    <tbody>${tableRows.slice(tableRows.indexOf('</tr>') + 5)}</tbody>
+                    <thead>${headerRow}</thead>
+                    <tbody>${bodyRows}</tbody>
                   </table>
                 </div>`;
 
