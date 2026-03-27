@@ -271,6 +271,7 @@ export const ReportsPage: React.FC = () => {
     { key: 'stock', label: 'Stock', icon: Package },
     { key: 'gst', label: 'GST', icon: FileText },
     { key: 'profit', label: 'Profit', icon: DollarSign },
+    { key: 'generate', label: 'Generate', icon: FileDown },
   ] as const;
 
   const PAYMENT_COLORS: Record<string, string> = {
