@@ -608,32 +608,172 @@ export const ReportsPage: React.FC = () => {
         </div>
       )}
 
-      {tab === 'profit' && (
-        <div className="bg-card rounded-xl border p-6 shadow-sm">
-          {(() => {
-            const totalRevenue = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
-            const totalGST = invoices.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
-            const totalDiscount = invoices.reduce((s, i) => s + Number(i.total_discount) + Number(i.bill_discount), 0);
-            const netRevenue = totalRevenue - totalGST;
-            const totalCost = stockData.reduce((s, p) => s + (p.sold * Number(p.purchase_price)), 0);
-            const profit = netRevenue - totalCost - totalDiscount;
-            return (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Gross Revenue</p><p className="font-display text-xl font-extrabold">₹{totalRevenue.toLocaleString('en-IN')}</p></div>
-                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">GST Liability</p><p className="font-display text-xl font-extrabold text-warning">₹{totalGST.toLocaleString('en-IN')}</p></div>
-                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Total Discount</p><p className="font-display text-xl font-extrabold text-orange-500">₹{totalDiscount.toLocaleString('en-IN')}</p></div>
-                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Est. Cost</p><p className="font-display text-xl font-extrabold text-destructive">₹{totalCost.toLocaleString('en-IN')}</p></div>
-                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Est. Profit</p><p className={`font-display text-xl font-extrabold ${profit >= 0 ? 'text-success' : 'text-destructive'}`}>₹{profit.toLocaleString('en-IN')}</p></div>
+      {tab === 'profit' && (() => {
+        const totalRevenue = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
+        const totalGST = invoices.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
+        const totalDiscount = invoices.reduce((s, i) => s + Number(i.total_discount) + Number(i.bill_discount), 0);
+        const netRevenue = totalRevenue - totalGST;
+        const totalCost = stockData.reduce((s, p) => s + (p.sold * Number(p.purchase_price)), 0);
+        const netProfit = netRevenue - totalCost - totalDiscount;
+        const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
+
+        // Per-invoice profit data
+        const invoiceProfitData = invoices.map(inv => {
+          const revenue = Number(inv.grand_total);
+          const gst = Number(inv.cgst) + Number(inv.sgst);
+          const discount = Number(inv.total_discount) + Number(inv.bill_discount);
+          // Estimate cost from sold items matching this invoice
+          const estCost = stockData.reduce((s: number, p: any) => {
+            // rough per-invoice cost estimate based on proportion
+            return s;
+          }, 0);
+          return { ...inv, revenue, gst, discount, net: revenue - gst - discount };
+        });
+
+        // Brand-wise profit breakdown
+        const brandProfitMap: Record<string, { revenue: number; cost: number; sold: number; profit: number }> = {};
+        stockData.forEach((p: any) => {
+          if (!brandProfitMap[p.brand]) brandProfitMap[p.brand] = { revenue: 0, cost: 0, sold: 0, profit: 0 };
+          const cost = p.sold * Number(p.purchase_price);
+          const revenue = p.sold * Number(p.sale_price);
+          brandProfitMap[p.brand].revenue += revenue;
+          brandProfitMap[p.brand].cost += cost;
+          brandProfitMap[p.brand].sold += p.sold;
+          brandProfitMap[p.brand].profit += revenue - cost;
+        });
+        const brandProfitArr = Object.entries(brandProfitMap)
+          .map(([brand, d]) => ({ brand, ...d }))
+          .filter(b => b.sold > 0)
+          .sort((a, b) => b.profit - a.profit);
+
+        return (
+          <div className="space-y-6">
+            {/* Step-by-step Calculation Flow */}
+            <div className="bg-card rounded-xl border p-6 shadow-sm">
+              <h3 className="font-display font-bold text-base mb-4">Profit & Loss Summary</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {/* Left: Revenue breakdown */}
+                <div className="space-y-3">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Revenue</div>
+                  <div className="stat-card">
+                    <p className="text-xs text-muted-foreground mb-1">Gross Revenue (Collections)</p>
+                    <p className="font-display text-2xl font-extrabold">₹{totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
+                    <span className="w-3 h-0.5 bg-muted-foreground/40" /> minus
+                  </div>
+                  <div className="stat-card border-warning/30">
+                    <p className="text-xs text-muted-foreground mb-1">GST Liability (Govt.)</p>
+                    <p className="font-display text-lg font-bold text-warning">− ₹{totalGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                    <p className="text-[10px] text-muted-foreground">CGST: ₹{invoices.reduce((s, i) => s + Number(i.cgst), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} + SGST: ₹{invoices.reduce((s, i) => s + Number(i.sgst), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="stat-card bg-accent/30 border-primary/20">
+                    <p className="text-xs text-muted-foreground mb-1">Net Revenue (Yours)</p>
+                    <p className="font-display text-xl font-extrabold text-primary">₹{netRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                  </div>
                 </div>
-                <div className="p-4 rounded-lg bg-secondary/30 text-xs text-muted-foreground">
-                  Profit = Gross Revenue − GST − Discounts − Est. Cost of Sold Items
+
+                {/* Middle: Deductions */}
+                <div className="space-y-3">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Deductions</div>
+                  <div className="stat-card border-destructive/30">
+                    <p className="text-xs text-muted-foreground mb-1">Cost of Goods Sold</p>
+                    <p className="font-display text-lg font-bold text-destructive">− ₹{totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                    <p className="text-[10px] text-muted-foreground">{stockData.reduce((s: number, p: any) => s + p.sold, 0)} units sold across {stockData.filter((p: any) => p.sold > 0).length} products</p>
+                  </div>
+                  <div className="stat-card border-orange-300/50">
+                    <p className="text-xs text-muted-foreground mb-1">Discounts Given</p>
+                    <p className="font-display text-lg font-bold text-orange-500">− ₹{totalDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                    <p className="text-[10px] text-muted-foreground">Item discounts + bill-level discounts</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+                    <strong>Total Deductions:</strong> ₹{(totalGST + totalCost + totalDiscount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+
+                {/* Right: Final Profit */}
+                <div className="space-y-3">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Bottom Line</div>
+                  <div className={`stat-card border-2 ${netProfit >= 0 ? 'border-success/40 bg-success/5' : 'border-destructive/40 bg-destructive/5'}`}>
+                    <p className="text-xs text-muted-foreground mb-1">Net Profit / Loss</p>
+                    <p className={`font-display text-3xl font-black ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {netProfit >= 0 ? '' : '−'} ₹{Math.abs(netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${netProfit >= 0 ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
+                        {profitMargin.toFixed(1)}% margin
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">of gross revenue</span>
+                    </div>
+                  </div>
+
+                  {/* Visual formula */}
+                  <div className="p-3 rounded-lg bg-secondary/40 text-[11px] space-y-1.5">
+                    <div className="font-bold text-foreground mb-1">Calculation:</div>
+                    <div className="flex justify-between"><span>Gross Revenue</span><span className="font-mono">₹{totalRevenue.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between text-warning"><span>− GST</span><span className="font-mono">₹{totalGST.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between text-destructive"><span>− Cost of Goods</span><span className="font-mono">₹{totalCost.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between text-orange-500"><span>− Discounts</span><span className="font-mono">₹{totalDiscount.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between font-bold border-t border-foreground/20 pt-1.5 mt-1">
+                      <span>= Net Profit</span>
+                      <span className={`font-mono ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>₹{netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            );
-          })()}
-        </div>
-      )}
+            </div>
+
+            {/* Brand-wise Profit Table */}
+            {brandProfitArr.length > 0 && (
+              <div className="bg-card rounded-xl border p-6 shadow-sm">
+                <h3 className="font-display font-bold text-base mb-4">Brand-wise Profit Breakdown</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-xs text-muted-foreground uppercase">
+                        <th className="text-left py-2 px-3">Brand</th>
+                        <th className="text-center py-2 px-3">Units Sold</th>
+                        <th className="text-right py-2 px-3">Revenue (MRP)</th>
+                        <th className="text-right py-2 px-3">Cost</th>
+                        <th className="text-right py-2 px-3">Gross Profit</th>
+                        <th className="text-right py-2 px-3">Margin %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {brandProfitArr.map(b => (
+                        <tr key={b.brand} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
+                          <td className="py-2.5 px-3 font-semibold">{b.brand}</td>
+                          <td className="py-2.5 px-3 text-center">{b.sold}</td>
+                          <td className="py-2.5 px-3 text-right font-mono">₹{b.revenue.toLocaleString('en-IN')}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-destructive">₹{b.cost.toLocaleString('en-IN')}</td>
+                          <td className={`py-2.5 px-3 text-right font-mono font-bold ${b.profit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                            ₹{b.profit.toLocaleString('en-IN')}
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${b.revenue > 0 && b.profit >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                              {b.revenue > 0 ? ((b.profit / b.revenue) * 100).toFixed(1) : '0.0'}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 font-bold">
+                        <td className="py-2.5 px-3">Total</td>
+                        <td className="py-2.5 px-3 text-center">{brandProfitArr.reduce((s, b) => s + b.sold, 0)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono">₹{brandProfitArr.reduce((s, b) => s + b.revenue, 0).toLocaleString('en-IN')}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-destructive">₹{brandProfitArr.reduce((s, b) => s + b.cost, 0).toLocaleString('en-IN')}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-success">₹{brandProfitArr.reduce((s, b) => s + b.profit, 0).toLocaleString('en-IN')}</td>
+                        <td className="py-2.5 px-3" />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {tab === 'generate' && (() => {
 
