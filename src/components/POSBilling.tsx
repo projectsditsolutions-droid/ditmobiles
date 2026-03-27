@@ -10,7 +10,7 @@ import { BillItemRow } from '@/components/BillItemRow';
 import { InvoicePreview } from '@/components/InvoicePreview';
 import {
   Search, Barcode, Keyboard, Receipt, ScanLine,
-  Building2, ChevronDown, Store, Tag, CheckCircle2, AlertTriangle
+  Building2, ChevronDown, Store, Tag, CheckCircle2, AlertTriangle, CalendarIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -200,7 +200,7 @@ export const POSBilling: React.FC = () => {
   const [warrantyMobile, setWarrantyMobile] = useState('1 Year Manufacturer Warranty');
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
-
+  const [billDate, setBillDate] = useState(() => new Date().toISOString().slice(0, 16));
   const [billDiscount, setBillDiscount] = useState(0);
   const [billDiscountType, setBillDiscountType] = useState<'percentage' | 'flat'>('flat');
   const [showSearch, setShowSearch] = useState(false);
@@ -301,42 +301,52 @@ export const POSBilling: React.FC = () => {
     return () => window.removeEventListener('keydown', handler);
   }, [items, customerName, customerPhone, customerGST, billDiscount, billDiscountType, paymentMethod, isGSTBill, gstBearer]);
 
+  const scanningImeiRef = useRef<Set<string>>(new Set());
+
   const handleIMEIScan = useCallback(async (overrideImei?: string) => {
     const imei = (overrideImei || imeiInput).trim();
     if (!imei || !activeShopId) return;
 
-    if (items.some(i => i.imei === imei)) {
-      toast.error('This IMEI is already added to the bill');
+    // Prevent concurrent scans of the same IMEI
+    if (scanningImeiRef.current.has(imei)) return;
+    scanningImeiRef.current.add(imei);
+
+    try {
+      if (items.some(i => i.imei === imei)) {
+        toast.error('This IMEI is already added to the bill');
+        setImeiInput('');
+        return;
+      }
+
+      const { data: record } = await supabase
+        .from('imei_records')
+        .select('*, products(*)')
+        .eq('imei', imei)
+        .eq('shop_id', activeShopId)
+        .eq('status', 'in_stock')
+        .maybeSingle();
+
+      if (!record) {
+        toast.error('IMEI not found or already sold');
+        setImeiInput('');
+        return;
+      }
+
+      const product = record.products as unknown as Product;
+      if (!product) {
+        toast.error('Product not found for this IMEI');
+        setImeiInput('');
+        return;
+      }
+
+      addNewItem(product, imei);
       setImeiInput('');
-      return;
+      setImeiFlash(true);
+      setTimeout(() => setImeiFlash(false), 600);
+      toast.success(`Added: ${product.brand} ${product.model}`);
+    } finally {
+      scanningImeiRef.current.delete(imei);
     }
-
-    const { data: record } = await supabase
-      .from('imei_records')
-      .select('*, products(*)')
-      .eq('imei', imei)
-      .eq('shop_id', activeShopId)
-      .eq('status', 'in_stock')
-      .maybeSingle();
-
-    if (!record) {
-      toast.error('IMEI not found or already sold');
-      setImeiInput('');
-      return;
-    }
-
-    const product = record.products as unknown as Product;
-    if (!product) {
-      toast.error('Product not found for this IMEI');
-      setImeiInput('');
-      return;
-    }
-
-    addNewItem(product, imei);
-    setImeiInput('');
-    setImeiFlash(true);
-    setTimeout(() => setImeiFlash(false), 600);
-    toast.success(`Added: ${product.brand} ${product.model}`);
   }, [imeiInput, items, activeShopId]);
 
   const handleImeiInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -345,7 +355,11 @@ export const POSBilling: React.FC = () => {
     if (imeiAutoRef.current) clearTimeout(imeiAutoRef.current);
     if (val.length >= 15) {
       const imei = val.slice(0, 15);
-      imeiAutoRef.current = setTimeout(() => handleIMEIScan(imei), 50);
+      // Debounce longer to prevent barcode scanner double-fire
+      imeiAutoRef.current = setTimeout(() => {
+        setImeiInput(''); // Clear immediately to prevent re-trigger
+        handleIMEIScan(imei);
+      }, 150);
     }
   }, [handleIMEIScan]);
 
