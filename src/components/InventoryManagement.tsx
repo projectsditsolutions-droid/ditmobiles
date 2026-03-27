@@ -23,6 +23,8 @@ export const InventoryManagement: React.FC = () => {
   const [newIMEI, setNewIMEI] = useState('');
   const [addingIMEIFor, setAddingIMEIFor] = useState<string | null>(null);
   const [tab, setTab] = useState<'products' | 'imei' | 'bulk'>('products');
+  const [expandedBrand, setExpandedBrand] = useState<string | null>(null);
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [bulkField, setBulkField] = useState<'sale_price' | 'purchase_price' | 'gst_percent'>('sale_price');
   const [bulkValue, setBulkValue] = useState('');

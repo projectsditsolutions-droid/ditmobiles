@@ -280,6 +280,8 @@ export const DealerLedger: React.FC = () => {
     if (product) {
       const updateData: any = { stock_quantity: product.stock_quantity + added };
       if (stockForm.hsn_code) updateData.hsn_code = stockForm.hsn_code;
+      if (stockForm.unit_price > 0) updateData.purchase_price = stockForm.unit_price;
+      if (stockForm.sale_price > 0) updateData.sale_price = stockForm.sale_price;
       await supabase.from('products').update(updateData).eq('id', product.id);
     }
     const purchaseValue = added * stockForm.unit_price;
