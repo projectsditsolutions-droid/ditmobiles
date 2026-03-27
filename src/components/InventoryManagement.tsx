@@ -382,78 +382,167 @@ export const InventoryManagement: React.FC = () => {
             </div>
           )}
 
-          {/* Products Table */}
-          <div className="bg-card rounded-xl border overflow-hidden shadow-sm">
-            <table className="w-full text-sm">
-              <thead className="bg-secondary/40">
-                <tr className="text-left font-display text-[11px] text-muted-foreground uppercase tracking-wider">
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">Variant</th>
-                  <th className="px-4 py-3 text-right">Purchase</th>
-                  <th className="px-4 py-3 text-right">Sale</th>
-                  <th className="px-4 py-3 text-center">Stock</th>
-                  <th className="px-4 py-3 text-center">IMEI</th>
-                  <th className="px-4 py-3 w-20"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProducts.map(p => {
-                  const stock = getStockCount(p.id);
-                  const isLow = stock <= p.low_stock_threshold;
-                  return (
-                    <tr key={p.id} className="border-t border-border/50 hover:bg-accent/30 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="font-display font-semibold">{p.brand} {p.model}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{p.color} · GST {Number(p.gst_percent)}%{(p as any).hsn_code ? ` · HSN: ${(p as any).hsn_code}` : ''} · {p.category}</div>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{p.variant || '—'}</td>
-                      <td className="px-4 py-3 text-right price-text text-xs">₹{Number(p.purchase_price).toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-3 text-right price-text text-sm">₹{Number(p.sale_price).toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-display font-bold ${
-                          stock === 0 ? 'bg-destructive/10 text-destructive' : isLow ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
-                        }`}>
-                          {stock === 0 && <AlertTriangle className="w-3 h-3" />}{stock}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {addingIMEIFor === p.id ? (
-                          <div className="flex gap-1 justify-center">
-                            <input placeholder="15-digit IMEI" value={newIMEI}
-                              onChange={e => setNewIMEI(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') handleAddIMEI(p.id); if (e.key === 'Escape') setAddingIMEIFor(null); }}
-                              className="w-36 h-7 px-2 text-xs rounded-md border border-input bg-card focus:outline-none focus:ring-1 focus:ring-ring font-mono"
-                              autoFocus />
-                            <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => handleAddIMEI(p.id)}>Add</Button>
-                          </div>
-                        ) : (
-                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingIMEIFor(p.id)}>
-                            <Plus className="w-3 h-3 mr-1" />IMEI
-                          </Button>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1 justify-end">
-                          <button onClick={() => handleEdit(p)} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-accent transition-all">
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => handleDelete(p.id)} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {filteredProducts.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
-                    <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    <p className="font-display font-medium">No products found</p>
-                    <p className="text-xs mt-1">Add a product to get started</p>
-                  </td></tr>
-                )}
-              </tbody>
-            </table>
+          {/* Brand-Grouped Products */}
+          <div className="space-y-3">
+            {brandGroups.map(([brand, brandProducts]) => {
+              const brandStock = brandProducts.reduce((s, p) => s + getStockCount(p.id), 0);
+              const isExpanded = expandedBrand === brand;
+              return (
+                <div key={brand} className="bg-card rounded-xl border overflow-hidden shadow-sm">
+                  {/* Brand Header */}
+                  <button onClick={() => setExpandedBrand(isExpanded ? null : brand)}
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                      <span className="font-display font-bold text-base">{brand}</span>
+                      <span className="text-xs text-muted-foreground">({brandProducts.length} models)</span>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-display font-bold ${
+                      brandStock === 0 ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'
+                    }`}>
+                      {brandStock} units
+                    </span>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="border-t">
+                      <table className="w-full text-sm">
+                        <thead className="bg-secondary/40">
+                          <tr className="text-left font-display text-[11px] text-muted-foreground uppercase tracking-wider">
+                            <th className="px-4 py-2"></th>
+                            <th className="px-4 py-2">Model</th>
+                            <th className="px-4 py-2">Variant</th>
+                            <th className="px-4 py-2">Color</th>
+                            <th className="px-4 py-2 text-right">Purchase</th>
+                            <th className="px-4 py-2 text-right">Sale</th>
+                            <th className="px-4 py-2 text-center">Stock</th>
+                            <th className="px-4 py-2 text-center">IMEI</th>
+                            <th className="px-4 py-2 w-20"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {brandProducts.map(p => {
+                            const stock = getStockCount(p.id);
+                            const isLow = stock <= p.low_stock_threshold;
+                            const productImeis = getProductIMEIs(p.id);
+                            const isProductExpanded = expandedProductId === p.id;
+                            return (
+                              <React.Fragment key={p.id}>
+                                <tr className="border-t border-border/50 hover:bg-accent/30 transition-colors">
+                                  <td className="px-4 py-2.5 w-8">
+                                    <button onClick={() => setExpandedProductId(isProductExpanded ? null : p.id)}
+                                      className="w-6 h-6 rounded flex items-center justify-center hover:bg-accent transition-colors">
+                                      {isProductExpanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                                    </button>
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <div className="font-display font-semibold">{p.model}</div>
+                                    <div className="text-xs text-muted-foreground mt-0.5">GST {Number(p.gst_percent)}%{(p as any).hsn_code ? ` · HSN: ${(p as any).hsn_code}` : ''} · {p.category}</div>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-muted-foreground text-xs">{p.variant || '—'}</td>
+                                  <td className="px-4 py-2.5 text-muted-foreground text-xs">{p.color || '—'}</td>
+                                  <td className="px-4 py-2.5 text-right price-text text-xs">₹{Number(p.purchase_price).toLocaleString('en-IN')}</td>
+                                  <td className="px-4 py-2.5 text-right price-text text-sm">₹{Number(p.sale_price).toLocaleString('en-IN')}</td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-display font-bold ${
+                                      stock === 0 ? 'bg-destructive/10 text-destructive' : isLow ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
+                                    }`}>
+                                      {stock === 0 && <AlertTriangle className="w-3 h-3" />}{stock}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    {addingIMEIFor === p.id ? (
+                                      <div className="flex gap-1 justify-center">
+                                        <input placeholder="15-digit IMEI" value={newIMEI}
+                                          onChange={e => setNewIMEI(e.target.value)}
+                                          onKeyDown={e => { if (e.key === 'Enter') handleAddIMEI(p.id); if (e.key === 'Escape') setAddingIMEIFor(null); }}
+                                          className="w-36 h-7 px-2 text-xs rounded-md border border-input bg-card focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                                          autoFocus />
+                                        <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => handleAddIMEI(p.id)}>Add</Button>
+                                      </div>
+                                    ) : (
+                                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingIMEIFor(p.id)}>
+                                        <Plus className="w-3 h-3 mr-1" />IMEI
+                                      </Button>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <div className="flex gap-1 justify-end">
+                                      <button onClick={() => handleEdit(p)} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-accent transition-all">
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button onClick={() => handleDelete(p.id)} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                                {/* Expandable IMEI rows */}
+                                {isProductExpanded && productImeis.length > 0 && (
+                                  <tr>
+                                    <td colSpan={9} className="px-0 py-0">
+                                      <div className="bg-accent/20 border-y border-border/30">
+                                        <table className="w-full text-xs">
+                                          <thead>
+                                            <tr className="text-left font-display text-[10px] text-muted-foreground uppercase tracking-wider">
+                                              <th className="px-6 py-2 pl-12">IMEI</th>
+                                              <th className="px-4 py-2">Status</th>
+                                              <th className="px-4 py-2 text-right">Cost</th>
+                                              <th className="px-4 py-2 text-right">Sale Price</th>
+                                              <th className="px-4 py-2 text-right">Margin</th>
+                                              <th className="px-4 py-2">Purchased</th>
+                                              <th className="px-4 py-2">Sold</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {productImeis.map(r => (
+                                              <tr key={r.id} className="border-t border-border/20 hover:bg-accent/40 transition-colors">
+                                                <td className="px-6 py-1.5 pl-12 font-mono font-semibold">{r.imei}</td>
+                                                <td className="px-4 py-1.5">
+                                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold ${
+                                                    r.status === 'in_stock' ? 'bg-success/10 text-success' :
+                                                    r.status === 'sold' ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
+                                                  }`}>{r.status.replace('_', ' ')}</span>
+                                                </td>
+                                                <td className="px-4 py-1.5 text-right price-text">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
+                                                <td className="px-4 py-1.5 text-right price-text">₹{Number(r.sale_price).toLocaleString('en-IN')}</td>
+                                                <td className="px-4 py-1.5 text-right">
+                                                  <span className={Number(r.sale_price) - Number(r.purchase_price) >= 0 ? 'text-success' : 'text-destructive'}>
+                                                    ₹{(Number(r.sale_price) - Number(r.purchase_price)).toLocaleString('en-IN')}
+                                                  </span>
+                                                </td>
+                                                <td className="px-4 py-1.5 text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
+                                                <td className="px-4 py-1.5 text-muted-foreground">{r.sold_date ? new Date(r.sold_date).toLocaleDateString('en-IN') : '—'}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                                {isProductExpanded && productImeis.length === 0 && (
+                                  <tr>
+                                    <td colSpan={9} className="px-12 py-3 text-xs text-muted-foreground bg-accent/20">No IMEI records for this product</td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {brandGroups.length === 0 && (
+              <div className="bg-card rounded-xl border p-12 text-center text-muted-foreground">
+                <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="font-display font-medium">No products found</p>
+                <p className="text-xs mt-1">Add a product to get started</p>
+              </div>
+            )}
           </div>
         </>
       )}
