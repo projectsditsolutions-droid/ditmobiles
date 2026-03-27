@@ -388,44 +388,6 @@ export const InventoryManagement: React.FC = () => {
               </div>
             )}
           </div>
-                                                <td className="px-4 py-1.5 text-right">
-                                                  <span className={Number(r.sale_price) - Number(r.purchase_price) >= 0 ? 'text-success' : 'text-destructive'}>
-                                                    ₹{(Number(r.sale_price) - Number(r.purchase_price)).toLocaleString('en-IN')}
-                                                  </span>
-                                                </td>
-                                                <td className="px-4 py-1.5 text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
-                                                <td className="px-4 py-1.5 text-muted-foreground">{r.sold_date ? new Date(r.sold_date).toLocaleDateString('en-IN') : '—'}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                )}
-                                {isProductExpanded && productImeis.length === 0 && (
-                                  <tr>
-                                    <td colSpan={9} className="px-12 py-3 text-xs text-muted-foreground bg-accent/20">No IMEI records for this product</td>
-                                  </tr>
-                                )}
-                              </React.Fragment>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {brandGroups.length === 0 && (
-              <div className="bg-card rounded-xl border p-12 text-center text-muted-foreground">
-                <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="font-display font-medium">No products found</p>
-                <p className="text-xs mt-1">Add a product to get started</p>
-              </div>
-            )}
-          </div>
         </>
       )}
 
