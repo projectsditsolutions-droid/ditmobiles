@@ -142,29 +142,6 @@ export const DealerLedger: React.FC = () => {
 
   const selectedDealer = dealers.find(d => d.id === selectedDealerId) || null;
   const selectedTxns = useMemo(() => allTxns.filter(t => t.dealer_id === selectedDealerId), [allTxns, selectedDealerId]);
-  const historyTxns = useMemo(() => {
-    if (!selectedDealer) return selectedTxns;
-    const hasOpeningHistory = selectedTxns.some(t => t.type === 'opening_adjustment');
-    if (hasOpeningHistory || totals.opening === 0) return selectedTxns;
-
-    const fallbackOpeningTxn = {
-      id: `opening-fallback-${selectedDealer.id}`,
-      dealer_id: selectedDealer.id,
-      shop_id: selectedDealer.shop_id,
-      type: 'opening_adjustment',
-      amount: totals.opening,
-      running_balance: totals.opening,
-      created_at: selectedDealer.created_at,
-      invoice_ref: null,
-      imei_ref: null,
-      description: `Opening credit: ${fmt(totals.opening)}`,
-    } as DealerTransaction;
-
-    return [...selectedTxns, fallbackOpeningTxn].sort((a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  }, [selectedDealer, selectedTxns, totals.opening]);
-  const visibleTxns = historyTxns.filter(t => txnFilter === 'all' || t.type === txnFilter);
 
   const totals = useMemo(() => {
     const purchase = selectedTxns.filter(t => t.type === 'purchase').reduce((s, t) => s + Number(t.amount), 0);
