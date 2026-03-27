@@ -683,8 +683,9 @@ export const POSBilling: React.FC = () => {
     setWarrantyMobile('1 Year Manufacturer Warranty');
     setWarrantyAccessories('6 Months Warranty');
     setEmiLendingPartner('');
+    setBillDate(new Date().toISOString().slice(0, 16));
     } finally { setSaving(false); }
-  }, [saving, items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories, mixedPayment, emiLendingPartner]);
+  }, [saving, items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories, mixedPayment, emiLendingPartner, billDate]);
 
   return (
     <div className="flex h-full flex-col md:flex-row">
