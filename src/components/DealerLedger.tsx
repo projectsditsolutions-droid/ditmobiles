@@ -150,7 +150,7 @@ export const DealerLedger: React.FC = () => {
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
     const adjustments = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    const opening = current - purchase + payment + returned - adjustments;
+    const opening = current - purchase + payment + returned;
     const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => {
       const bothMatch = t.description.match(/Sold Cost: ₹([\d,]+)/);
       if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
