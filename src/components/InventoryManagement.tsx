@@ -343,6 +343,7 @@ export const InventoryManagement: React.FC = () => {
                                       <th className="px-4 py-1.5 text-right">Sale Price</th>
                                       <th className="px-4 py-1.5 text-right">Margin</th>
                                       <th className="px-4 py-1.5">Purchased</th>
+                                      <th className="px-4 py-1.5 w-10"></th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -357,6 +358,11 @@ export const InventoryManagement: React.FC = () => {
                                           </span>
                                         </td>
                                         <td className="px-4 py-1.5 text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
+                                        <td className="px-4 py-1.5">
+                                          <button onClick={() => handleDeleteIMEI(r)} className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </td>
                                       </tr>
                                     ))}
                                   </tbody>
