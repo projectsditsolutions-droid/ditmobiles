@@ -636,10 +636,6 @@ export const ReportsPage: React.FC = () => {
       )}
 
       {tab === 'generate' && (() => {
-        const [rptDateFrom, setRptDateFrom] = React.useState('');
-        const [rptDateTo, setRptDateTo] = React.useState('');
-        const [rptBrand, setRptBrand] = React.useState('all');
-        const [rptType, setRptType] = React.useState<'sales' | 'stock' | 'gst' | 'profit' | 'brand'>('sales');
 
         const allBrands = [...new Set(stockData.map((p: any) => p.brand))].sort();
 
