@@ -33,7 +33,10 @@ export const ReportsPage: React.FC = () => {
   const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [bulkPrinting, setBulkPrinting] = useState(false);
-
+  const [rptDateFrom, setRptDateFrom] = useState('');
+  const [rptDateTo, setRptDateTo] = useState('');
+  const [rptBrand, setRptBrand] = useState('all');
+  const [rptType, setRptType] = useState<'sales' | 'stock' | 'gst' | 'profit' | 'brand'>('sales');
   useEffect(() => {
     if (!activeShopId && !isAllShops) return;
     const fetchData = async () => {
