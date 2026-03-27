@@ -285,19 +285,37 @@ export const InventoryManagement: React.FC = () => {
               return (
                 <div key={brand} className="bg-card rounded-xl border overflow-hidden shadow-sm">
                   {/* Brand Header */}
-                  <button onClick={() => setExpandedBrand(isExpanded ? null : brand)}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/30 transition-colors">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between px-4 py-3 hover:bg-accent/30 transition-colors">
+                    <button onClick={() => setExpandedBrand(isExpanded ? null : brand)} className="flex items-center gap-3 flex-1">
                       {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                       <span className="font-display font-bold text-base">{brand}</span>
                       <span className="text-xs text-muted-foreground">({brandProducts.length} models)</span>
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-display font-bold ${
+                        brandStock === 0 ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'
+                      }`}>
+                        {brandStock} units
+                      </span>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!confirm(`Delete all ${brandProducts.length} products under "${brand}" and their IMEI records? This cannot be undone.`)) return;
+                          for (const p of brandProducts) {
+                            await supabase.from('invoice_items').delete().eq('product_id', p.id);
+                            await supabase.from('imei_records').delete().eq('product_id', p.id);
+                            await supabase.from('products').delete().eq('id', p.id);
+                          }
+                          toast.success(`Deleted brand "${brand}" (${brandProducts.length} products)`);
+                          fetchProducts(); fetchIMEIs();
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                        title={`Delete all ${brand} products`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-display font-bold ${
-                      brandStock === 0 ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'
-                    }`}>
-                      {brandStock} units
-                    </span>
-                  </button>
+                  </div>
 
                   {isExpanded && (
                     <div className="border-t">
