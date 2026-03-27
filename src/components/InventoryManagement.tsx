@@ -24,6 +24,7 @@ export const InventoryManagement: React.FC = () => {
   const [addingIMEIFor, setAddingIMEIFor] = useState<string | null>(null);
   const [tab, setTab] = useState<'products' | 'imei' | 'bulk'>('products');
   const [expandedBrand, setExpandedBrand] = useState<string | null>(null);
+  const [expandedImeiBrand, setExpandedImeiBrand] = useState<string | null>(null);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [bulkField, setBulkField] = useState<'sale_price' | 'purchase_price' | 'gst_percent'>('sale_price');
@@ -419,64 +420,103 @@ export const InventoryManagement: React.FC = () => {
             </div>
           )}
 
-          <div className="bg-card rounded-xl border overflow-hidden shadow-sm">
-            <table className="w-full text-sm">
-              <thead className="bg-secondary/40">
-                <tr className="text-left font-display text-[11px] text-muted-foreground uppercase tracking-wider">
-                  <th className="px-4 py-3">IMEI</th>
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Cost</th>
-                  <th className="px-4 py-3 text-right">Sale Price</th>
-                  <th className="px-4 py-3 text-right">Margin</th>
-                  <th className="px-4 py-3">Added</th>
-                  <th className="px-4 py-3">Sold</th>
-                  <th className="px-4 py-3 w-12"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredIMEIs.map(r => {
-                  const product = r.products as unknown as Product | undefined;
-                  const isDuplicate = (imeiCountMap.get(r.imei) || 0) > 1;
-                  const margin = Number(r.sale_price) - Number(r.purchase_price);
-                  return (
-                    <tr key={r.id} className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${isDuplicate ? 'bg-destructive/5' : ''}`}>
-                      <td className="px-4 py-2.5 font-mono text-xs font-semibold">
-                        <span className="flex items-center gap-1.5">
-                          {r.imei}
-                          {isDuplicate && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-display font-bold">DUP</span>}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 font-display text-sm">{product ? `${product.brand} ${product.model}` : 'Unknown'}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-display font-bold ${
-                          r.status === 'in_stock' ? 'bg-success/10 text-success' :
-                          r.status === 'sold' ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
-                        }`}>{r.status.replace('_', ' ')}</span>
-                      </td>
-                      <td className="px-4 py-2.5 text-right price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-2.5 text-right price-text text-xs">₹{Number(r.sale_price).toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-2.5 text-right text-xs">
-                        <span className={margin >= 0 ? 'text-success' : 'text-destructive'}>₹{margin.toLocaleString('en-IN')}</span>
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
-                      <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.sold_date ? new Date(r.sold_date).toLocaleDateString('en-IN') : '—'}</td>
-                      <td className="px-4 py-2.5">
-                        <button onClick={() => handleDeleteIMEI(r)} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {filteredIMEIs.length === 0 && (
-                  <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">
+          {/* Brand-grouped IMEI records */}
+          <div className="space-y-3">
+            {(() => {
+              const brandMap = new Map<string, typeof filteredIMEIs>();
+              filteredIMEIs.forEach(r => {
+                const product = r.products as unknown as Product | undefined;
+                const brand = product?.brand || 'Unknown';
+                if (!brandMap.has(brand)) brandMap.set(brand, []);
+                brandMap.get(brand)!.push(r);
+              });
+              const brandEntries = Array.from(brandMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+              if (brandEntries.length === 0) {
+                return (
+                  <div className="bg-card rounded-xl border p-12 text-center text-muted-foreground">
                     <ScanLine className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="font-display font-medium">No IMEI records</p>
-                  </td></tr>
-                )}
-              </tbody>
-            </table>
+                  </div>
+                );
+              }
+
+              return brandEntries.map(([brand, brandImeis]) => {
+                const isExp = expandedImeiBrand === brand;
+                const inStockCount = brandImeis.filter(r => r.status === 'in_stock').length;
+                return (
+                  <div key={brand} className="bg-card rounded-xl border overflow-hidden shadow-sm">
+                    <button onClick={() => setExpandedImeiBrand(isExp ? null : brand)}
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/30 transition-colors">
+                      <div className="flex items-center gap-3">
+                        {isExp ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                        <span className="font-display font-bold text-base">{brand}</span>
+                        <span className="text-xs text-muted-foreground">({brandImeis.length} records)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-full text-xs font-display font-bold bg-success/10 text-success">{inStockCount} in stock</span>
+                        <span className="px-2.5 py-1 rounded-full text-xs font-display font-bold bg-muted text-muted-foreground">{brandImeis.length - inStockCount} sold/returned</span>
+                      </div>
+                    </button>
+                    {isExp && (
+                      <div className="border-t">
+                        <table className="w-full text-sm">
+                          <thead className="bg-secondary/40">
+                            <tr className="text-left font-display text-[11px] text-muted-foreground uppercase tracking-wider">
+                              <th className="px-4 py-2">IMEI</th>
+                              <th className="px-4 py-2">Model</th>
+                              <th className="px-4 py-2">Status</th>
+                              <th className="px-4 py-2 text-right">Cost</th>
+                              <th className="px-4 py-2 text-right">Sale Price</th>
+                              <th className="px-4 py-2 text-right">Margin</th>
+                              <th className="px-4 py-2">Added</th>
+                              <th className="px-4 py-2">Sold</th>
+                              <th className="px-4 py-2 w-10"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {brandImeis.map(r => {
+                              const product = r.products as unknown as Product | undefined;
+                              const isDuplicate = (imeiCountMap.get(r.imei) || 0) > 1;
+                              const margin = Number(r.sale_price) - Number(r.purchase_price);
+                              return (
+                                <tr key={r.id} className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${isDuplicate ? 'bg-destructive/5' : ''}`}>
+                                  <td className="px-4 py-2 font-mono text-xs font-semibold">
+                                    <span className="flex items-center gap-1.5">
+                                      {r.imei}
+                                      {isDuplicate && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-display font-bold">DUP</span>}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2 font-display text-xs">{product?.model || '—'}</td>
+                                  <td className="px-4 py-2">
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold ${
+                                      r.status === 'in_stock' ? 'bg-success/10 text-success' :
+                                      r.status === 'sold' ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
+                                    }`}>{r.status.replace('_', ' ')}</span>
+                                  </td>
+                                  <td className="px-4 py-2 text-right price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
+                                  <td className="px-4 py-2 text-right price-text text-xs">₹{Number(r.sale_price).toLocaleString('en-IN')}</td>
+                                  <td className="px-4 py-2 text-right text-xs">
+                                    <span className={margin >= 0 ? 'text-success' : 'text-destructive'}>₹{margin.toLocaleString('en-IN')}</span>
+                                  </td>
+                                  <td className="px-4 py-2 text-xs text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
+                                  <td className="px-4 py-2 text-xs text-muted-foreground">{r.sold_date ? new Date(r.sold_date).toLocaleDateString('en-IN') : '—'}</td>
+                                  <td className="px-4 py-2">
+                                    <button onClick={() => handleDeleteIMEI(r)} className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
           </div>
         </>
       )}
