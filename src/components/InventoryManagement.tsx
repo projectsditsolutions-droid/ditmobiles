@@ -585,7 +585,9 @@ export const InventoryManagement: React.FC = () => {
                   <th className="px-4 py-3">IMEI</th>
                   <th className="px-4 py-3">Product</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Purchase Price</th>
+                  <th className="px-4 py-3 text-right">Cost</th>
+                  <th className="px-4 py-3 text-right">Sale Price</th>
+                  <th className="px-4 py-3 text-right">Margin</th>
                   <th className="px-4 py-3">Added</th>
                   <th className="px-4 py-3">Sold</th>
                   <th className="px-4 py-3 w-12"></th>
@@ -595,6 +597,7 @@ export const InventoryManagement: React.FC = () => {
                 {filteredIMEIs.map(r => {
                   const product = r.products as unknown as Product | undefined;
                   const isDuplicate = (imeiCountMap.get(r.imei) || 0) > 1;
+                  const margin = Number(r.sale_price) - Number(r.purchase_price);
                   return (
                     <tr key={r.id} className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${isDuplicate ? 'bg-destructive/5' : ''}`}>
                       <td className="px-4 py-2.5 font-mono text-xs font-semibold">
@@ -610,7 +613,11 @@ export const InventoryManagement: React.FC = () => {
                           r.status === 'sold' ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
                         }`}>{r.status.replace('_', ' ')}</span>
                       </td>
-                      <td className="px-4 py-2.5 price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-2.5 text-right price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-2.5 text-right price-text text-xs">₹{Number(r.sale_price).toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-2.5 text-right text-xs">
+                        <span className={margin >= 0 ? 'text-success' : 'text-destructive'}>₹{margin.toLocaleString('en-IN')}</span>
+                      </td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.sold_date ? new Date(r.sold_date).toLocaleDateString('en-IN') : '—'}</td>
                       <td className="px-4 py-2.5">
@@ -622,7 +629,7 @@ export const InventoryManagement: React.FC = () => {
                   );
                 })}
                 {filteredIMEIs.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
+                  <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">
                     <ScanLine className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="font-display font-medium">No IMEI records</p>
                   </td></tr>
