@@ -699,7 +699,15 @@ export const POSBilling: React.FC = () => {
           />
 
           {selectedProfile && (
-            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary/60 border border-border">
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary/60 border border-border">
+            <CalendarIcon className="w-3 h-3 text-muted-foreground" />
+            <input
+              type="datetime-local"
+              value={billDate}
+              onChange={e => setBillDate(e.target.value)}
+              className="bg-transparent text-[10px] font-display font-semibold text-muted-foreground focus:outline-none w-[140px]"
+            />
+          </div>
               <Tag className="w-3 h-3 text-muted-foreground" />
               <span className="text-[10px] font-display font-semibold text-muted-foreground">
                 {selectedProfile.invoice_prefix}-{String((selectedProfile.last_invoice_number || 0) + 1).padStart(4, '0')}
