@@ -171,7 +171,7 @@ export const InventoryManagement: React.FC = () => {
   };
 
   const getStockCount = (productId: string) => imeis.filter(r => r.product_id === productId && r.status === 'in_stock').length;
-  const getProductIMEIs = (productId: string) => imeis.filter(r => r.product_id === productId);
+  const getProductIMEIs = (productId: string) => imeis.filter(r => r.product_id === productId && r.status === 'in_stock');
   const lowStockProducts = products.filter(p => getStockCount(p.id) <= p.low_stock_threshold);
   const totalStockValue = products.reduce((s, p) => s + Number(p.purchase_price) * getStockCount(p.id), 0);
 
@@ -339,24 +339,16 @@ export const InventoryManagement: React.FC = () => {
                                   <thead>
                                     <tr className="text-left font-display text-[10px] text-muted-foreground uppercase tracking-wider">
                                       <th className="px-6 py-1.5 pl-8">IMEI</th>
-                                      <th className="px-4 py-1.5">Status</th>
                                       <th className="px-4 py-1.5 text-right">Cost</th>
                                       <th className="px-4 py-1.5 text-right">Sale Price</th>
                                       <th className="px-4 py-1.5 text-right">Margin</th>
                                       <th className="px-4 py-1.5">Purchased</th>
-                                      <th className="px-4 py-1.5">Sold</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {productImeis.map(r => (
                                       <tr key={r.id} className="border-t border-border/10 hover:bg-accent/30 transition-colors">
                                         <td className="px-6 py-1.5 pl-8 font-mono font-semibold">{r.imei}</td>
-                                        <td className="px-4 py-1.5">
-                                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold ${
-                                            r.status === 'in_stock' ? 'bg-success/10 text-success' :
-                                            r.status === 'sold' ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
-                                          }`}>{r.status.replace('_', ' ')}</span>
-                                        </td>
                                         <td className="px-4 py-1.5 text-right price-text">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
                                         <td className="px-4 py-1.5 text-right price-text">₹{Number(r.sale_price).toLocaleString('en-IN')}</td>
                                         <td className="px-4 py-1.5 text-right">
@@ -365,7 +357,6 @@ export const InventoryManagement: React.FC = () => {
                                           </span>
                                         </td>
                                         <td className="px-4 py-1.5 text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
-                                        <td className="px-4 py-1.5 text-muted-foreground">{r.sold_date ? new Date(r.sold_date).toLocaleDateString('en-IN') : '—'}</td>
                                       </tr>
                                     ))}
                                   </tbody>
