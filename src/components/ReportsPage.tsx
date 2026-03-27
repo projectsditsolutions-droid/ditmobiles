@@ -902,12 +902,15 @@ export const ReportsPage: React.FC = () => {
                   });
                 }
 
-                const html = `<div style="font-family:Inter,Arial,sans-serif;padding:20px;max-width:800px;margin:auto">
-                  <div style="text-align:center;margin-bottom:20px;border-bottom:2px solid #222;padding-bottom:12px">
-                    <div style="font-size:22px;font-weight:900">${title}</div>
-                    <div style="font-size:11px;color:#666;margin-top:4px">Period: ${period} · Generated: ${new Date().toLocaleString('en-IN')}</div>
+                const html = `<div style="font-family:Inter,Arial,sans-serif;padding:0;width:100%">
+                  <div style="text-align:center;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px">
+                    <div style="font-size:20px;font-weight:900">${title}</div>
+                    <div style="font-size:10px;color:#666;margin-top:4px">Period: ${period} · Generated: ${new Date().toLocaleString('en-IN')}</div>
                   </div>
-                  <table style="width:100%;border-collapse:collapse;font-size:11px">${tableRows}</table>
+                  <table style="width:100%;border-collapse:collapse;font-size:10px">
+                    <thead>${tableRows.slice(0, tableRows.indexOf('</tr>') + 5)}</thead>
+                    <tbody>${tableRows.slice(tableRows.indexOf('</tr>') + 5)}</tbody>
+                  </table>
                 </div>`;
 
                 printContent(<div dangerouslySetInnerHTML={{ __html: html }} />);
