@@ -632,6 +632,229 @@ export const ReportsPage: React.FC = () => {
         </div>
       )}
 
+      {tab === 'generate' && (() => {
+        const [rptDateFrom, setRptDateFrom] = React.useState('');
+        const [rptDateTo, setRptDateTo] = React.useState('');
+        const [rptBrand, setRptBrand] = React.useState('all');
+        const [rptType, setRptType] = React.useState<'sales' | 'stock' | 'gst' | 'profit' | 'brand'>('sales');
+
+        const allBrands = [...new Set(stockData.map((p: any) => p.brand))].sort();
+
+        const filterByDate = (list: Invoice[]) => {
+          return list.filter(inv => {
+            if (rptDateFrom && inv.date < rptDateFrom) return false;
+            if (rptDateTo && inv.date > rptDateTo + 'T23:59:59') return false;
+            return true;
+          });
+        };
+
+        const generateSalesReport = () => {
+          const filtered = filterByDate(invoices);
+          if (filtered.length === 0) { toast.error('No data for selected range'); return; }
+          const data = filtered.map(inv => ({
+            Invoice: inv.invoice_number,
+            Date: new Date(inv.date).toLocaleString('en-IN'),
+            Customer: inv.customer_name,
+            Phone: inv.customer_phone,
+            Payment: inv.payment_method,
+            GST_Bill: inv.is_gst_bill ? 'Yes' : 'No',
+            Subtotal: inv.subtotal,
+            Discount: Number(inv.total_discount) + Number(inv.bill_discount),
+            CGST: inv.cgst,
+            SGST: inv.sgst,
+            Grand_Total: inv.grand_total,
+          }));
+          downloadCSV(data, `sales_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
+          toast.success(`Sales report downloaded (${data.length} invoices)`);
+        };
+
+        const generateDailyReport = () => {
+          const filtered = filterByDate(invoices);
+          if (filtered.length === 0) { toast.error('No data for selected range'); return; }
+          const dailyMap: Record<string, { count: number; total: number; cash: number; upi: number; card: number; emi: number; mixed: number }> = {};
+          filtered.forEach(inv => {
+            const day = inv.date.slice(0, 10);
+            if (!dailyMap[day]) dailyMap[day] = { count: 0, total: 0, cash: 0, upi: 0, card: 0, emi: 0, mixed: 0 };
+            dailyMap[day].count++;
+            dailyMap[day].total += Number(inv.grand_total);
+            const pm = inv.payment_method as keyof typeof dailyMap[string];
+            if (pm in dailyMap[day]) (dailyMap[day] as any)[pm] += Number(inv.grand_total);
+          });
+          const data = Object.entries(dailyMap).sort(([a], [b]) => b.localeCompare(a)).map(([date, d]) => ({
+            Date: new Date(date).toLocaleDateString('en-IN'),
+            Invoices: d.count,
+            Cash: d.cash,
+            UPI: d.upi,
+            Card: d.card,
+            EMI: d.emi,
+            Mixed: d.mixed,
+            Total: d.total,
+          }));
+          downloadCSV(data, `daily_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
+          toast.success(`Daily report downloaded (${data.length} days)`);
+        };
+
+        const generateBrandReport = () => {
+          const filtered = filterByDate(invoices);
+          // Need to fetch invoice items for brand mapping - use stockData instead
+          const brandData = stockData
+            .filter((p: any) => rptBrand === 'all' || p.brand === rptBrand)
+            .map((p: any) => ({
+              Brand: p.brand,
+              Model: p.model,
+              Variant: p.variant,
+              Color: p.color,
+              Purchase_Price: p.purchase_price,
+              Sale_Price: p.sale_price,
+              Purchased: p.total,
+              In_Stock: p.inStock,
+              Sold: p.sold,
+              Returned: p.returned,
+              Stock_Value: p.stockValue,
+            }));
+          if (brandData.length === 0) { toast.error('No data for selected brand'); return; }
+          downloadCSV(brandData, `brand_report_${rptBrand === 'all' ? 'all_brands' : rptBrand}.csv`);
+          toast.success(`Brand report downloaded (${brandData.length} products)`);
+        };
+
+        const generateGSTReport = () => {
+          const filtered = filterByDate(invoices).filter(i => i.is_gst_bill);
+          if (filtered.length === 0) { toast.error('No GST invoices in range'); return; }
+          const data = filtered.map(inv => ({
+            Invoice: inv.invoice_number,
+            Date: new Date(inv.date).toLocaleString('en-IN'),
+            Customer: inv.customer_name,
+            Customer_GST: inv.customer_gst || '',
+            Type: inv.customer_gst ? 'B2B' : 'B2C',
+            Taxable: Number(inv.grand_total) - Number(inv.cgst) - Number(inv.sgst),
+            CGST: inv.cgst,
+            SGST: inv.sgst,
+            Total_Tax: Number(inv.cgst) + Number(inv.sgst),
+            Grand_Total: inv.grand_total,
+          }));
+          downloadCSV(data, `gst_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
+          toast.success(`GST report downloaded (${data.length} invoices)`);
+        };
+
+        const generateProfitReport = () => {
+          const filtered = filterByDate(invoices);
+          if (filtered.length === 0) { toast.error('No data for selected range'); return; }
+          const totalRevenue = filtered.reduce((s, i) => s + Number(i.grand_total), 0);
+          const totalGST = filtered.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
+          const totalDiscounts = filtered.reduce((s, i) => s + Number(i.total_discount) + Number(i.bill_discount), 0);
+          const netRevenue = totalRevenue - totalGST;
+          const totalCost = stockData.reduce((s: number, p: any) => s + (p.sold * Number(p.purchase_price)), 0);
+          const data = [{
+            Period: `${rptDateFrom || 'Start'} to ${rptDateTo || 'Today'}`,
+            Total_Invoices: filtered.length,
+            Gross_Revenue: totalRevenue,
+            GST_Collected: totalGST,
+            Net_Revenue: netRevenue,
+            Total_Discounts: totalDiscounts,
+            Estimated_Cost: totalCost,
+            Estimated_Profit: netRevenue - totalCost - totalDiscounts,
+          }];
+          downloadCSV(data, `profit_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
+          toast.success('Profit report downloaded');
+        };
+
+        const handleGenerate = () => {
+          switch (rptType) {
+            case 'sales': return generateSalesReport();
+            case 'stock': return generateDailyReport();
+            case 'gst': return generateGSTReport();
+            case 'profit': return generateProfitReport();
+            case 'brand': return generateBrandReport();
+          }
+        };
+
+        return (
+          <div className="bg-card rounded-xl border p-6 shadow-sm space-y-6">
+            <div>
+              <h2 className="font-display text-lg font-extrabold mb-1">Generate Reports</h2>
+              <p className="text-sm text-muted-foreground">Select report type, apply filters, and download as CSV</p>
+            </div>
+
+            {/* Report Type */}
+            <div>
+              <label className="text-xs font-display font-semibold text-muted-foreground mb-2 block">Report Type</label>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                {([
+                  { key: 'sales', label: 'Sales Report', icon: TrendingUp, desc: 'All invoices with details' },
+                  { key: 'stock', label: 'Daily Summary', icon: Calendar, desc: 'Day-wise totals by payment' },
+                  { key: 'brand', label: 'Brand / Stock', icon: Package, desc: 'Product-wise stock & sales' },
+                  { key: 'gst', label: 'GST Report', icon: FileText, desc: 'Tax breakdowns for filing' },
+                  { key: 'profit', label: 'Profit Report', icon: DollarSign, desc: 'Revenue vs cost summary' },
+                ] as const).map(r => (
+                  <button
+                    key={r.key}
+                    onClick={() => setRptType(r.key)}
+                    className={`p-3 rounded-lg border text-left transition-all ${rptType === r.key ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/40'}`}
+                  >
+                    <r.icon className={`w-4 h-4 mb-1.5 ${rptType === r.key ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <p className="font-display font-semibold text-xs">{r.label}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{r.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">From Date</label>
+                <Input type="date" value={rptDateFrom} onChange={e => setRptDateFrom(e.target.value)} className="h-9" />
+              </div>
+              <div>
+                <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">To Date</label>
+                <Input type="date" value={rptDateTo} onChange={e => setRptDateTo(e.target.value)} className="h-9" />
+              </div>
+              {rptType === 'brand' && (
+                <div>
+                  <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">Brand</label>
+                  <select
+                    value={rptBrand}
+                    onChange={e => setRptBrand(e.target.value)}
+                    className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="all">All Brands</option>
+                    {allBrands.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Quick date presets */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground font-display font-medium">Quick:</span>
+              {[
+                { label: 'Today', fn: () => { const d = new Date().toISOString().slice(0, 10); setRptDateFrom(d); setRptDateTo(d); } },
+                { label: 'Yesterday', fn: () => { const d = new Date(Date.now() - 86400000).toISOString().slice(0, 10); setRptDateFrom(d); setRptDateTo(d); } },
+                { label: 'This Week', fn: () => { const now = new Date(); const start = new Date(now); start.setDate(now.getDate() - now.getDay()); setRptDateFrom(start.toISOString().slice(0, 10)); setRptDateTo(now.toISOString().slice(0, 10)); } },
+                { label: 'This Month', fn: () => { const now = new Date(); setRptDateFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`); setRptDateTo(now.toISOString().slice(0, 10)); } },
+                { label: 'Last Month', fn: () => { const now = new Date(); const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); const le = new Date(now.getFullYear(), now.getMonth(), 0); setRptDateFrom(lm.toISOString().slice(0, 10)); setRptDateTo(le.toISOString().slice(0, 10)); } },
+                { label: 'All Time', fn: () => { setRptDateFrom(''); setRptDateTo(''); } },
+              ].map(p => (
+                <Button key={p.label} variant="outline" size="sm" className="h-7 text-xs" onClick={p.fn}>{p.label}</Button>
+              ))}
+            </div>
+
+            {/* Generate button */}
+            <div className="flex items-center gap-3 pt-2">
+              <Button onClick={handleGenerate} className="gap-2">
+                <Download className="w-4 h-4" /> Download Report
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {rptDateFrom || rptDateTo
+                  ? `${rptDateFrom || '...'} → ${rptDateTo || '...'}`
+                  : 'All time data'}
+                {rptType === 'brand' && rptBrand !== 'all' && ` • ${rptBrand}`}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
+
       {selectedInvoice && <InvoicePreview invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />}
     </div>
   );
