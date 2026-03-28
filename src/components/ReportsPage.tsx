@@ -611,7 +611,7 @@ export const ReportsPage: React.FC = () => {
       {tab === 'profit' && (() => {
         const totalRevenue = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
         const totalGST = invoices.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
-        const totalDiscount = invoices.reduce((s, i) => s + Number(i.total_discount) + Number(i.bill_discount), 0);
+        const totalDiscount = invoices.reduce((s, i) => s + Number(i.total_discount), 0);
         const netRevenue = totalRevenue - totalGST;
         const totalCost = stockData.reduce((s, p) => s + (p.sold * Number(p.purchase_price)), 0);
         const netProfit = netRevenue - totalCost - totalDiscount;
@@ -621,7 +621,7 @@ export const ReportsPage: React.FC = () => {
         const invoiceProfitData = invoices.map(inv => {
           const revenue = Number(inv.grand_total);
           const gst = Number(inv.cgst) + Number(inv.sgst);
-          const discount = Number(inv.total_discount) + Number(inv.bill_discount);
+          const discount = Number(inv.total_discount);
           // Estimate cost from sold items matching this invoice
           const estCost = stockData.reduce((s: number, p: any) => {
             // rough per-invoice cost estimate based on proportion
