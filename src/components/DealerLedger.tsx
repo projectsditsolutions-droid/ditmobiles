@@ -749,7 +749,6 @@ export const DealerLedger: React.FC = () => {
                   </div>
                 ))}
                 <div>
-                <div>
                   <label className="text-xs text-muted-foreground mb-1 block">GST %</label>
                   <Input type="number" value={newProductForm.gst_percent || ''} onChange={e => setNewProductForm({ ...newProductForm, gst_percent: parseFloat(e.target.value) || 0 })} className="h-9" />
                 </div>
