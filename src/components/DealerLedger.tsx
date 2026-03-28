@@ -66,9 +66,9 @@ export const DealerLedger: React.FC = () => {
   const [searchQ, setSearchQ] = useState('');
   const [brandFilter, setBrandFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'credit_desc' | 'credit_asc' | 'recent'>('credit_desc');
-  const [txnFilter, setTxnFilter] = useState<'all' | 'purchase' | 'payment' | 'sale_deduction' | 'stock_return' | 'opening_adjustment'>('all');
+  const [txnFilter, setTxnFilter] = useState<'all' | 'purchase' | 'payment' | 'sale_deduction' | 'stock_return'>('all');
   const [dealerForm, setDealerForm] = useState({ brand_name: '', dealer_name: '', phone: '', address: '', gstin: '', total_credit: 0 });
-  const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
+  const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, imeis: '', hsn_code: '' });
   const [stockSearch, setStockSearch] = useState('');
   const [showNewProductInStock, setShowNewProductInStock] = useState(false);
   const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
@@ -142,13 +142,13 @@ export const DealerLedger: React.FC = () => {
 
   const selectedDealer = dealers.find(d => d.id === selectedDealerId) || null;
   const selectedTxns = useMemo(() => allTxns.filter(t => t.dealer_id === selectedDealerId), [allTxns, selectedDealerId]);
+  const visibleTxns = selectedTxns.filter(t => txnFilter === 'all' || t.type === txnFilter);
 
   const totals = useMemo(() => {
     const purchase = selectedTxns.filter(t => t.type === 'purchase').reduce((s, t) => s + Number(t.amount), 0);
     const payment = selectedTxns.filter(t => t.type === 'payment').reduce((s, t) => s + Number(t.amount), 0);
     const sold = selectedTxns.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
-    const adjustments = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
     const opening = current - purchase + payment + returned;
     const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => {
@@ -170,31 +170,6 @@ export const DealerLedger: React.FC = () => {
     const saleCount = selectedTxns.filter(t => t.type === 'sale_deduction').length;
     return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount };
   }, [selectedDealer, selectedTxns]);
-
-  const historyTxns = useMemo(() => {
-    if (!selectedDealer) return selectedTxns;
-    const hasOpeningHistory = selectedTxns.some(t => t.type === 'opening_adjustment');
-    if (hasOpeningHistory || totals.opening === 0) return selectedTxns;
-
-    const fallbackOpeningTxn = {
-      id: `opening-fallback-${selectedDealer.id}`,
-      dealer_id: selectedDealer.id,
-      shop_id: selectedDealer.shop_id,
-      type: 'opening_adjustment',
-      amount: totals.opening,
-      running_balance: totals.opening,
-      created_at: selectedDealer.created_at,
-      invoice_ref: null,
-      imei_ref: null,
-      description: `Opening credit: ${fmt(totals.opening)}`,
-    } as DealerTransaction;
-
-    return [...selectedTxns, fallbackOpeningTxn].sort((a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  }, [selectedDealer, selectedTxns, totals.opening]);
-
-  const visibleTxns = historyTxns.filter(t => txnFilter === 'all' || t.type === txnFilter);
 
   const totalOutstanding = dealers.reduce((sum, dealer) => sum + Number(dealer.total_credit), 0);
 
@@ -238,41 +213,12 @@ export const DealerLedger: React.FC = () => {
   };
 
   const handleEditOpeningCredit = async () => {
-    if (!selectedDealer) return;
+    if (!selectedDealer || !activeShopId) return;
     const oldOpening = totals.opening;
     const diff = editCreditValue - oldOpening;
-    if (diff === 0) {
-      setShowEditCredit(false);
-      return;
-    }
-
     const newBalance = Number(selectedDealer.total_credit) + diff;
-    const shopId = selectedDealer.shop_id;
-
-    const { error: dealerError } = await supabase
-      .from('dealers')
-      .update({ total_credit: newBalance })
-      .eq('id', selectedDealer.id);
-
-    if (dealerError) {
-      toast.error('Failed: ' + dealerError.message);
-      return;
-    }
-
-    const { error: txnError } = await supabase.from('dealer_transactions').insert({
-      dealer_id: selectedDealer.id,
-      shop_id: shopId,
-      type: 'opening_adjustment',
-      amount: diff,
-      running_balance: newBalance,
-      description: `Opening credit adjusted from ₹${oldOpening.toLocaleString('en-IN')} to ₹${editCreditValue.toLocaleString('en-IN')}`,
-    });
-
-    if (txnError) {
-      toast.error('History log failed: ' + txnError.message);
-      return;
-    }
-
+    await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
+    await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'opening_adjustment', amount: Math.abs(diff), running_balance: newBalance, description: `Opening credit adjusted from ₹${oldOpening.toLocaleString('en-IN')} to ₹${editCreditValue.toLocaleString('en-IN')}` });
     setShowEditCredit(false);
     toast.success('Opening credit updated');
     fetchDealers();
@@ -325,7 +271,7 @@ export const DealerLedger: React.FC = () => {
     if (imeiList.length === 0) { toast.error('Enter valid 15-digit IMEIs'); return; }
     let added = 0;
     for (const imei of imeiList) {
-      const { error } = await supabase.from('imei_records').insert({ imei, product_id: stockForm.product_id, shop_id: activeShopId, dealer_id: selectedDealer.id, status: 'in_stock', purchase_price: stockForm.unit_price, sale_price: stockForm.sale_price });
+      const { error } = await supabase.from('imei_records').insert({ imei, product_id: stockForm.product_id, shop_id: activeShopId, dealer_id: selectedDealer.id, status: 'in_stock', purchase_price: stockForm.unit_price });
       if (!error) added++;
     }
     if (added === 0) { toast.error('No IMEIs were added (duplicates?)'); return; }
@@ -333,8 +279,6 @@ export const DealerLedger: React.FC = () => {
     if (product) {
       const updateData: any = { stock_quantity: product.stock_quantity + added };
       if (stockForm.hsn_code) updateData.hsn_code = stockForm.hsn_code;
-      if (stockForm.unit_price > 0) updateData.purchase_price = stockForm.unit_price;
-      if (stockForm.sale_price > 0) updateData.sale_price = stockForm.sale_price;
       await supabase.from('products').update(updateData).eq('id', product.id);
     }
     const purchaseValue = added * stockForm.unit_price;
@@ -342,7 +286,7 @@ export const DealerLedger: React.FC = () => {
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
     await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'purchase', amount: purchaseValue, running_balance: newBalance, description: `Purchase ${added} × ${product?.brand || ''} ${product?.model || ''} @ ₹${stockForm.unit_price.toLocaleString('en-IN')}` });
     setShowStockEntry(false);
-    setStockForm({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
+    setStockForm({ product_id: '', unit_price: 0, imeis: '', hsn_code: '' });
     setShowNewProductInStock(false);
     setNewProductForm({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
     setStockSearch('');
@@ -609,7 +553,6 @@ export const DealerLedger: React.FC = () => {
                     <option value="sale_deduction">💰 Sales</option>
                     <option value="payment">✅ Payments</option>
                     <option value="stock_return">↩ Returns</option>
-                    <option value="opening_adjustment">✏️ Adjustments</option>
                   </select>
                 </div>
 
@@ -648,7 +591,7 @@ export const DealerLedger: React.FC = () => {
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <span className={`font-display font-bold ${meta.colorClass}`}>
-                                  {txn.type === 'purchase' || (txn.type === 'opening_adjustment' && Number(txn.amount) > 0) ? '+' : txn.type === 'payment' || txn.type === 'stock_return' || (txn.type === 'opening_adjustment' && Number(txn.amount) < 0) ? '−' : ''}{fmt(Number(txn.amount))}
+                                  {txn.type === 'purchase' ? '+' : txn.type === 'payment' || txn.type === 'stock_return' ? '−' : ''}{fmt(Number(txn.amount))}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-right font-display font-extrabold text-sm">{fmt(Number(txn.running_balance))}</td>
@@ -723,7 +666,7 @@ export const DealerLedger: React.FC = () => {
             {stockSearch && !stockForm.product_id && (
               <div className="mt-1 border rounded-xl bg-card shadow-sm max-h-48 overflow-auto">
                 {filteredProducts.slice(0, 10).map(p => (
-                  <button key={p.id} onClick={() => { setStockForm({ ...stockForm, product_id: p.id, unit_price: Number(p.purchase_price) || 0, sale_price: Number(p.sale_price) || 0, hsn_code: p.hsn_code }); setStockSearch(`${p.brand} ${p.model} ${p.variant}`); }} className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors border-b last:border-0">
+                  <button key={p.id} onClick={() => { setStockForm({ ...stockForm, product_id: p.id, hsn_code: p.hsn_code }); setStockSearch(`${p.brand} ${p.model} ${p.variant}`); }} className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors border-b last:border-0">
                     <div className="font-display font-semibold text-sm">{p.brand} {p.model}</div>
                     <div className="text-xs text-muted-foreground">{p.variant} {p.color} · Stock: {p.stock_quantity}</div>
                   </button>
@@ -767,60 +710,23 @@ export const DealerLedger: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Cost Price / Unit (₹)</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Purchase Price / Unit (₹)</label>
               <Input type="number" value={stockForm.unit_price || ''} onChange={e => setStockForm({ ...stockForm, unit_price: parseFloat(e.target.value) || 0 })} className="h-10" placeholder="0" />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Selling Price / Unit (₹)</label>
-              <Input type="number" value={stockForm.sale_price || ''} onChange={e => setStockForm({ ...stockForm, sale_price: parseFloat(e.target.value) || 0 })} className="h-10" placeholder="0" />
-            </div>
-          </div>
-          {stockForm.unit_price > 0 && stockForm.sale_price > 0 && (
-            <div className="text-xs text-muted-foreground">
-              Margin per unit: &nbsp;
-              <span className={`font-display font-bold ${stockForm.sale_price - stockForm.unit_price >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
-                {fmt(stockForm.sale_price - stockForm.unit_price)} ({((stockForm.sale_price - stockForm.unit_price) / stockForm.unit_price * 100).toFixed(1)}%)
-              </span>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">HSN Code</label>
               <Input value={stockForm.hsn_code} onChange={e => setStockForm({ ...stockForm, hsn_code: e.target.value })} className="h-10" placeholder="8517" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">IMEIs Scanned</label>
-              <div className="h-10 flex items-center px-3 rounded-md border bg-accent/50 text-sm font-display font-bold">
-                {stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length} units
-              </div>
             </div>
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">IMEI Numbers (one per line)</label>
             <Textarea value={stockForm.imeis} onChange={e => setStockForm({ ...stockForm, imeis: e.target.value })} rows={5} className="font-mono text-xs" placeholder={"123456789012345\n987654321098765"} />
+            <p className="text-[10px] text-muted-foreground mt-1">{stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length} valid IMEIs</p>
           </div>
-          {(() => {
-            const imeiCount = stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length;
-            const costVal = stockForm.unit_price * imeiCount;
-            const saleVal = stockForm.sale_price * imeiCount;
-            const margin = saleVal - costVal;
-            return (
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-destructive/10 rounded-xl p-2.5 text-center">
-                  <p className="text-[10px] text-destructive font-display">Cost Value</p>
-                  <p className="font-display font-bold text-sm text-destructive">{fmt(costVal)}</p>
-                </div>
-                <div className="bg-emerald-500/10 rounded-xl p-2.5 text-center">
-                  <p className="text-[10px] text-emerald-600 font-display">Sale Value</p>
-                  <p className="font-display font-bold text-sm text-emerald-600">{fmt(saleVal)}</p>
-                </div>
-                <div className={`${margin >= 0 ? 'bg-emerald-500/10' : 'bg-destructive/10'} rounded-xl p-2.5 text-center`}>
-                  <p className={`text-[10px] font-display ${margin >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>Expected Margin</p>
-                  <p className={`font-display font-bold text-sm ${margin >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{fmt(margin)}</p>
-                </div>
-              </div>
-            );
-          })()}
+          <div className="rounded-xl bg-secondary/50 p-3 text-sm">
+            <p className="font-display font-semibold mb-1">Ledger Impact</p>
+            <p className="text-muted-foreground">Balance will increase by <span className="text-destructive font-bold">{fmt(stockForm.unit_price * stockForm.imeis.split('\n').filter(v => /^\d{15}$/.test(v.trim())).length)}</span></p>
+          </div>
           <Button onClick={handleStockEntry} className="w-full gradient-primary border-0 text-primary-foreground">Add to Inventory</Button>
         </div>
       </Modal>
