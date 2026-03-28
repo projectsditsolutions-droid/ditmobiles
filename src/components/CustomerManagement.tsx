@@ -213,11 +213,7 @@ export const CustomerManagement: React.FC = () => {
       warranty_mobile: fullInvoice.warranty_mobile || undefined,
       warranty_accessories: fullInvoice.warranty_accessories || undefined,
       customer_address: fullInvoice.customer_address || undefined,
-      billing_sub_heading: fullInvoice.billing_sub_heading || undefined,
-      billing_logo_url: fullInvoice.billing_logo_url || undefined,
-      emi_lending_partner: fullInvoice.emi_lending_partner || undefined,
     };
-    (invoiceData as any).payment_details = fullInvoice.payment_details;
 
     setSelectedInvoice(invoiceData);
     if (autoPrint) {

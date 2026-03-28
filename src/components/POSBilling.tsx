@@ -649,7 +649,6 @@ export const POSBilling: React.FC = () => {
       customer_address: customerAddress || undefined,
       emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
     };
-    if (paymentMethod === 'mixed') (invoiceData as any).payment_details = mixedPayment;
 
     setShowInvoice(invoiceData);
     toast.success(`Sale completed! Invoice: ${invoiceNumber}`);
