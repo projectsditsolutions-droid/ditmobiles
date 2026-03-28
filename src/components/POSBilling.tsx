@@ -424,7 +424,13 @@ export const POSBilling: React.FC = () => {
     toast.success(`Added: ${product.brand} ${product.model}`);
   };
 
-  const removeItem = (id: string) => setItems(prev => prev.filter(i => i.id !== id));
+  const removeItem = (id: string) => {
+    setItems(prev => {
+      const item = prev.find(i => i.id === id);
+      if (item?.imei) scanningImeiRef.current.delete(item.imei);
+      return prev.filter(i => i.id !== id);
+    });
+  };
 
   const updateItemDiscount = (id: string, value: number, type: 'percentage' | 'flat') => {
     setItems(prev => prev.map(item => {
