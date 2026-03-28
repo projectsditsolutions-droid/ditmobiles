@@ -68,7 +68,7 @@ export const PurchaseEntry: React.FC = () => {
   // New product inline form
   const [showNewProduct, setShowNewProduct] = useState(false);
   const [newLineIndex, setNewLineIndex] = useState<number>(-1);
-  const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
+  const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', gst_percent: 18, hsn_code: '', category: 'mobile' });
 
   // Product search per line
   const [lineSearches, setLineSearches] = useState<Record<string, string>>({});
@@ -228,7 +228,7 @@ export const PurchaseEntry: React.FC = () => {
     if (!activeShopId || !newProductForm.brand || !newProductForm.model) { toast.error('Brand & Model required'); return; }
     const { data, error } = await supabase.from('products').insert({
       brand: newProductForm.brand, model: newProductForm.model, variant: newProductForm.variant,
-      color: newProductForm.color, purchase_price: 0, sale_price: newProductForm.sale_price,
+      color: newProductForm.color, purchase_price: 0, sale_price: 0,
       gst_percent: newProductForm.gst_percent, hsn_code: newProductForm.hsn_code,
       category: newProductForm.category, shop_id: activeShopId, stock_quantity: 0,
     } as any).select().single();
@@ -237,7 +237,7 @@ export const PurchaseEntry: React.FC = () => {
       selectProduct(lineItems[newLineIndex].id, data as Product);
     }
     setShowNewProduct(false);
-    setNewProductForm({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
+    setNewProductForm({ brand: '', model: '', variant: '', color: '', gst_percent: 18, hsn_code: '', category: 'mobile' });
     toast.success('Product created');
     fetchAll();
   };
@@ -622,11 +622,7 @@ export const PurchaseEntry: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Sale Price</label>
-              <Input type="number" value={newProductForm.sale_price || ''} onChange={e => setNewProductForm(f => ({ ...f, sale_price: parseFloat(e.target.value) || 0 }))} className="h-10" />
-            </div>
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">GST %</label>
               <Input type="number" value={newProductForm.gst_percent} onChange={e => setNewProductForm(f => ({ ...f, gst_percent: parseFloat(e.target.value) || 0 }))} className="h-10" />
