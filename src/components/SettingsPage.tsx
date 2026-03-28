@@ -38,7 +38,7 @@ const BILL_TEMPLATES = [
 
 export const SettingsPage: React.FC = () => {
   const { user, isAdmin, signOut } = useAuth();
-  const { shops, settings, refreshShops, refreshSettings, activeShopId } = useShop();
+  const { shops, settings, refreshShops, refreshSettings, activeShopId, isAllShops, allShopIds } = useShop();
   const [localShops, setLocalShops] = useState<Shop[]>(shops);
   const [localSettings, setLocalSettings] = useState(settings);
   const [newPin, setNewPin] = useState('');
