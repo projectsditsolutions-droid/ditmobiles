@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Plus, Trash2, Save, LogOut, Users, Shield, Store,
-  Settings2, KeyRound, Printer, Building2, Tag, Hash, Star, FileText, Upload, Image, Layout
+  Settings2, KeyRound, Printer, Building2, Tag, Hash, Star, FileText, Upload, Image, Layout,
+  Download, UploadCloud, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -41,7 +42,7 @@ export const SettingsPage: React.FC = () => {
   const [localShops, setLocalShops] = useState<Shop[]>(shops);
   const [localSettings, setLocalSettings] = useState(settings);
   const [newPin, setNewPin] = useState('');
-  const [tab, setTab] = useState<'shops' | 'gst_profiles' | 'general' | 'invoice' | 'pin' | 'users'>('shops');
+  const [tab, setTab] = useState<'shops' | 'gst_profiles' | 'general' | 'invoice' | 'pin' | 'users' | 'backup'>('shops');
   const [members, setMembers] = useState<any[]>([]);
   const [gstProfiles, setGstProfiles] = useState<GSTProfile[]>([]);
   const [editTerms, setEditTerms] = useState<string[]>([]);
@@ -51,7 +52,10 @@ export const SettingsPage: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>(() => {
     try { return localStorage.getItem('bill_template') || 'classic'; } catch { return 'classic'; }
   });
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setLocalShops(shops); }, [shops]);
   useEffect(() => { setLocalSettings(settings); }, [settings]);
@@ -205,6 +209,104 @@ export const SettingsPage: React.FC = () => {
     refreshShops();
   };
 
+  const handleDownloadBackup = async () => {
+    if (!activeShopId) return;
+    setBackupLoading(true);
+    try {
+      const shopIds = isAllShops ? allShopIds : [activeShopId];
+      const [shops, settings, gstProfiles, products, imeiRecords, dealers, dealerTxns, invoices, invoiceItems, customers] = await Promise.all([
+        supabase.from('shops').select('*').in('id', shopIds),
+        supabase.from('shop_settings').select('*').in('shop_id', shopIds),
+        supabase.from('shop_gst_profiles').select('*').in('shop_id', shopIds),
+        supabase.from('products').select('*').in('shop_id', shopIds),
+        supabase.from('imei_records').select('*').in('shop_id', shopIds),
+        supabase.from('dealers').select('*').in('shop_id', shopIds),
+        supabase.from('dealer_transactions').select('*').in('shop_id', shopIds),
+        supabase.from('invoices').select('*').in('shop_id', shopIds),
+        supabase.from('invoice_items').select('*'),
+        supabase.from('customers').select('*').in('shop_id', shopIds),
+      ]);
+
+      // Filter invoice_items to only those belonging to fetched invoices
+      const invoiceIds = new Set((invoices.data || []).map(i => i.id));
+      const filteredItems = (invoiceItems.data || []).filter(item => invoiceIds.has(item.invoice_id));
+
+      const backup = {
+        version: 1,
+        created_at: new Date().toISOString(),
+        shops: shops.data || [],
+        shop_settings: settings.data || [],
+        shop_gst_profiles: gstProfiles.data || [],
+        products: products.data || [],
+        imei_records: imeiRecords.data || [],
+        dealers: dealers.data || [],
+        dealer_transactions: dealerTxns.data || [],
+        invoices: invoices.data || [],
+        invoice_items: filteredItems,
+        customers: customers.data || [],
+      };
+
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mobilepos-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Backup downloaded successfully');
+    } catch (err) {
+      toast.error('Failed to create backup');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleRestoreBackup = async (file: File) => {
+    setRestoreLoading(true);
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      if (!backup.version || !backup.shops) {
+        toast.error('Invalid backup file');
+        setRestoreLoading(false);
+        return;
+      }
+
+      // Restore order matters due to foreign key dependencies
+      const tables: { key: string; table: string }[] = [
+        { key: 'products', table: 'products' },
+        { key: 'dealers', table: 'dealers' },
+        { key: 'customers', table: 'customers' },
+        { key: 'imei_records', table: 'imei_records' },
+        { key: 'invoices', table: 'invoices' },
+        { key: 'invoice_items', table: 'invoice_items' },
+        { key: 'dealer_transactions', table: 'dealer_transactions' },
+        { key: 'shop_gst_profiles', table: 'shop_gst_profiles' },
+      ];
+
+      let restored = 0;
+      for (const { key, table } of tables) {
+        const rows = backup[key];
+        if (!rows || rows.length === 0) continue;
+        // Upsert in batches of 100
+        for (let i = 0; i < rows.length; i += 100) {
+          const batch = rows.slice(i, i + 100);
+          const { error } = await supabase.from(table as any).upsert(batch as any, { onConflict: 'id' });
+          if (error) console.error(`Restore error on ${table}:`, error.message);
+          else restored += batch.length;
+        }
+      }
+
+      toast.success(`Backup restored! ${restored} records processed.`);
+      refreshShops();
+      refreshSettings();
+    } catch (err) {
+      toast.error('Failed to restore backup. Check file format.');
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
+
   const tabItems = [
     { key: 'shops', icon: Store, label: 'Shop Profiles' },
     { key: 'gst_profiles', icon: Building2, label: 'GST Profiles' },
@@ -212,6 +314,7 @@ export const SettingsPage: React.FC = () => {
     { key: 'invoice', icon: FileText, label: 'Invoice' },
     { key: 'pin', icon: KeyRound, label: 'PIN Security' },
     { key: 'users', icon: Users, label: 'Team' },
+    { key: 'backup', icon: Download, label: 'Backup' },
   ] as const;
 
   return (
