@@ -14,7 +14,11 @@ type Dealer = Database['public']['Tables']['dealers']['Row'];
 type DealerTransaction = Database['public']['Tables']['dealer_transactions']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
 
-const fmt = (n: number) => `₹${Math.abs(n).toLocaleString('en-IN')}`;
+const fmt = (n: number) => {
+  const abs = Math.abs(n);
+  const formatted = `₹${abs.toLocaleString('en-IN')}`;
+  return n < 0 ? `-${formatted}` : formatted;
+};
 
 const Modal: React.FC<{ open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode }> = ({ open, onClose, title, subtitle, children }) => {
   if (!open) return null;
@@ -150,7 +154,7 @@ export const DealerLedger: React.FC = () => {
     const sold = selectedTxns.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    const opening = current - purchase + payment + returned + sold;
+    const opening = current - purchase + payment + returned;
     const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => {
       const bothMatch = t.description.match(/Sold Cost: ₹([\d,]+)/);
       if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
@@ -460,7 +464,8 @@ export const DealerLedger: React.FC = () => {
                     </Button>
                     <div className="border-l pl-3 ml-1">
                       <p className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">Balance</p>
-                      <p className={`font-display text-3xl font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
+                      <p className={`font-display text-3xl font-extrabold ${totals.current < 0 ? 'text-success' : getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
+                      {totals.current < 0 && <p className="text-[9px] text-success mt-0.5">Overpaid / Advance</p>}
                     </div>
                   </div>
                 </div>
@@ -516,10 +521,11 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Net Balance formula */}
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                    <p className="text-[10px] font-display uppercase tracking-wider text-primary/70 mb-1.5">Net Balance</p>
-                    <p className={`font-display text-lg font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
-                    <p className="text-[8px] text-muted-foreground mt-0.5">Opening + Purchase − Paid − Returns − Sales</p>
+                  <div className={`rounded-xl border p-3 ${totals.current < 0 ? 'border-success/20 bg-success/5' : 'border-primary/20 bg-primary/5'}`}>
+                    <p className={`text-[10px] font-display uppercase tracking-wider mb-1.5 ${totals.current < 0 ? 'text-success/70' : 'text-primary/70'}`}>Net Balance</p>
+                    <p className={`font-display text-lg font-extrabold ${totals.current < 0 ? 'text-success' : getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
+                    {totals.current < 0 && <p className="text-[9px] text-success mt-0.5">Overpaid / Advance</p>}
+                    <p className="text-[8px] text-muted-foreground mt-0.5">Opening + Purchase − Paid − Returns</p>
                   </div>
                 </div>
 
@@ -590,11 +596,18 @@ export const DealerLedger: React.FC = () => {
                                 {getQuantityFromTxn(txn) !== '—' && <div className="text-[10px] text-muted-foreground">Qty: {getQuantityFromTxn(txn)}</div>}
                               </td>
                               <td className="px-4 py-3 text-right">
-                                <span className={`font-display font-bold ${meta.colorClass}`}>
+                                <span className={`font-display font-bold ${txn.type === 'sale_deduction' ? 'text-muted-foreground' : meta.colorClass}`}>
                                   {txn.type === 'purchase' ? '+' : txn.type === 'payment' || txn.type === 'stock_return' ? '−' : ''}{fmt(Number(txn.amount))}
                                 </span>
+                                {txn.type === 'sale_deduction' && <div className="text-[9px] text-muted-foreground/60 mt-0.5">Info only</div>}
                               </td>
-                              <td className="px-4 py-3 text-right font-display font-extrabold text-sm">{fmt(Number(txn.running_balance))}</td>
+                              <td className="px-4 py-3 text-right font-display font-extrabold text-sm">
+                                {txn.type === 'sale_deduction' ? (
+                                  <span className="text-muted-foreground font-normal text-xs">—</span>
+                                ) : (
+                                  <span className={Number(txn.running_balance) < 0 ? 'text-success' : ''}>{fmt(Number(txn.running_balance))}</span>
+                                )}
+                              </td>
                               <td className="px-4 py-3">
                                 {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                               </td>
