@@ -150,7 +150,7 @@ export const DealerLedger: React.FC = () => {
     const sold = selectedTxns.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    const opening = current - purchase + payment + returned + sold;
+    const opening = current - purchase + payment + returned;
     const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => {
       const bothMatch = t.description.match(/Sold Cost: ₹([\d,]+)/);
       if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
@@ -324,7 +324,7 @@ export const DealerLedger: React.FC = () => {
       const payment = txns.filter(t => t.type === 'payment').reduce((s, t) => s + Number(t.amount), 0);
       const sold = txns.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
       const returned = txns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
-      const opening = Number(dealer.total_credit) - purchase + payment + returned + sold;
+      const opening = Number(dealer.total_credit) - purchase + payment + returned;
       const purchaseCount = txns.filter(t => t.type === 'purchase').length;
       const returnCount = txns.filter(t => t.type === 'stock_return').length;
       const soldCount = txns.filter(t => t.type === 'sale_deduction').length;
@@ -519,7 +519,7 @@ export const DealerLedger: React.FC = () => {
                   <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
                     <p className="text-[10px] font-display uppercase tracking-wider text-primary/70 mb-1.5">Net Balance</p>
                     <p className={`font-display text-lg font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
-                    <p className="text-[8px] text-muted-foreground mt-0.5">Opening + Purchase − Paid − Returns − Sales</p>
+                    <p className="text-[8px] text-muted-foreground mt-0.5">Opening + Purchase − Paid − Returns</p>
                   </div>
                 </div>
 
