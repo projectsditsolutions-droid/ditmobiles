@@ -20,7 +20,7 @@ type Invoice = Database['public']['Tables']['invoices']['Row'];
 export const ReportsPage: React.FC = () => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
   const { printContent, clearContent } = usePrint();
-  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit'>('daily');
+  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'generate'>('daily');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stockData, setStockData] = useState<any[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
@@ -33,7 +33,10 @@ export const ReportsPage: React.FC = () => {
   const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [bulkPrinting, setBulkPrinting] = useState(false);
-
+  const [rptDateFrom, setRptDateFrom] = useState('');
+  const [rptDateTo, setRptDateTo] = useState('');
+  const [rptBrand, setRptBrand] = useState('all');
+  const [rptType, setRptType] = useState<'sales' | 'stock' | 'gst' | 'profit' | 'brand'>('sales');
   useEffect(() => {
     if (!activeShopId && !isAllShops) return;
     const fetchData = async () => {
@@ -53,14 +56,20 @@ export const ReportsPage: React.FC = () => {
       else imeiQ = imeiQ.eq('shop_id', activeShopId!);
       const { data: imeis } = await imeiQ;
       if (products && imeis) {
-        setStockData(products.map(p => ({
-          ...p,
-          inStock: imeis.filter(r => r.product_id === p.id && r.status === 'in_stock').length,
-          sold: imeis.filter(r => r.product_id === p.id && r.status === 'sold').length,
-          returned: imeis.filter(r => r.product_id === p.id && r.status === 'returned').length,
-          total: imeis.filter(r => r.product_id === p.id).length,
-          stockValue: imeis.filter(r => r.product_id === p.id && r.status === 'in_stock').reduce((s, r) => s + Number(r.purchase_price), 0),
-        })));
+        setStockData(products.map(p => {
+          const productImeis = imeis.filter(r => r.product_id === p.id);
+          const soldImeis = productImeis.filter(r => r.status === 'sold');
+          return {
+            ...p,
+            inStock: productImeis.filter(r => r.status === 'in_stock').length,
+            sold: soldImeis.length,
+            returned: productImeis.filter(r => r.status === 'returned').length,
+            total: productImeis.length,
+            stockValue: productImeis.filter(r => r.status === 'in_stock').reduce((s, r) => s + Number(r.purchase_price), 0),
+            soldCost: soldImeis.reduce((s, r) => s + Number(r.purchase_price), 0),
+            soldRevenue: soldImeis.reduce((s, r) => s + Number(r.sale_price), 0),
+          };
+        }));
       }
     };
     fetchData();
@@ -271,6 +280,7 @@ export const ReportsPage: React.FC = () => {
     { key: 'stock', label: 'Stock', icon: Package },
     { key: 'gst', label: 'GST', icon: FileText },
     { key: 'profit', label: 'Profit', icon: DollarSign },
+    { key: 'generate', label: 'Generate', icon: FileDown },
   ] as const;
 
   const PAYMENT_COLORS: Record<string, string> = {
@@ -604,32 +614,572 @@ export const ReportsPage: React.FC = () => {
         </div>
       )}
 
-      {tab === 'profit' && (
-        <div className="bg-card rounded-xl border p-6 shadow-sm">
-          {(() => {
-            const totalRevenue = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
-            const totalGST = invoices.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
-            const totalDiscount = invoices.reduce((s, i) => s + Number(i.total_discount) + Number(i.bill_discount), 0);
-            const netRevenue = totalRevenue - totalGST;
-            const totalCost = stockData.reduce((s, p) => s + (p.sold * Number(p.purchase_price)), 0);
-            const profit = netRevenue - totalCost - totalDiscount;
-            return (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Gross Revenue</p><p className="font-display text-xl font-extrabold">₹{totalRevenue.toLocaleString('en-IN')}</p></div>
-                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">GST Liability</p><p className="font-display text-xl font-extrabold text-warning">₹{totalGST.toLocaleString('en-IN')}</p></div>
-                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Total Discount</p><p className="font-display text-xl font-extrabold text-orange-500">₹{totalDiscount.toLocaleString('en-IN')}</p></div>
-                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Est. Cost</p><p className="font-display text-xl font-extrabold text-destructive">₹{totalCost.toLocaleString('en-IN')}</p></div>
-                  <div className="stat-card"><p className="text-xs text-muted-foreground mb-1">Est. Profit</p><p className={`font-display text-xl font-extrabold ${profit >= 0 ? 'text-success' : 'text-destructive'}`}>₹{profit.toLocaleString('en-IN')}</p></div>
+      {tab === 'profit' && (() => {
+        const totalDiscount = invoices.reduce((s, i) => s + Number(i.total_discount), 0);
+        const totalRevenue = invoices.reduce((s, i) => s + Number(i.grand_total) + Number(i.total_discount), 0);
+        const totalGST = invoices.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
+        const netRevenue = totalRevenue - totalGST - totalDiscount;
+        const totalCost = stockData.reduce((s, p) => s + (p.soldCost || 0), 0);
+        const netProfit = netRevenue - totalCost;
+        const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
+
+        // Per-invoice profit data
+        const invoiceProfitData = invoices.map(inv => {
+          const revenue = Number(inv.grand_total);
+          const gst = Number(inv.cgst) + Number(inv.sgst);
+          const discount = Number(inv.total_discount);
+          // Estimate cost from sold items matching this invoice
+          const estCost = stockData.reduce((s: number, p: any) => {
+            // rough per-invoice cost estimate based on proportion
+            return s;
+          }, 0);
+          return { ...inv, revenue, gst, discount, net: revenue - gst - discount };
+        });
+
+        // Brand-wise profit breakdown
+        const brandProfitMap: Record<string, { revenue: number; cost: number; sold: number; profit: number }> = {};
+        stockData.forEach((p: any) => {
+          if (!brandProfitMap[p.brand]) brandProfitMap[p.brand] = { revenue: 0, cost: 0, sold: 0, profit: 0 };
+          const cost = p.soldCost || 0;
+          const revenue = p.soldRevenue || 0;
+          brandProfitMap[p.brand].revenue += revenue;
+          brandProfitMap[p.brand].cost += cost;
+          brandProfitMap[p.brand].sold += p.sold;
+          brandProfitMap[p.brand].profit += revenue - cost;
+        });
+        const brandProfitArr = Object.entries(brandProfitMap)
+          .map(([brand, d]) => ({ brand, ...d }))
+          .filter(b => b.sold > 0)
+          .sort((a, b) => b.profit - a.profit);
+
+        return (
+          <div className="space-y-6">
+            {/* Step-by-step Calculation Flow */}
+            <div className="bg-card rounded-xl border p-6 shadow-sm">
+              <h3 className="font-display font-bold text-base mb-4">Profit & Loss Summary</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {/* Left: Revenue breakdown */}
+                <div className="space-y-3">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Revenue</div>
+                  <div className="stat-card">
+                    <p className="text-xs text-muted-foreground mb-1">Gross Revenue (Selling Price)</p>
+                    <p className="font-display text-2xl font-extrabold">₹{totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
+                    <span className="w-3 h-0.5 bg-muted-foreground/40" /> minus
+                  </div>
+                  <div className="stat-card border-warning/30">
+                    <p className="text-xs text-muted-foreground mb-1">GST Liability (Govt.)</p>
+                    <p className="font-display text-lg font-bold text-warning">− ₹{totalGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                    <p className="text-[10px] text-muted-foreground">CGST: ₹{invoices.reduce((s, i) => s + Number(i.cgst), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} + SGST: ₹{invoices.reduce((s, i) => s + Number(i.sgst), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="stat-card bg-accent/30 border-primary/20">
+                    <p className="text-xs text-muted-foreground mb-1">Net Revenue (Yours)</p>
+                    <p className="font-display text-xl font-extrabold text-primary">₹{netRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                  </div>
                 </div>
-                <div className="p-4 rounded-lg bg-secondary/30 text-xs text-muted-foreground">
-                  Profit = Gross Revenue − GST − Discounts − Est. Cost of Sold Items
+
+                {/* Middle: Deductions */}
+                <div className="space-y-3">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Deductions</div>
+                  <div className="stat-card border-destructive/30">
+                    <p className="text-xs text-muted-foreground mb-1">Cost of Goods Sold</p>
+                    <p className="font-display text-lg font-bold text-destructive">− ₹{totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                    <p className="text-[10px] text-muted-foreground">{stockData.reduce((s: number, p: any) => s + p.sold, 0)} units sold across {stockData.filter((p: any) => p.sold > 0).length} products</p>
+                  </div>
+                  <div className="stat-card border-orange-300/50">
+                    <p className="text-xs text-muted-foreground mb-1">Discounts Given</p>
+                    <p className="font-display text-lg font-bold text-orange-500">− ₹{totalDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                    <p className="text-[10px] text-muted-foreground">Item discounts + bill-level discounts</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+                    <strong>Total Deductions:</strong> ₹{(totalGST + totalCost + totalDiscount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+
+                {/* Right: Final Profit */}
+                <div className="space-y-3">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Bottom Line</div>
+                  <div className={`stat-card border-2 ${netProfit >= 0 ? 'border-success/40 bg-success/5' : 'border-destructive/40 bg-destructive/5'}`}>
+                    <p className="text-xs text-muted-foreground mb-1">Net Profit / Loss</p>
+                    <p className={`font-display text-3xl font-black ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {netProfit >= 0 ? '' : '−'} ₹{Math.abs(netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${netProfit >= 0 ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
+                        {profitMargin.toFixed(1)}% margin
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">of gross revenue</span>
+                    </div>
+                  </div>
+
+                  {/* Visual formula */}
+                  <div className="p-3 rounded-lg bg-secondary/40 text-[11px] space-y-1.5">
+                    <div className="font-bold text-foreground mb-1">Calculation:</div>
+                    <div className="flex justify-between"><span>Gross Revenue</span><span className="font-mono">₹{totalRevenue.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between text-warning"><span>− GST</span><span className="font-mono">₹{totalGST.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between text-destructive"><span>− Cost of Goods</span><span className="font-mono">₹{totalCost.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between text-orange-500"><span>− Discounts</span><span className="font-mono">₹{totalDiscount.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between font-bold border-t border-foreground/20 pt-1.5 mt-1">
+                      <span>= Net Profit</span>
+                      <span className={`font-mono ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>₹{netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            );
-          })()}
-        </div>
-      )}
+            </div>
+
+            {/* Brand-wise Profit Table */}
+            {brandProfitArr.length > 0 && (
+              <div className="bg-card rounded-xl border p-6 shadow-sm">
+                <h3 className="font-display font-bold text-base mb-4">Brand-wise Profit Breakdown</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-xs text-muted-foreground uppercase">
+                        <th className="text-left py-2 px-3">Brand</th>
+                        <th className="text-center py-2 px-3">Units Sold</th>
+                        <th className="text-right py-2 px-3">Revenue (MRP)</th>
+                        <th className="text-right py-2 px-3">Cost</th>
+                        <th className="text-right py-2 px-3">Gross Profit</th>
+                        <th className="text-right py-2 px-3">Margin %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {brandProfitArr.map(b => (
+                        <tr key={b.brand} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
+                          <td className="py-2.5 px-3 font-semibold">{b.brand}</td>
+                          <td className="py-2.5 px-3 text-center">{b.sold}</td>
+                          <td className="py-2.5 px-3 text-right font-mono">₹{b.revenue.toLocaleString('en-IN')}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-destructive">₹{b.cost.toLocaleString('en-IN')}</td>
+                          <td className={`py-2.5 px-3 text-right font-mono font-bold ${b.profit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                            ₹{b.profit.toLocaleString('en-IN')}
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${b.revenue > 0 && b.profit >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                              {b.revenue > 0 ? ((b.profit / b.revenue) * 100).toFixed(1) : '0.0'}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 font-bold">
+                        <td className="py-2.5 px-3">Total</td>
+                        <td className="py-2.5 px-3 text-center">{brandProfitArr.reduce((s, b) => s + b.sold, 0)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono">₹{brandProfitArr.reduce((s, b) => s + b.revenue, 0).toLocaleString('en-IN')}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-destructive">₹{brandProfitArr.reduce((s, b) => s + b.cost, 0).toLocaleString('en-IN')}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-success">₹{brandProfitArr.reduce((s, b) => s + b.profit, 0).toLocaleString('en-IN')}</td>
+                        <td className="py-2.5 px-3" />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {tab === 'generate' && (() => {
+
+        const allBrands = [...new Set(stockData.map((p: any) => p.brand))].sort();
+
+        const filterByDate = (list: Invoice[]) => {
+          return list.filter(inv => {
+            if (rptDateFrom && inv.date < rptDateFrom) return false;
+            if (rptDateTo && inv.date > rptDateTo + 'T23:59:59') return false;
+            return true;
+          });
+        };
+
+        const generateSalesReport = async () => {
+          const filtered = filterByDate(invoices);
+          if (filtered.length === 0) { toast.error('No data for selected range'); return; }
+          // Fetch invoice items with product details for all filtered invoices
+          const invoiceIds = filtered.map(i => i.id);
+          const { data: allItems } = await supabase
+            .from('invoice_items')
+            .select('*, products(*)')
+            .in('invoice_id', invoiceIds);
+          const itemsByInvoice: Record<string, any[]> = {};
+          (allItems || []).forEach((item: any) => {
+            if (!itemsByInvoice[item.invoice_id]) itemsByInvoice[item.invoice_id] = [];
+            itemsByInvoice[item.invoice_id].push(item);
+          });
+          const rows: any[] = [];
+          filtered.forEach(inv => {
+            const items = itemsByInvoice[inv.id] || [];
+            const pd = inv.payment_details as any;
+            const paymentBreakdown = inv.payment_method === 'mixed' && pd
+              ? Object.entries(pd).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${k}: ₹${Number(v).toLocaleString('en-IN')}`).join(', ')
+              : inv.payment_method.toUpperCase();
+            items.forEach((item: any) => {
+              rows.push({
+                Invoice: inv.invoice_number,
+                Date: new Date(inv.date).toLocaleString('en-IN'),
+                Customer: inv.customer_name,
+                Phone: inv.customer_phone,
+                Address: inv.customer_address || '',
+                GSTIN: inv.customer_gst || '',
+                Product: item.products ? `${item.products.brand} ${item.products.model} ${item.products.variant || ''} ${item.products.color || ''}`.trim() : '',
+                IMEI: item.imei || '',
+                Qty: item.quantity,
+                Unit_Price: item.unit_price,
+                Discount: item.discount,
+                Item_Total: item.total,
+                Payment: paymentBreakdown,
+                EMI_Partner: inv.emi_lending_partner || '',
+                GST_Bill: inv.is_gst_bill ? 'Yes' : 'No',
+                Bill_Discount: Number(inv.total_discount),
+                CGST: inv.cgst,
+                SGST: inv.sgst,
+                Grand_Total: inv.grand_total,
+              });
+            });
+            if (items.length === 0) {
+              rows.push({
+                Invoice: inv.invoice_number,
+                Date: new Date(inv.date).toLocaleString('en-IN'),
+                Customer: inv.customer_name,
+                Phone: inv.customer_phone,
+                Address: inv.customer_address || '',
+                GSTIN: inv.customer_gst || '',
+                Product: '', IMEI: '', Qty: '', Unit_Price: '', Discount: '', Item_Total: '',
+                Payment: paymentBreakdown,
+                EMI_Partner: inv.emi_lending_partner || '',
+                GST_Bill: inv.is_gst_bill ? 'Yes' : 'No',
+                Bill_Discount: Number(inv.total_discount),
+                CGST: inv.cgst,
+                SGST: inv.sgst,
+                Grand_Total: inv.grand_total,
+              });
+            }
+          });
+          downloadCSV(rows, `sales_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
+          toast.success(`Sales report downloaded (${filtered.length} invoices, ${rows.length} rows)`);
+        };
+
+        const generateDailyReport = () => {
+          const filtered = filterByDate(invoices);
+          if (filtered.length === 0) { toast.error('No data for selected range'); return; }
+          const dailyMap: Record<string, { count: number; total: number; cash: number; upi: number; card: number; emi: number; mixed: number }> = {};
+          filtered.forEach(inv => {
+            const day = inv.date.slice(0, 10);
+            if (!dailyMap[day]) dailyMap[day] = { count: 0, total: 0, cash: 0, upi: 0, card: 0, emi: 0, mixed: 0 };
+            dailyMap[day].count++;
+            dailyMap[day].total += Number(inv.grand_total);
+            const pm = inv.payment_method as keyof typeof dailyMap[string];
+            if (pm in dailyMap[day]) (dailyMap[day] as any)[pm] += Number(inv.grand_total);
+          });
+          const data = Object.entries(dailyMap).sort(([a], [b]) => b.localeCompare(a)).map(([date, d]) => ({
+            Date: new Date(date).toLocaleDateString('en-IN'),
+            Invoices: d.count,
+            Cash: d.cash,
+            UPI: d.upi,
+            Card: d.card,
+            EMI: d.emi,
+            Mixed: d.mixed,
+            Total: d.total,
+          }));
+          downloadCSV(data, `daily_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
+          toast.success(`Daily report downloaded (${data.length} days)`);
+        };
+
+        const generateBrandReport = () => {
+          const filtered = filterByDate(invoices);
+          // Need to fetch invoice items for brand mapping - use stockData instead
+          const brandData = stockData
+            .filter((p: any) => rptBrand === 'all' || p.brand === rptBrand)
+            .map((p: any) => ({
+              Brand: p.brand,
+              Model: p.model,
+              Variant: p.variant,
+              Color: p.color,
+              Purchase_Price: p.purchase_price,
+              Sale_Price: p.sale_price,
+              Purchased: p.total,
+              In_Stock: p.inStock,
+              Sold: p.sold,
+              Returned: p.returned,
+              Stock_Value: p.stockValue,
+            }));
+          if (brandData.length === 0) { toast.error('No data for selected brand'); return; }
+          downloadCSV(brandData, `brand_report_${rptBrand === 'all' ? 'all_brands' : rptBrand}.csv`);
+          toast.success(`Brand report downloaded (${brandData.length} products)`);
+        };
+
+        const generateGSTReport = () => {
+          const filtered = filterByDate(invoices).filter(i => i.is_gst_bill);
+          if (filtered.length === 0) { toast.error('No GST invoices in range'); return; }
+          const data = filtered.map(inv => ({
+            Invoice: inv.invoice_number,
+            Date: new Date(inv.date).toLocaleString('en-IN'),
+            Customer: inv.customer_name,
+            Customer_GST: inv.customer_gst || '',
+            Type: inv.customer_gst ? 'B2B' : 'B2C',
+            Taxable: Number(inv.grand_total) - Number(inv.cgst) - Number(inv.sgst),
+            CGST: inv.cgst,
+            SGST: inv.sgst,
+            Total_Tax: Number(inv.cgst) + Number(inv.sgst),
+            Grand_Total: inv.grand_total,
+          }));
+          downloadCSV(data, `gst_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
+          toast.success(`GST report downloaded (${data.length} invoices)`);
+        };
+
+        const generateProfitReport = () => {
+          const filtered = filterByDate(invoices);
+          if (filtered.length === 0) { toast.error('No data for selected range'); return; }
+          const totalDiscounts = filtered.reduce((s, i) => s + Number(i.total_discount), 0);
+          const totalRevenue = filtered.reduce((s, i) => s + Number(i.grand_total) + Number(i.total_discount), 0);
+          const totalGST = filtered.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
+          const netRevenue = totalRevenue - totalGST - totalDiscounts;
+          const totalCost = stockData.reduce((s: number, p: any) => s + (p.soldCost || 0), 0);
+          const data = [{
+            Period: `${rptDateFrom || 'Start'} to ${rptDateTo || 'Today'}`,
+            Total_Invoices: filtered.length,
+            Gross_Revenue: totalRevenue,
+            GST_Collected: totalGST,
+            Net_Revenue: netRevenue,
+            Total_Discounts: totalDiscounts,
+            Estimated_Cost: totalCost,
+            Estimated_Profit: netRevenue - totalCost,
+          }];
+          downloadCSV(data, `profit_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
+          toast.success('Profit report downloaded');
+        };
+
+        const handleGenerate = () => {
+          switch (rptType) {
+            case 'sales': return generateSalesReport();
+            case 'stock': return generateDailyReport();
+            case 'gst': return generateGSTReport();
+            case 'profit': return generateProfitReport();
+            case 'brand': return generateBrandReport();
+          }
+        };
+
+        return (
+          <div className="bg-card rounded-xl border p-6 shadow-sm space-y-6">
+            <div>
+              <h2 className="font-display text-lg font-extrabold mb-1">Generate Reports</h2>
+              <p className="text-sm text-muted-foreground">Select report type, apply filters, and download as CSV</p>
+            </div>
+
+            {/* Report Type */}
+            <div>
+              <label className="text-xs font-display font-semibold text-muted-foreground mb-2 block">Report Type</label>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                {([
+                  { key: 'sales', label: 'Sales Report', icon: TrendingUp, desc: 'All invoices with details' },
+                  { key: 'stock', label: 'Daily Summary', icon: Calendar, desc: 'Day-wise totals by payment' },
+                  { key: 'brand', label: 'Brand / Stock', icon: Package, desc: 'Product-wise stock & sales' },
+                  { key: 'gst', label: 'GST Report', icon: FileText, desc: 'Tax breakdowns for filing' },
+                  { key: 'profit', label: 'Profit Report', icon: DollarSign, desc: 'Revenue vs cost summary' },
+                ] as const).map(r => (
+                  <button
+                    key={r.key}
+                    onClick={() => setRptType(r.key)}
+                    className={`p-3 rounded-lg border text-left transition-all ${rptType === r.key ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/40'}`}
+                  >
+                    <r.icon className={`w-4 h-4 mb-1.5 ${rptType === r.key ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <p className="font-display font-semibold text-xs">{r.label}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{r.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">From Date</label>
+                <Input type="date" value={rptDateFrom} onChange={e => setRptDateFrom(e.target.value)} className="h-9" />
+              </div>
+              <div>
+                <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">To Date</label>
+                <Input type="date" value={rptDateTo} onChange={e => setRptDateTo(e.target.value)} className="h-9" />
+              </div>
+              {rptType === 'brand' && (
+                <div>
+                  <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">Brand</label>
+                  <select
+                    value={rptBrand}
+                    onChange={e => setRptBrand(e.target.value)}
+                    className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="all">All Brands</option>
+                    {allBrands.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Quick date presets */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground font-display font-medium">Quick:</span>
+              {[
+                { label: 'Today', fn: () => { const d = new Date().toISOString().slice(0, 10); setRptDateFrom(d); setRptDateTo(d); } },
+                { label: 'Yesterday', fn: () => { const d = new Date(Date.now() - 86400000).toISOString().slice(0, 10); setRptDateFrom(d); setRptDateTo(d); } },
+                { label: 'This Week', fn: () => { const now = new Date(); const start = new Date(now); start.setDate(now.getDate() - now.getDay()); setRptDateFrom(start.toISOString().slice(0, 10)); setRptDateTo(now.toISOString().slice(0, 10)); } },
+                { label: 'This Month', fn: () => { const now = new Date(); setRptDateFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`); setRptDateTo(now.toISOString().slice(0, 10)); } },
+                { label: 'Last Month', fn: () => { const now = new Date(); const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); const le = new Date(now.getFullYear(), now.getMonth(), 0); setRptDateFrom(lm.toISOString().slice(0, 10)); setRptDateTo(le.toISOString().slice(0, 10)); } },
+                { label: 'All Time', fn: () => { setRptDateFrom(''); setRptDateTo(''); } },
+              ].map(p => (
+                <Button key={p.label} variant="outline" size="sm" className="h-7 text-xs" onClick={p.fn}>{p.label}</Button>
+              ))}
+            </div>
+
+            {/* Generate buttons */}
+            <div className="flex items-center gap-3 pt-2 flex-wrap">
+              <Button onClick={handleGenerate} className="gap-2">
+                <Download className="w-4 h-4" /> Download CSV
+              </Button>
+              <Button variant="outline" onClick={async () => {
+                // Generate PDF via print
+                const filterByDateLocal = (list: Invoice[]) => {
+                  return list.filter(inv => {
+                    if (rptDateFrom && inv.date < rptDateFrom) return false;
+                    if (rptDateTo && inv.date > rptDateTo + 'T23:59:59') return false;
+                    return true;
+                  });
+                };
+                const filtered = filterByDateLocal(invoices);
+                if (filtered.length === 0 && rptType !== 'brand') { toast.error('No data for selected range'); return; }
+
+                const title = {
+                  sales: 'Sales Report',
+                  stock: 'Daily Summary Report',
+                  brand: `Brand Report${rptBrand !== 'all' ? ` - ${rptBrand}` : ''}`,
+                  gst: 'GST Report',
+                  profit: 'Profit Report',
+                }[rptType];
+                const period = rptDateFrom || rptDateTo
+                  ? `${rptDateFrom || 'Start'} to ${rptDateTo || 'Today'}`
+                  : 'All Time';
+
+                let headerRow = '';
+                let bodyRows = '';
+                if (rptType === 'sales') {
+                  // Fetch invoice items with product details
+                  const invoiceIds = filtered.map(i => i.id);
+                  const { data: allItems } = await supabase
+                    .from('invoice_items')
+                    .select('*, products(*)')
+                    .in('invoice_id', invoiceIds);
+                  const itemsByInvoice: Record<string, any[]> = {};
+                  (allItems || []).forEach((item: any) => {
+                    if (!itemsByInvoice[item.invoice_id]) itemsByInvoice[item.invoice_id] = [];
+                    itemsByInvoice[item.invoice_id].push(item);
+                  });
+
+                  filtered.forEach(inv => {
+                    const items = itemsByInvoice[inv.id] || [];
+                    const pd = inv.payment_details as any;
+                    const paymentBreakdown = inv.payment_method === 'mixed' && pd
+                      ? Object.entries(pd).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${String(k).charAt(0).toUpperCase() + String(k).slice(1)}: ₹${Number(v).toLocaleString('en-IN')}`).join(' | ')
+                      : inv.payment_method.toUpperCase();
+                    
+                    // Invoice header row
+                    bodyRows += `<tr style="background:#f8f9fa;border-top:2px solid #333;page-break-inside:avoid">
+                      <td colspan="6" style="padding:8px;font-size:11px">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                          <div>
+                            <strong style="font-size:12px">${inv.invoice_number}</strong>
+                            <span style="margin-left:12px;color:#666">${new Date(inv.date).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'})}</span>
+                            ${inv.is_gst_bill ? '<span style="margin-left:8px;background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:3px;font-size:9px">GST</span>' : '<span style="margin-left:8px;background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:3px;font-size:9px">Non-GST</span>'}
+                          </div>
+                          <strong style="font-size:13px">₹${Number(inv.grand_total).toLocaleString('en-IN')}</strong>
+                        </div>
+                        <div style="margin-top:4px;font-size:10px;color:#555">
+                          <strong>Customer:</strong> ${inv.customer_name}${inv.customer_phone ? ' | Ph: ' + inv.customer_phone : ''}${inv.customer_address ? ' | ' + inv.customer_address : ''}${inv.customer_gst ? ' | GSTIN: ' + inv.customer_gst : ''}
+                        </div>
+                        <div style="margin-top:2px;font-size:10px;color:#555">
+                          <strong>Payment:</strong> ${paymentBreakdown}${inv.emi_lending_partner ? ' | EMI Partner: ' + inv.emi_lending_partner : ''}
+                          ${Number(inv.total_discount) > 0 ? ' | <strong>Discount:</strong> ₹' + Number(inv.total_discount).toLocaleString('en-IN') : ''}
+                          ${inv.is_gst_bill ? ' | CGST: ₹' + Number(inv.cgst).toLocaleString('en-IN') + ' + SGST: ₹' + Number(inv.sgst).toLocaleString('en-IN') : ''}
+                        </div>
+                      </td>
+                    </tr>`;
+                    // Item rows
+                    items.forEach((item: any) => {
+                      const productName = item.products ? `${item.products.brand} ${item.products.model} ${item.products.variant || ''} ${item.products.color || ''}`.trim() : 'Unknown';
+                      bodyRows += `<tr style="border-bottom:1px solid #eee;page-break-inside:avoid">
+                        <td style="padding:4px 8px 4px 20px;font-size:10px" colspan="2">${productName}</td>
+                        <td style="padding:4px 8px;font-size:10px;color:#666">${item.imei || '—'}</td>
+                        <td style="padding:4px 8px;font-size:10px;text-align:center">${item.quantity}</td>
+                        <td style="padding:4px 8px;font-size:10px;text-align:right">₹${Number(item.unit_price).toLocaleString('en-IN')}</td>
+                        <td style="padding:4px 8px;font-size:10px;text-align:right;font-weight:600">₹${Number(item.total).toLocaleString('en-IN')}</td>
+                      </tr>`;
+                    });
+                  });
+                  headerRow = `<tr style="background:#e2e8f0;font-weight:700;font-size:9px;text-transform:uppercase">
+                    <th style="padding:6px 8px;text-align:left" colspan="2">Product</th>
+                    <th style="padding:6px 8px;text-align:left">IMEI</th>
+                    <th style="padding:6px 8px;text-align:center">Qty</th>
+                    <th style="padding:6px 8px;text-align:right">Price</th>
+                    <th style="padding:6px 8px;text-align:right">Total</th>
+                  </tr>`;
+                  const total = filtered.reduce((s, i) => s + Number(i.grand_total), 0);
+                  bodyRows += `<tr style="border-top:2px solid #222;font-weight:900"><td colspan="5" style="padding:8px;text-align:right;font-size:12px">Grand Total</td><td style="padding:8px;text-align:right;font-size:13px">₹${total.toLocaleString('en-IN')}</td></tr>`;
+                } else if (rptType === 'brand') {
+                  const brandData = stockData.filter((p: any) => rptBrand === 'all' || p.brand === rptBrand);
+                  headerRow = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Brand</th><th style="padding:6px 8px;text-align:left">Model</th><th style="padding:6px 8px;text-align:center">Purchased</th><th style="padding:6px 8px;text-align:center">In Stock</th><th style="padding:6px 8px;text-align:center">Sold</th><th style="padding:6px 8px;text-align:right">Stock Value</th></tr>`;
+                  brandData.forEach((p: any) => {
+                    bodyRows += `<tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid"><td style="padding:5px 8px;font-size:11px">${p.brand}</td><td style="padding:5px 8px;font-size:11px">${p.model} ${p.variant}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.total}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.inStock}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${p.sold}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${p.stockValue.toLocaleString('en-IN')}</td></tr>`;
+                  });
+                } else if (rptType === 'gst') {
+                  const gstFiltered = filtered.filter(i => i.is_gst_bill);
+                  headerRow = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Invoice</th><th style="padding:6px 8px;text-align:left">Customer</th><th style="padding:6px 8px">Type</th><th style="padding:6px 8px;text-align:right">Taxable</th><th style="padding:6px 8px;text-align:right">CGST</th><th style="padding:6px 8px;text-align:right">SGST</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
+                  gstFiltered.forEach(inv => {
+                    const taxable = Number(inv.grand_total) - Number(inv.cgst) - Number(inv.sgst);
+                    bodyRows += `<tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid"><td style="padding:5px 8px;font-size:11px">${inv.invoice_number}</td><td style="padding:5px 8px;font-size:11px">${inv.customer_name}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${inv.customer_gst ? 'B2B' : 'B2C'}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${taxable.toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${Number(inv.cgst).toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right">₹${Number(inv.sgst).toLocaleString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${Number(inv.grand_total).toLocaleString('en-IN')}</td></tr>`;
+                  });
+                } else {
+                  const dailyMap: Record<string, {count:number;total:number}> = {};
+                  filtered.forEach(inv => {
+                    const day = inv.date.slice(0, 10);
+                    if (!dailyMap[day]) dailyMap[day] = {count:0,total:0};
+                    dailyMap[day].count++;
+                    dailyMap[day].total += Number(inv.grand_total);
+                  });
+                  headerRow = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Date</th><th style="padding:6px 8px;text-align:center">Invoices</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
+                  Object.entries(dailyMap).sort(([a],[b]) => b.localeCompare(a)).forEach(([date, d]) => {
+                    bodyRows += `<tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid"><td style="padding:5px 8px;font-size:11px">${new Date(date).toLocaleDateString('en-IN')}</td><td style="padding:5px 8px;font-size:11px;text-align:center">${d.count}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${d.total.toLocaleString('en-IN')}</td></tr>`;
+                  });
+                }
+
+                const html = `<div style="font-family:Inter,Arial,sans-serif;padding:0;width:100%">
+                  <div style="text-align:center;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px">
+                    <div style="font-size:20px;font-weight:900">${title}</div>
+                    <div style="font-size:10px;color:#666;margin-top:4px">Period: ${period} · Generated: ${new Date().toLocaleString('en-IN')}</div>
+                  </div>
+                  <table style="width:100%;border-collapse:collapse;font-size:10px">
+                    <thead>${headerRow}</thead>
+                    <tbody>${bodyRows}</tbody>
+                  </table>
+                </div>`;
+
+                printContent(<div dangerouslySetInnerHTML={{ __html: html }} />);
+                setTimeout(async () => {
+                  await triggerPrint();
+                  clearContent();
+                }, 200);
+                
+              }} className="gap-2">
+                <FileDown className="w-4 h-4" /> Download PDF
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {rptDateFrom || rptDateTo
+                  ? `${rptDateFrom || '...'} → ${rptDateTo || '...'}`
+                  : 'All time data'}
+                {rptType === 'brand' && rptBrand !== 'all' && ` • ${rptBrand}`}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
 
       {selectedInvoice && <InvoicePreview invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />}
     </div>
