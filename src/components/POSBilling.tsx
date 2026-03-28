@@ -702,6 +702,7 @@ export const POSBilling: React.FC = () => {
     setWarrantyAccessories('6 Months Warranty');
     setEmiLendingPartner('');
     setBillDate(new Date().toISOString().slice(0, 16));
+    setIsDateManual(false);
     } finally { setSaving(false); }
   }, [saving, items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories, mixedPayment, emiLendingPartner, billDate]);
 
