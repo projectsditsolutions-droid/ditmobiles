@@ -464,7 +464,8 @@ export const DealerLedger: React.FC = () => {
                     </Button>
                     <div className="border-l pl-3 ml-1">
                       <p className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">Balance</p>
-                      <p className={`font-display text-3xl font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
+                      <p className={`font-display text-3xl font-extrabold ${totals.current < 0 ? 'text-success' : getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
+                      {totals.current < 0 && <p className="text-[9px] text-success mt-0.5">Overpaid / Advance</p>}
                     </div>
                   </div>
                 </div>
