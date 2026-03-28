@@ -662,7 +662,7 @@ export const ReportsPage: React.FC = () => {
                 <div className="space-y-3">
                   <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Revenue</div>
                   <div className="stat-card">
-                    <p className="text-xs text-muted-foreground mb-1">Gross Revenue (Collections)</p>
+                    <p className="text-xs text-muted-foreground mb-1">Gross Revenue (Selling Price)</p>
                     <p className="font-display text-2xl font-extrabold">₹{totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
