@@ -324,7 +324,7 @@ export const DealerLedger: React.FC = () => {
       const payment = txns.filter(t => t.type === 'payment').reduce((s, t) => s + Number(t.amount), 0);
       const sold = txns.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
       const returned = txns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
-      const opening = Number(dealer.total_credit) - purchase + payment + returned;
+      const opening = Number(dealer.total_credit) - purchase + payment + returned + sold;
       const purchaseCount = txns.filter(t => t.type === 'purchase').length;
       const returnCount = txns.filter(t => t.type === 'stock_return').length;
       const soldCount = txns.filter(t => t.type === 'sale_deduction').length;
