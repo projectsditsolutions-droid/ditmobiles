@@ -56,14 +56,20 @@ export const ReportsPage: React.FC = () => {
       else imeiQ = imeiQ.eq('shop_id', activeShopId!);
       const { data: imeis } = await imeiQ;
       if (products && imeis) {
-        setStockData(products.map(p => ({
-          ...p,
-          inStock: imeis.filter(r => r.product_id === p.id && r.status === 'in_stock').length,
-          sold: imeis.filter(r => r.product_id === p.id && r.status === 'sold').length,
-          returned: imeis.filter(r => r.product_id === p.id && r.status === 'returned').length,
-          total: imeis.filter(r => r.product_id === p.id).length,
-          stockValue: imeis.filter(r => r.product_id === p.id && r.status === 'in_stock').reduce((s, r) => s + Number(r.purchase_price), 0),
-        })));
+        setStockData(products.map(p => {
+          const productImeis = imeis.filter(r => r.product_id === p.id);
+          const soldImeis = productImeis.filter(r => r.status === 'sold');
+          return {
+            ...p,
+            inStock: productImeis.filter(r => r.status === 'in_stock').length,
+            sold: soldImeis.length,
+            returned: productImeis.filter(r => r.status === 'returned').length,
+            total: productImeis.length,
+            stockValue: productImeis.filter(r => r.status === 'in_stock').reduce((s, r) => s + Number(r.purchase_price), 0),
+            soldCost: soldImeis.reduce((s, r) => s + Number(r.purchase_price), 0),
+            soldRevenue: soldImeis.reduce((s, r) => s + Number(r.sale_price), 0),
+          };
+        }));
       }
     };
     fetchData();
@@ -613,7 +619,7 @@ export const ReportsPage: React.FC = () => {
         const totalGST = invoices.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
         const totalDiscount = invoices.reduce((s, i) => s + Number(i.total_discount), 0);
         const netRevenue = totalRevenue - totalGST;
-        const totalCost = stockData.reduce((s, p) => s + (p.sold * Number(p.purchase_price)), 0);
+        const totalCost = stockData.reduce((s, p) => s + (p.soldCost || 0), 0);
         const netProfit = netRevenue - totalCost - totalDiscount;
         const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
 
@@ -634,8 +640,8 @@ export const ReportsPage: React.FC = () => {
         const brandProfitMap: Record<string, { revenue: number; cost: number; sold: number; profit: number }> = {};
         stockData.forEach((p: any) => {
           if (!brandProfitMap[p.brand]) brandProfitMap[p.brand] = { revenue: 0, cost: 0, sold: 0, profit: 0 };
-          const cost = p.sold * Number(p.purchase_price);
-          const revenue = p.sold * Number(p.sale_price);
+          const cost = p.soldCost || 0;
+          const revenue = p.soldRevenue || 0;
           brandProfitMap[p.brand].revenue += revenue;
           brandProfitMap[p.brand].cost += cost;
           brandProfitMap[p.brand].sold += p.sold;
@@ -882,7 +888,7 @@ export const ReportsPage: React.FC = () => {
           const totalGST = filtered.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
           const totalDiscounts = filtered.reduce((s, i) => s + Number(i.total_discount), 0);
           const netRevenue = totalRevenue - totalGST;
-          const totalCost = stockData.reduce((s: number, p: any) => s + (p.sold * Number(p.purchase_price)), 0);
+          const totalCost = stockData.reduce((s: number, p: any) => s + (p.soldCost || 0), 0);
           const data = [{
             Period: `${rptDateFrom || 'Start'} to ${rptDateTo || 'Today'}`,
             Total_Invoices: filtered.length,
