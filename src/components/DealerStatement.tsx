@@ -14,11 +14,7 @@ interface Props {
   onClose: () => void;
 }
 
-const fmt = (n: number) => {
-  const abs = Math.abs(n);
-  const formatted = `₹${abs.toLocaleString('en-IN')}`;
-  return n < 0 ? `-${formatted}` : formatted;
-};
+const fmt = (n: number) => `₹${Math.abs(n).toLocaleString('en-IN')}`;
 
 const TXN_LABELS: Record<string, string> = {
   purchase: 'Purchase',
@@ -65,6 +61,7 @@ export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) =
   const periodPayment = filtered.filter(t => t.type === 'payment').reduce((s, t) => s + Number(t.amount), 0);
   const periodReturn = filtered.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
   const periodSale = filtered.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
+  const periodAdjustment = filtered.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
 
   /** The print-only content rendered into #print-area */
   const StatementPrintContent = () => (
@@ -115,6 +112,12 @@ export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) =
               <span style={{ fontWeight: 700, color: '#d97706' }}>{fmt(periodReturn)}</span>
             </div>
           )}
+          {periodAdjustment !== 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+              <span style={{ color: '#6366f1' }}>{periodAdjustment > 0 ? '+ ' : '− '}Adjustment</span>
+              <span style={{ fontWeight: 700, color: '#6366f1' }}>{fmt(periodAdjustment)}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #16a34a', marginTop: '6px', paddingTop: '6px' }}>
             <span style={{ fontWeight: 800 }}>Closing Balance</span>
             <span style={{ fontWeight: 900, fontSize: '13px', color: closingBalance > 100000 ? '#dc2626' : closingBalance > 30000 ? '#d97706' : '#059669' }}>{fmt(closingBalance)}</span>
@@ -152,8 +155,8 @@ export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) =
             </tr>
           )}
           {filtered.map((txn, idx) => {
-            const isDebit = txn.type === 'purchase';
-            const isCredit = txn.type === 'payment' || txn.type === 'stock_return';
+            const isDebit = txn.type === 'purchase' || (txn.type === 'opening_adjustment' && Number(txn.amount) > 0);
+            const isCredit = txn.type === 'payment' || txn.type === 'stock_return' || (txn.type === 'opening_adjustment' && Number(txn.amount) < 0);
             const bgColor = idx % 2 === 0 ? '#fff' : '#f9fafb';
             const typeColors: Record<string, { bg: string; color: string }> = {
               purchase: { bg: '#fee2e2', color: '#991b1b' },
@@ -272,12 +275,13 @@ export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) =
         {/* Statement preview */}
         <div className="flex-1 overflow-y-auto p-5 pos-scrollable">
           {/* Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
+          <div className={`grid grid-cols-2 ${periodAdjustment !== 0 ? 'sm:grid-cols-6' : 'sm:grid-cols-5'} gap-3 mb-5`}>
             {[
               { label: 'Opening Balance', value: fmt(openingBalance), color: 'text-muted-foreground' },
               { label: 'Purchases', value: `+${fmt(periodPurchase)}`, color: 'text-destructive' },
               { label: 'Payments', value: `-${fmt(periodPayment)}`, color: 'text-success' },
               { label: 'Returns', value: `-${fmt(periodReturn)}`, color: 'text-warning' },
+              ...(periodAdjustment !== 0 ? [{ label: 'Adjustment', value: `${periodAdjustment > 0 ? '+' : '-'}${fmt(periodAdjustment)}`, color: 'text-primary' }] : []),
               { label: 'Closing Balance', value: fmt(closingBalance), color: closingBalance > 100000 ? 'text-destructive' : closingBalance > 30000 ? 'text-warning' : 'text-success' },
             ].map(c => (
               <div key={c.label} className="bg-background rounded-xl border p-3 text-center">
@@ -310,8 +314,8 @@ export const DealerStatement: React.FC<Props> = ({ dealer, allTxns, onClose }) =
                   <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">No transactions in this period</td></tr>
                 )}
                 {filtered.map((txn, idx) => {
-                  const isDebit = txn.type === 'purchase';
-                  const isCredit = txn.type === 'payment' || txn.type === 'stock_return';
+                  const isDebit = txn.type === 'purchase' || (txn.type === 'opening_adjustment' && Number(txn.amount) > 0);
+                  const isCredit = txn.type === 'payment' || txn.type === 'stock_return' || (txn.type === 'opening_adjustment' && Number(txn.amount) < 0);
                   const bgColors: Record<string, string> = {
                     purchase: 'bg-destructive/5',
                     payment: 'bg-success/5',

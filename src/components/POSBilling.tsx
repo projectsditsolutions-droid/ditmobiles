@@ -10,7 +10,7 @@ import { BillItemRow } from '@/components/BillItemRow';
 import { InvoicePreview } from '@/components/InvoicePreview';
 import {
   Search, Barcode, Keyboard, Receipt, ScanLine,
-  Building2, ChevronDown, Store, Tag, CheckCircle2, AlertTriangle
+  Building2, ChevronDown, Store, Tag, CheckCircle2, AlertTriangle, CalendarIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -200,7 +200,7 @@ export const POSBilling: React.FC = () => {
   const [warrantyMobile, setWarrantyMobile] = useState('1 Year Manufacturer Warranty');
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
-
+  const [billDate, setBillDate] = useState(() => new Date().toISOString().slice(0, 16));
   const [billDiscount, setBillDiscount] = useState(0);
   const [billDiscountType, setBillDiscountType] = useState<'percentage' | 'flat'>('flat');
   const [showSearch, setShowSearch] = useState(false);
@@ -213,6 +213,7 @@ export const POSBilling: React.FC = () => {
   const imeiRef = useRef<HTMLInputElement>(null);
   const imeiAutoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [imeiFlash, setImeiFlash] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Reset customer GST when switching to B2C
   useEffect(() => {
@@ -300,42 +301,53 @@ export const POSBilling: React.FC = () => {
     return () => window.removeEventListener('keydown', handler);
   }, [items, customerName, customerPhone, customerGST, billDiscount, billDiscountType, paymentMethod, isGSTBill, gstBearer]);
 
+  const scanningImeiRef = useRef<Set<string>>(new Set());
+
   const handleIMEIScan = useCallback(async (overrideImei?: string) => {
     const imei = (overrideImei || imeiInput).trim();
     if (!imei || !activeShopId) return;
 
-    if (items.some(i => i.imei === imei)) {
-      toast.error('This IMEI is already added to the bill');
+    // Prevent concurrent scans of the same IMEI
+    if (scanningImeiRef.current.has(imei)) return;
+    scanningImeiRef.current.add(imei);
+
+    try {
+      if (items.some(i => i.imei === imei)) {
+        toast.error('This IMEI is already added to the bill');
+        setImeiInput('');
+        return;
+      }
+
+      const { data: record } = await supabase
+        .from('imei_records')
+        .select('*, products(*)')
+        .eq('imei', imei)
+        .eq('shop_id', activeShopId)
+        .eq('status', 'in_stock')
+        .maybeSingle();
+
+      if (!record) {
+        toast.error('IMEI not found or already sold');
+        setImeiInput('');
+        return;
+      }
+
+      const product = record.products as unknown as Product;
+      if (!product) {
+        toast.error('Product not found for this IMEI');
+        setImeiInput('');
+        return;
+      }
+
+      addNewItem(product, imei);
       setImeiInput('');
-      return;
+      setImeiFlash(true);
+      setTimeout(() => setImeiFlash(false), 600);
+      toast.success(`Added: ${product.brand} ${product.model}`);
+    } finally {
+      // Don't remove from ref here — keep it to prevent race conditions
+      // with stale `items` state. Ref is cleared on sale completion.
     }
-
-    const { data: record } = await supabase
-      .from('imei_records')
-      .select('*, products(*)')
-      .eq('imei', imei)
-      .eq('shop_id', activeShopId)
-      .eq('status', 'in_stock')
-      .maybeSingle();
-
-    if (!record) {
-      toast.error('IMEI not found or already sold');
-      setImeiInput('');
-      return;
-    }
-
-    const product = record.products as unknown as Product;
-    if (!product) {
-      toast.error('Product not found for this IMEI');
-      setImeiInput('');
-      return;
-    }
-
-    addNewItem(product, imei);
-    setImeiInput('');
-    setImeiFlash(true);
-    setTimeout(() => setImeiFlash(false), 600);
-    toast.success(`Added: ${product.brand} ${product.model}`);
   }, [imeiInput, items, activeShopId]);
 
   const handleImeiInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -344,7 +356,11 @@ export const POSBilling: React.FC = () => {
     if (imeiAutoRef.current) clearTimeout(imeiAutoRef.current);
     if (val.length >= 15) {
       const imei = val.slice(0, 15);
-      imeiAutoRef.current = setTimeout(() => handleIMEIScan(imei), 50);
+      // Debounce longer to prevent barcode scanner double-fire
+      imeiAutoRef.current = setTimeout(() => {
+        setImeiInput(''); // Clear immediately to prevent re-trigger
+        handleIMEIScan(imei);
+      }, 150);
     }
   }, [handleIMEIScan]);
 
@@ -408,7 +424,13 @@ export const POSBilling: React.FC = () => {
     toast.success(`Added: ${product.brand} ${product.model}`);
   };
 
-  const removeItem = (id: string) => setItems(prev => prev.filter(i => i.id !== id));
+  const removeItem = (id: string) => {
+    setItems(prev => {
+      const item = prev.find(i => i.id === id);
+      if (item?.imei) scanningImeiRef.current.delete(item.imei);
+      return prev.filter(i => i.id !== id);
+    });
+  };
 
   const updateItemDiscount = (id: string, value: number, type: 'percentage' | 'flat') => {
     setItems(prev => prev.map(item => {
@@ -433,7 +455,7 @@ export const POSBilling: React.FC = () => {
       id: 'preview',
       invoice_number: 'PREVIEW',
       shop_id: activeShopId,
-      date: new Date().toISOString(),
+      date: new Date(billDate).toISOString(),
       customer_name: customerName || 'Walk-in Customer',
       customer_phone: customerPhone,
       customer_gst: customerType === 'B2B' ? (customerGST || undefined) : undefined,
@@ -463,11 +485,14 @@ export const POSBilling: React.FC = () => {
       emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
     };
     setPreviewInvoice(preview);
-  }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, selectedProfile, warrantyMobile, warrantyAccessories, emiLendingPartner, mixedPayment]);
+  }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, selectedProfile, warrantyMobile, warrantyAccessories, emiLendingPartner, mixedPayment, billDate]);
 
   const handleCompleteSale = useCallback(async () => {
+    if (saving) return;
     if (items.length === 0) { toast.error('Add items to bill first'); return; }
     if (!activeShop || !activeShopId || !user) return;
+    setSaving(true);
+    try {
 
     // Use ATOMIC DB functions to prevent duplicate invoice numbers under concurrent saves
     let invoiceNumber: string;
@@ -526,6 +551,7 @@ export const POSBilling: React.FC = () => {
       invoice_number: invoiceNumber,
       shop_id: activeShopId,
       user_id: user.id,
+      date: new Date(billDate).toISOString(),
       customer_name: customerName || 'Walk-in Customer',
       customer_phone: customerPhone,
       customer_gst: customerType === 'B2B' ? (customerGST || null) : null,
@@ -620,7 +646,7 @@ export const POSBilling: React.FC = () => {
       id: invoice.id,
       invoice_number: invoiceNumber,
       shop_id: activeShopId,
-      date: invoice.date,
+      date: new Date(billDate).toISOString(),
       customer_name: customerName || 'Walk-in Customer',
       customer_phone: customerPhone,
       customer_gst: customerType === 'B2B' ? (customerGST || undefined) : undefined,
@@ -649,11 +675,13 @@ export const POSBilling: React.FC = () => {
       customer_address: customerAddress || undefined,
       emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
     };
+    if (paymentMethod === 'mixed') (invoiceData as any).payment_details = mixedPayment;
 
     setShowInvoice(invoiceData);
     toast.success(`Sale completed! Invoice: ${invoiceNumber}`);
 
     setItems([]);
+    scanningImeiRef.current.clear();
     setCustomerName('');
     setCustomerPhone('');
     setCustomerGST('');
@@ -663,7 +691,9 @@ export const POSBilling: React.FC = () => {
     setWarrantyMobile('1 Year Manufacturer Warranty');
     setWarrantyAccessories('6 Months Warranty');
     setEmiLendingPartner('');
-  }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories, mixedPayment, emiLendingPartner]);
+    setBillDate(new Date().toISOString().slice(0, 16));
+    } finally { setSaving(false); }
+  }, [saving, items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories, mixedPayment, emiLendingPartner, billDate]);
 
   return (
     <div className="flex h-full flex-col md:flex-row">
@@ -685,6 +715,16 @@ export const POSBilling: React.FC = () => {
               </span>
             </div>
           )}
+
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary/60 border border-border">
+            <CalendarIcon className="w-3 h-3 text-muted-foreground" />
+            <input
+              type="datetime-local"
+              value={billDate}
+              onChange={e => setBillDate(e.target.value)}
+              className="bg-transparent text-[10px] font-display font-semibold text-muted-foreground focus:outline-none w-[140px]"
+            />
+          </div>
 
           <div className="flex items-center gap-2 ml-auto flex-wrap">
             <div className="flex bg-secondary rounded-lg p-0.5">
@@ -905,6 +945,7 @@ export const POSBilling: React.FC = () => {
         onCompleteSale={handleCompleteSale}
         onPreviewBill={handlePreviewBill}
         discountEnabled={settings?.discount_enabled ?? true}
+        saving={saving}
       />
 
       {showInvoice && (
