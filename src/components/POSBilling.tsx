@@ -345,7 +345,8 @@ export const POSBilling: React.FC = () => {
       setTimeout(() => setImeiFlash(false), 600);
       toast.success(`Added: ${product.brand} ${product.model}`);
     } finally {
-      scanningImeiRef.current.delete(imei);
+      // Don't remove from ref here — keep it to prevent race conditions
+      // with stale `items` state. Ref is cleared on sale completion.
     }
   }, [imeiInput, items, activeShopId]);
 
@@ -423,7 +424,13 @@ export const POSBilling: React.FC = () => {
     toast.success(`Added: ${product.brand} ${product.model}`);
   };
 
-  const removeItem = (id: string) => setItems(prev => prev.filter(i => i.id !== id));
+  const removeItem = (id: string) => {
+    setItems(prev => {
+      const item = prev.find(i => i.id === id);
+      if (item?.imei) scanningImeiRef.current.delete(item.imei);
+      return prev.filter(i => i.id !== id);
+    });
+  };
 
   const updateItemDiscount = (id: string, value: number, type: 'percentage' | 'flat') => {
     setItems(prev => prev.map(item => {
@@ -674,6 +681,7 @@ export const POSBilling: React.FC = () => {
     toast.success(`Sale completed! Invoice: ${invoiceNumber}`);
 
     setItems([]);
+    scanningImeiRef.current.clear();
     setCustomerName('');
     setCustomerPhone('');
     setCustomerGST('');
