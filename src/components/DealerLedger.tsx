@@ -71,7 +71,7 @@ export const DealerLedger: React.FC = () => {
   const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
   const [stockSearch, setStockSearch] = useState('');
   const [showNewProductInStock, setShowNewProductInStock] = useState(false);
-  const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
+  const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', gst_percent: 18, hsn_code: '', category: 'mobile' });
   const [returnForm, setReturnForm] = useState({ imei: '', reason: '' });
   const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'opening_credit' as 'sold_cost' | 'opening_credit' | 'both', soldCostAmount: 0, openingCreditAmount: 0 });
   const [showEditCredit, setShowEditCredit] = useState(false);
@@ -314,7 +314,7 @@ export const DealerLedger: React.FC = () => {
 
   const handleCreateProductInStock = async () => {
     if (!activeShopId || !newProductForm.brand || !newProductForm.model) { toast.error('Brand and Model are required'); return; }
-    const { data, error } = await supabase.from('products').insert({ brand: newProductForm.brand, model: newProductForm.model, variant: newProductForm.variant, color: newProductForm.color, purchase_price: stockForm.unit_price, sale_price: newProductForm.sale_price, gst_percent: newProductForm.gst_percent, hsn_code: newProductForm.hsn_code, category: newProductForm.category, shop_id: activeShopId, stock_quantity: 0 } as any).select().single();
+    const { data, error } = await supabase.from('products').insert({ brand: newProductForm.brand, model: newProductForm.model, variant: newProductForm.variant, color: newProductForm.color, purchase_price: stockForm.unit_price, sale_price: 0, gst_percent: newProductForm.gst_percent, hsn_code: newProductForm.hsn_code, category: newProductForm.category, shop_id: activeShopId, stock_quantity: 0 } as any).select().single();
     if (error) { toast.error('Failed to create product: ' + error.message); return; }
     if (data) { setStockForm({ ...stockForm, product_id: data.id, hsn_code: newProductForm.hsn_code }); setStockSearch(`${data.brand} ${data.model} ${data.variant}`); setShowNewProductInStock(false); toast.success('Product created! Now add IMEIs below.'); fetchProducts(); }
   };
@@ -344,7 +344,7 @@ export const DealerLedger: React.FC = () => {
     setShowStockEntry(false);
     setStockForm({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
     setShowNewProductInStock(false);
-    setNewProductForm({ brand: '', model: '', variant: '', color: '', sale_price: 0, gst_percent: 18, hsn_code: '', category: 'mobile' });
+    setNewProductForm({ brand: '', model: '', variant: '', color: '', gst_percent: 18, hsn_code: '', category: 'mobile' });
     setStockSearch('');
     toast.success(`Added ${added} units to inventory and ledger`);
     fetchDealers();
@@ -748,10 +748,6 @@ export const DealerLedger: React.FC = () => {
                     <Input value={(newProductForm as any)[field] || ''} onChange={e => setNewProductForm({ ...newProductForm, [field]: e.target.value })} className="h-9" />
                   </div>
                 ))}
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Sale Price</label>
-                  <Input type="number" value={newProductForm.sale_price || ''} onChange={e => setNewProductForm({ ...newProductForm, sale_price: parseFloat(e.target.value) || 0 })} className="h-9" />
-                </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">GST %</label>
                   <Input type="number" value={newProductForm.gst_percent || ''} onChange={e => setNewProductForm({ ...newProductForm, gst_percent: parseFloat(e.target.value) || 0 })} className="h-9" />
