@@ -731,9 +731,19 @@ export const POSBilling: React.FC = () => {
             <input
               type="datetime-local"
               value={billDate}
-              onChange={e => setBillDate(e.target.value)}
+              onChange={e => { setBillDate(e.target.value); setIsDateManual(true); }}
               className="bg-transparent text-[10px] font-display font-semibold text-muted-foreground focus:outline-none w-[140px]"
             />
+            {isDateManual && (
+              <button
+                type="button"
+                onClick={() => setIsDateManual(false)}
+                className="text-[9px] text-primary hover:underline ml-0.5 whitespace-nowrap"
+                title="Reset to current time"
+              >
+                Live
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 ml-auto flex-wrap">
