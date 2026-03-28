@@ -201,6 +201,16 @@ export const POSBilling: React.FC = () => {
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
   const [billDate, setBillDate] = useState(() => new Date().toISOString().slice(0, 16));
+  const [isDateManual, setIsDateManual] = useState(false);
+
+  // Keep billDate synced to current time unless manually edited
+  useEffect(() => {
+    if (isDateManual) return;
+    const tick = () => setBillDate(new Date().toISOString().slice(0, 16));
+    tick();
+    const id = setInterval(tick, 10000);
+    return () => clearInterval(id);
+  }, [isDateManual]);
   const [billDiscount, setBillDiscount] = useState(0);
   const [billDiscountType, setBillDiscountType] = useState<'percentage' | 'flat'>('flat');
   const [showSearch, setShowSearch] = useState(false);
@@ -692,6 +702,7 @@ export const POSBilling: React.FC = () => {
     setWarrantyAccessories('6 Months Warranty');
     setEmiLendingPartner('');
     setBillDate(new Date().toISOString().slice(0, 16));
+    setIsDateManual(false);
     } finally { setSaving(false); }
   }, [saving, items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories, mixedPayment, emiLendingPartner, billDate]);
 
@@ -721,9 +732,19 @@ export const POSBilling: React.FC = () => {
             <input
               type="datetime-local"
               value={billDate}
-              onChange={e => setBillDate(e.target.value)}
+              onChange={e => { setBillDate(e.target.value); setIsDateManual(true); }}
               className="bg-transparent text-[10px] font-display font-semibold text-muted-foreground focus:outline-none w-[140px]"
             />
+            {isDateManual && (
+              <button
+                type="button"
+                onClick={() => setIsDateManual(false)}
+                className="text-[9px] text-primary hover:underline ml-0.5 whitespace-nowrap"
+                title="Reset to current time"
+              >
+                Live
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 ml-auto flex-wrap">
