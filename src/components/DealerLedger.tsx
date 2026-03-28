@@ -521,9 +521,10 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Net Balance formula */}
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                    <p className="text-[10px] font-display uppercase tracking-wider text-primary/70 mb-1.5">Net Balance</p>
-                    <p className={`font-display text-lg font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
+                  <div className={`rounded-xl border p-3 ${totals.current < 0 ? 'border-success/20 bg-success/5' : 'border-primary/20 bg-primary/5'}`}>
+                    <p className={`text-[10px] font-display uppercase tracking-wider mb-1.5 ${totals.current < 0 ? 'text-success/70' : 'text-primary/70'}`}>Net Balance</p>
+                    <p className={`font-display text-lg font-extrabold ${totals.current < 0 ? 'text-success' : getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
+                    {totals.current < 0 && <p className="text-[9px] text-success mt-0.5">Overpaid / Advance</p>}
                     <p className="text-[8px] text-muted-foreground mt-0.5">Opening + Purchase − Paid − Returns</p>
                   </div>
                 </div>
