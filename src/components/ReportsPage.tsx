@@ -798,7 +798,7 @@ export const ReportsPage: React.FC = () => {
             Payment: inv.payment_method,
             GST_Bill: inv.is_gst_bill ? 'Yes' : 'No',
             Subtotal: inv.subtotal,
-            Discount: Number(inv.total_discount) + Number(inv.bill_discount),
+            Discount: Number(inv.total_discount),
             CGST: inv.cgst,
             SGST: inv.sgst,
             Grand_Total: inv.grand_total,
@@ -880,7 +880,7 @@ export const ReportsPage: React.FC = () => {
           if (filtered.length === 0) { toast.error('No data for selected range'); return; }
           const totalRevenue = filtered.reduce((s, i) => s + Number(i.grand_total), 0);
           const totalGST = filtered.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
-          const totalDiscounts = filtered.reduce((s, i) => s + Number(i.total_discount) + Number(i.bill_discount), 0);
+          const totalDiscounts = filtered.reduce((s, i) => s + Number(i.total_discount), 0);
           const netRevenue = totalRevenue - totalGST;
           const totalCost = stockData.reduce((s: number, p: any) => s + (p.sold * Number(p.purchase_price)), 0);
           const data = [{
