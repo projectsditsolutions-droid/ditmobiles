@@ -615,12 +615,12 @@ export const ReportsPage: React.FC = () => {
       )}
 
       {tab === 'profit' && (() => {
-        const totalRevenue = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
-        const totalGST = invoices.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
         const totalDiscount = invoices.reduce((s, i) => s + Number(i.total_discount), 0);
-        const netRevenue = totalRevenue - totalGST;
+        const totalRevenue = invoices.reduce((s, i) => s + Number(i.grand_total) + Number(i.total_discount), 0);
+        const totalGST = invoices.reduce((s, i) => s + Number(i.cgst) + Number(i.sgst), 0);
+        const netRevenue = totalRevenue - totalGST - totalDiscount;
         const totalCost = stockData.reduce((s, p) => s + (p.soldCost || 0), 0);
-        const netProfit = netRevenue - totalCost - totalDiscount;
+        const netProfit = netRevenue - totalCost;
         const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
 
         // Per-invoice profit data
