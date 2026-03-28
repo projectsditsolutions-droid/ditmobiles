@@ -1058,7 +1058,7 @@ export const ReportsPage: React.FC = () => {
                   await triggerPrint();
                   clearContent();
                 }, 200);
-                toast.success('PDF report ready for download');
+                
               }} className="gap-2">
                 <FileDown className="w-4 h-4" /> Download PDF
               </Button>
