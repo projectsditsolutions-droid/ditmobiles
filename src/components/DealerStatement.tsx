@@ -14,7 +14,11 @@ interface Props {
   onClose: () => void;
 }
 
-const fmt = (n: number) => `₹${Math.abs(n).toLocaleString('en-IN')}`;
+const fmt = (n: number) => {
+  const abs = Math.abs(n);
+  const formatted = `₹${abs.toLocaleString('en-IN')}`;
+  return n < 0 ? `-${formatted}` : formatted;
+};
 
 const TXN_LABELS: Record<string, string> = {
   purchase: 'Purchase',
