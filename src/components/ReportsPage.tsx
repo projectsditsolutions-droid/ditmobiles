@@ -793,24 +793,71 @@ export const ReportsPage: React.FC = () => {
           });
         };
 
-        const generateSalesReport = () => {
+        const generateSalesReport = async () => {
           const filtered = filterByDate(invoices);
           if (filtered.length === 0) { toast.error('No data for selected range'); return; }
-          const data = filtered.map(inv => ({
-            Invoice: inv.invoice_number,
-            Date: new Date(inv.date).toLocaleString('en-IN'),
-            Customer: inv.customer_name,
-            Phone: inv.customer_phone,
-            Payment: inv.payment_method,
-            GST_Bill: inv.is_gst_bill ? 'Yes' : 'No',
-            Subtotal: inv.subtotal,
-            Discount: Number(inv.total_discount),
-            CGST: inv.cgst,
-            SGST: inv.sgst,
-            Grand_Total: inv.grand_total,
-          }));
-          downloadCSV(data, `sales_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
-          toast.success(`Sales report downloaded (${data.length} invoices)`);
+          // Fetch invoice items with product details for all filtered invoices
+          const invoiceIds = filtered.map(i => i.id);
+          const { data: allItems } = await supabase
+            .from('invoice_items')
+            .select('*, products(*)')
+            .in('invoice_id', invoiceIds);
+          const itemsByInvoice: Record<string, any[]> = {};
+          (allItems || []).forEach((item: any) => {
+            if (!itemsByInvoice[item.invoice_id]) itemsByInvoice[item.invoice_id] = [];
+            itemsByInvoice[item.invoice_id].push(item);
+          });
+          const rows: any[] = [];
+          filtered.forEach(inv => {
+            const items = itemsByInvoice[inv.id] || [];
+            const pd = inv.payment_details as any;
+            const paymentBreakdown = inv.payment_method === 'mixed' && pd
+              ? Object.entries(pd).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${k}: ₹${Number(v).toLocaleString('en-IN')}`).join(', ')
+              : inv.payment_method.toUpperCase();
+            items.forEach((item: any) => {
+              rows.push({
+                Invoice: inv.invoice_number,
+                Date: new Date(inv.date).toLocaleString('en-IN'),
+                Customer: inv.customer_name,
+                Phone: inv.customer_phone,
+                Address: inv.customer_address || '',
+                GSTIN: inv.customer_gst || '',
+                Product: item.products ? `${item.products.brand} ${item.products.model} ${item.products.variant || ''} ${item.products.color || ''}`.trim() : '',
+                IMEI: item.imei || '',
+                Qty: item.quantity,
+                Unit_Price: item.unit_price,
+                Discount: item.discount,
+                Item_Total: item.total,
+                Payment: paymentBreakdown,
+                EMI_Partner: inv.emi_lending_partner || '',
+                GST_Bill: inv.is_gst_bill ? 'Yes' : 'No',
+                Bill_Discount: Number(inv.total_discount),
+                CGST: inv.cgst,
+                SGST: inv.sgst,
+                Grand_Total: inv.grand_total,
+              });
+            });
+            if (items.length === 0) {
+              rows.push({
+                Invoice: inv.invoice_number,
+                Date: new Date(inv.date).toLocaleString('en-IN'),
+                Customer: inv.customer_name,
+                Phone: inv.customer_phone,
+                Address: inv.customer_address || '',
+                GSTIN: inv.customer_gst || '',
+                Product: '', IMEI: '', Qty: '', Unit_Price: '', Discount: '', Item_Total: '',
+                Payment: paymentBreakdown,
+                EMI_Partner: inv.emi_lending_partner || '',
+                GST_Bill: inv.is_gst_bill ? 'Yes' : 'No',
+                Bill_Discount: Number(inv.total_discount),
+                CGST: inv.cgst,
+                SGST: inv.sgst,
+                Grand_Total: inv.grand_total,
+              });
+            }
+          });
+          downloadCSV(rows, `sales_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
+          toast.success(`Sales report downloaded (${filtered.length} invoices, ${rows.length} rows)`);
         };
 
         const generateDailyReport = () => {
