@@ -201,6 +201,16 @@ export const POSBilling: React.FC = () => {
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
   const [billDate, setBillDate] = useState(() => new Date().toISOString().slice(0, 16));
+  const [isDateManual, setIsDateManual] = useState(false);
+
+  // Keep billDate synced to current time unless manually edited
+  useEffect(() => {
+    if (isDateManual) return;
+    const tick = () => setBillDate(new Date().toISOString().slice(0, 16));
+    tick();
+    const id = setInterval(tick, 10000);
+    return () => clearInterval(id);
+  }, [isDateManual]);
   const [billDiscount, setBillDiscount] = useState(0);
   const [billDiscountType, setBillDiscountType] = useState<'percentage' | 'flat'>('flat');
   const [showSearch, setShowSearch] = useState(false);
