@@ -345,7 +345,8 @@ export const POSBilling: React.FC = () => {
       setTimeout(() => setImeiFlash(false), 600);
       toast.success(`Added: ${product.brand} ${product.model}`);
     } finally {
-      scanningImeiRef.current.delete(imei);
+      // Don't remove from ref here — keep it to prevent race conditions
+      // with stale `items` state. Ref is cleared on sale completion.
     }
   }, [imeiInput, items, activeShopId]);
 
@@ -674,6 +675,7 @@ export const POSBilling: React.FC = () => {
     toast.success(`Sale completed! Invoice: ${invoiceNumber}`);
 
     setItems([]);
+    scanningImeiRef.current.clear();
     setCustomerName('');
     setCustomerPhone('');
     setCustomerGST('');
