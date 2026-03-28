@@ -594,11 +594,18 @@ export const DealerLedger: React.FC = () => {
                                 {getQuantityFromTxn(txn) !== '—' && <div className="text-[10px] text-muted-foreground">Qty: {getQuantityFromTxn(txn)}</div>}
                               </td>
                               <td className="px-4 py-3 text-right">
-                                <span className={`font-display font-bold ${meta.colorClass}`}>
+                                <span className={`font-display font-bold ${txn.type === 'sale_deduction' ? 'text-muted-foreground' : meta.colorClass}`}>
                                   {txn.type === 'purchase' ? '+' : txn.type === 'payment' || txn.type === 'stock_return' ? '−' : ''}{fmt(Number(txn.amount))}
                                 </span>
+                                {txn.type === 'sale_deduction' && <div className="text-[9px] text-muted-foreground/60 mt-0.5">Info only</div>}
                               </td>
-                              <td className="px-4 py-3 text-right font-display font-extrabold text-sm">{fmt(Number(txn.running_balance))}</td>
+                              <td className="px-4 py-3 text-right font-display font-extrabold text-sm">
+                                {txn.type === 'sale_deduction' ? (
+                                  <span className="text-muted-foreground font-normal text-xs">—</span>
+                                ) : (
+                                  <span className={Number(txn.running_balance) < 0 ? 'text-success' : ''}>{fmt(Number(txn.running_balance))}</span>
+                                )}
+                              </td>
                               <td className="px-4 py-3">
                                 {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                               </td>
