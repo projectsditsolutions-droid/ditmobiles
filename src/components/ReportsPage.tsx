@@ -793,24 +793,71 @@ export const ReportsPage: React.FC = () => {
           });
         };
 
-        const generateSalesReport = () => {
+        const generateSalesReport = async () => {
           const filtered = filterByDate(invoices);
           if (filtered.length === 0) { toast.error('No data for selected range'); return; }
-          const data = filtered.map(inv => ({
-            Invoice: inv.invoice_number,
-            Date: new Date(inv.date).toLocaleString('en-IN'),
-            Customer: inv.customer_name,
-            Phone: inv.customer_phone,
-            Payment: inv.payment_method,
-            GST_Bill: inv.is_gst_bill ? 'Yes' : 'No',
-            Subtotal: inv.subtotal,
-            Discount: Number(inv.total_discount),
-            CGST: inv.cgst,
-            SGST: inv.sgst,
-            Grand_Total: inv.grand_total,
-          }));
-          downloadCSV(data, `sales_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
-          toast.success(`Sales report downloaded (${data.length} invoices)`);
+          // Fetch invoice items with product details for all filtered invoices
+          const invoiceIds = filtered.map(i => i.id);
+          const { data: allItems } = await supabase
+            .from('invoice_items')
+            .select('*, products(*)')
+            .in('invoice_id', invoiceIds);
+          const itemsByInvoice: Record<string, any[]> = {};
+          (allItems || []).forEach((item: any) => {
+            if (!itemsByInvoice[item.invoice_id]) itemsByInvoice[item.invoice_id] = [];
+            itemsByInvoice[item.invoice_id].push(item);
+          });
+          const rows: any[] = [];
+          filtered.forEach(inv => {
+            const items = itemsByInvoice[inv.id] || [];
+            const pd = inv.payment_details as any;
+            const paymentBreakdown = inv.payment_method === 'mixed' && pd
+              ? Object.entries(pd).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${k}: ₹${Number(v).toLocaleString('en-IN')}`).join(', ')
+              : inv.payment_method.toUpperCase();
+            items.forEach((item: any) => {
+              rows.push({
+                Invoice: inv.invoice_number,
+                Date: new Date(inv.date).toLocaleString('en-IN'),
+                Customer: inv.customer_name,
+                Phone: inv.customer_phone,
+                Address: inv.customer_address || '',
+                GSTIN: inv.customer_gst || '',
+                Product: item.products ? `${item.products.brand} ${item.products.model} ${item.products.variant || ''} ${item.products.color || ''}`.trim() : '',
+                IMEI: item.imei || '',
+                Qty: item.quantity,
+                Unit_Price: item.unit_price,
+                Discount: item.discount,
+                Item_Total: item.total,
+                Payment: paymentBreakdown,
+                EMI_Partner: inv.emi_lending_partner || '',
+                GST_Bill: inv.is_gst_bill ? 'Yes' : 'No',
+                Bill_Discount: Number(inv.total_discount),
+                CGST: inv.cgst,
+                SGST: inv.sgst,
+                Grand_Total: inv.grand_total,
+              });
+            });
+            if (items.length === 0) {
+              rows.push({
+                Invoice: inv.invoice_number,
+                Date: new Date(inv.date).toLocaleString('en-IN'),
+                Customer: inv.customer_name,
+                Phone: inv.customer_phone,
+                Address: inv.customer_address || '',
+                GSTIN: inv.customer_gst || '',
+                Product: '', IMEI: '', Qty: '', Unit_Price: '', Discount: '', Item_Total: '',
+                Payment: paymentBreakdown,
+                EMI_Partner: inv.emi_lending_partner || '',
+                GST_Bill: inv.is_gst_bill ? 'Yes' : 'No',
+                Bill_Discount: Number(inv.total_discount),
+                CGST: inv.cgst,
+                SGST: inv.sgst,
+                Grand_Total: inv.grand_total,
+              });
+            }
+          });
+          downloadCSV(rows, `sales_report_${rptDateFrom || 'all'}_to_${rptDateTo || 'all'}.csv`);
+          toast.success(`Sales report downloaded (${filtered.length} invoices, ${rows.length} rows)`);
         };
 
         const generateDailyReport = () => {
@@ -989,7 +1036,7 @@ export const ReportsPage: React.FC = () => {
               <Button onClick={handleGenerate} className="gap-2">
                 <Download className="w-4 h-4" /> Download CSV
               </Button>
-              <Button variant="outline" onClick={() => {
+              <Button variant="outline" onClick={async () => {
                 // Generate PDF via print
                 const filterByDateLocal = (list: Invoice[]) => {
                   return list.filter(inv => {
@@ -1015,12 +1062,67 @@ export const ReportsPage: React.FC = () => {
                 let headerRow = '';
                 let bodyRows = '';
                 if (rptType === 'sales') {
-                  headerRow = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Invoice</th><th style="padding:6px 8px;text-align:left">Date</th><th style="padding:6px 8px;text-align:left">Customer</th><th style="padding:6px 8px">Payment</th><th style="padding:6px 8px;text-align:right">Total</th></tr>`;
-                  filtered.forEach(inv => {
-                    bodyRows += `<tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid"><td style="padding:5px 8px;font-size:11px">${inv.invoice_number}</td><td style="padding:5px 8px;font-size:11px">${new Date(inv.date).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'})}</td><td style="padding:5px 8px;font-size:11px">${inv.customer_name}</td><td style="padding:5px 8px;font-size:11px;text-align:center;text-transform:uppercase">${inv.payment_method}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">₹${Number(inv.grand_total).toLocaleString('en-IN')}</td></tr>`;
+                  // Fetch invoice items with product details
+                  const invoiceIds = filtered.map(i => i.id);
+                  const { data: allItems } = await supabase
+                    .from('invoice_items')
+                    .select('*, products(*)')
+                    .in('invoice_id', invoiceIds);
+                  const itemsByInvoice: Record<string, any[]> = {};
+                  (allItems || []).forEach((item: any) => {
+                    if (!itemsByInvoice[item.invoice_id]) itemsByInvoice[item.invoice_id] = [];
+                    itemsByInvoice[item.invoice_id].push(item);
                   });
+
+                  filtered.forEach(inv => {
+                    const items = itemsByInvoice[inv.id] || [];
+                    const pd = inv.payment_details as any;
+                    const paymentBreakdown = inv.payment_method === 'mixed' && pd
+                      ? Object.entries(pd).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${String(k).charAt(0).toUpperCase() + String(k).slice(1)}: ₹${Number(v).toLocaleString('en-IN')}`).join(' | ')
+                      : inv.payment_method.toUpperCase();
+                    
+                    // Invoice header row
+                    bodyRows += `<tr style="background:#f8f9fa;border-top:2px solid #333;page-break-inside:avoid">
+                      <td colspan="6" style="padding:8px;font-size:11px">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                          <div>
+                            <strong style="font-size:12px">${inv.invoice_number}</strong>
+                            <span style="margin-left:12px;color:#666">${new Date(inv.date).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'})}</span>
+                            ${inv.is_gst_bill ? '<span style="margin-left:8px;background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:3px;font-size:9px">GST</span>' : '<span style="margin-left:8px;background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:3px;font-size:9px">Non-GST</span>'}
+                          </div>
+                          <strong style="font-size:13px">₹${Number(inv.grand_total).toLocaleString('en-IN')}</strong>
+                        </div>
+                        <div style="margin-top:4px;font-size:10px;color:#555">
+                          <strong>Customer:</strong> ${inv.customer_name}${inv.customer_phone ? ' | Ph: ' + inv.customer_phone : ''}${inv.customer_address ? ' | ' + inv.customer_address : ''}${inv.customer_gst ? ' | GSTIN: ' + inv.customer_gst : ''}
+                        </div>
+                        <div style="margin-top:2px;font-size:10px;color:#555">
+                          <strong>Payment:</strong> ${paymentBreakdown}${inv.emi_lending_partner ? ' | EMI Partner: ' + inv.emi_lending_partner : ''}
+                          ${Number(inv.total_discount) > 0 ? ' | <strong>Discount:</strong> ₹' + Number(inv.total_discount).toLocaleString('en-IN') : ''}
+                          ${inv.is_gst_bill ? ' | CGST: ₹' + Number(inv.cgst).toLocaleString('en-IN') + ' + SGST: ₹' + Number(inv.sgst).toLocaleString('en-IN') : ''}
+                        </div>
+                      </td>
+                    </tr>`;
+                    // Item rows
+                    items.forEach((item: any) => {
+                      const productName = item.products ? `${item.products.brand} ${item.products.model} ${item.products.variant || ''} ${item.products.color || ''}`.trim() : 'Unknown';
+                      bodyRows += `<tr style="border-bottom:1px solid #eee;page-break-inside:avoid">
+                        <td style="padding:4px 8px 4px 20px;font-size:10px" colspan="2">${productName}</td>
+                        <td style="padding:4px 8px;font-size:10px;color:#666">${item.imei || '—'}</td>
+                        <td style="padding:4px 8px;font-size:10px;text-align:center">${item.quantity}</td>
+                        <td style="padding:4px 8px;font-size:10px;text-align:right">₹${Number(item.unit_price).toLocaleString('en-IN')}</td>
+                        <td style="padding:4px 8px;font-size:10px;text-align:right;font-weight:600">₹${Number(item.total).toLocaleString('en-IN')}</td>
+                      </tr>`;
+                    });
+                  });
+                  headerRow = `<tr style="background:#e2e8f0;font-weight:700;font-size:9px;text-transform:uppercase">
+                    <th style="padding:6px 8px;text-align:left" colspan="2">Product</th>
+                    <th style="padding:6px 8px;text-align:left">IMEI</th>
+                    <th style="padding:6px 8px;text-align:center">Qty</th>
+                    <th style="padding:6px 8px;text-align:right">Price</th>
+                    <th style="padding:6px 8px;text-align:right">Total</th>
+                  </tr>`;
                   const total = filtered.reduce((s, i) => s + Number(i.grand_total), 0);
-                  bodyRows += `<tr style="border-top:2px solid #222;font-weight:900"><td colspan="4" style="padding:6px 8px;text-align:right">Total</td><td style="padding:6px 8px;text-align:right">₹${total.toLocaleString('en-IN')}</td></tr>`;
+                  bodyRows += `<tr style="border-top:2px solid #222;font-weight:900"><td colspan="5" style="padding:8px;text-align:right;font-size:12px">Grand Total</td><td style="padding:8px;text-align:right;font-size:13px">₹${total.toLocaleString('en-IN')}</td></tr>`;
                 } else if (rptType === 'brand') {
                   const brandData = stockData.filter((p: any) => rptBrand === 'all' || p.brand === rptBrand);
                   headerRow = `<tr style="background:#f3f4f6;font-weight:700;font-size:10px;text-transform:uppercase"><th style="padding:6px 8px;text-align:left">Brand</th><th style="padding:6px 8px;text-align:left">Model</th><th style="padding:6px 8px;text-align:center">Purchased</th><th style="padding:6px 8px;text-align:center">In Stock</th><th style="padding:6px 8px;text-align:center">Sold</th><th style="padding:6px 8px;text-align:right">Stock Value</th></tr>`;
