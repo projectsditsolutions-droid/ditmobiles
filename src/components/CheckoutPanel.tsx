@@ -37,7 +37,6 @@ interface Props {
   onCompleteSale: () => void;
   onPreviewBill?: () => void;
   discountEnabled: boolean;
-  saving?: boolean;
 }
 
 export const CheckoutPanel: React.FC<Props> = ({
@@ -48,7 +47,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   onBillDiscountChange, onBillDiscountTypeChange, onPaymentMethodChange,
   onCustomerNameChange, onCustomerPhoneChange, onCustomerGSTChange, onCustomerAddressChange,
   onMixedPaymentChange, onWarrantyMobileChange, onWarrantyAccessoriesChange, onEmiLendingPartnerChange,
-  onCompleteSale, onPreviewBill, discountEnabled, saving,
+  onCompleteSale, onPreviewBill, discountEnabled,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
@@ -370,7 +369,7 @@ export const CheckoutPanel: React.FC<Props> = ({
             size="lg"
             className="flex-1 h-12 bg-success hover:bg-success/90 text-success-foreground font-display font-bold text-base shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
             onClick={onCompleteSale}
-            disabled={items.length === 0 || !mixedValid || saving}
+            disabled={items.length === 0 || !mixedValid}
           >
             <Printer className="w-5 h-5 mr-2" />
             Print & Save

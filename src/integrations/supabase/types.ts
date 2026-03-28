@@ -178,7 +178,6 @@ export type Database = {
           product_id: string
           purchase_date: string
           purchase_price: number
-          sale_price: number
           shop_id: string
           sold_date: string | null
           status: string
@@ -192,7 +191,6 @@ export type Database = {
           product_id: string
           purchase_date?: string
           purchase_price?: number
-          sale_price?: number
           shop_id: string
           sold_date?: string | null
           status?: string
@@ -206,7 +204,6 @@ export type Database = {
           product_id?: string
           purchase_date?: string
           purchase_price?: number
-          sale_price?: number
           shop_id?: string
           sold_date?: string | null
           status?: string
