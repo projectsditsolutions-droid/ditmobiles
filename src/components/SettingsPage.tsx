@@ -793,6 +793,67 @@ export const SettingsPage: React.FC = () => {
           </p>
         </div>
       )}
+
+      {/* ── Backup ── */}
+      {tab === 'backup' && (
+        <div className="space-y-6">
+          {/* Hidden restore input */}
+          <input
+            ref={restoreInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) handleRestoreBackup(file);
+              e.target.value = '';
+            }}
+          />
+
+          {/* Download Backup */}
+          <div className="bg-card rounded-xl border p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Download className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold">Download Backup</h3>
+                <p className="text-xs text-muted-foreground">Export all your shop data as a JSON file</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              This includes shops, products, IMEI records, invoices, dealers, customers, GST profiles, and all transactions.
+            </p>
+            <Button onClick={handleDownloadBackup} disabled={backupLoading} className="gradient-primary border-0 text-primary-foreground">
+              {backupLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Download className="w-4 h-4 mr-1.5" />}
+              {backupLoading ? 'Creating Backup...' : 'Download Backup'}
+            </Button>
+          </div>
+
+          {/* Restore Backup */}
+          <div className="bg-card rounded-xl border p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center">
+                <UploadCloud className="w-5 h-5 text-warning" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold">Restore Backup</h3>
+                <p className="text-xs text-muted-foreground">Import data from a previously downloaded backup file</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">
+              Existing records with the same ID will be updated. New records will be added. No data will be deleted.
+            </p>
+            <p className="text-xs text-destructive font-medium mb-4">
+              ⚠️ Make sure you trust the backup file before restoring.
+            </p>
+            <Button variant="outline" onClick={() => restoreInputRef.current?.click()} disabled={restoreLoading}>
+              {restoreLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <UploadCloud className="w-4 h-4 mr-1.5" />}
+              {restoreLoading ? 'Restoring...' : 'Choose Backup File'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
