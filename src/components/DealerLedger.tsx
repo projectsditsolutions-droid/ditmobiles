@@ -733,9 +733,23 @@ export const DealerLedger: React.FC = () => {
                                     {txn.imei_ref && <p className="text-muted-foreground"><span className="font-semibold text-foreground">IMEI:</span> <span className="font-mono bg-secondary px-1.5 py-0.5 rounded">{txn.imei_ref}</span></p>}
                                     {txn.invoice_ref && <p className="text-muted-foreground"><span className="font-semibold text-foreground">Invoice Ref:</span> {txn.invoice_ref}</p>}
                                     <p className="text-muted-foreground"><span className="font-semibold text-foreground">Date & Time:</span> {new Date(txn.created_at).toLocaleString('en-IN')}</p>
-                                    <div className="pt-1.5 border-t flex gap-4">
-                                      <div><p className="text-[10px] text-muted-foreground">Amount</p><p className={`font-display font-bold ${meta.colorClass}`}>{fmt(Number(txn.amount))}</p></div>
-                                      <div><p className="text-[10px] text-muted-foreground">Running Balance</p><p className="font-display font-bold">{fmt(Number(txn.running_balance))}</p></div>
+                                    <div className="pt-1.5 border-t flex items-end justify-between">
+                                      <div className="flex gap-4">
+                                        <div><p className="text-[10px] text-muted-foreground">Amount</p><p className={`font-display font-bold ${meta.colorClass}`}>{fmt(Number(txn.amount))}</p></div>
+                                        <div><p className="text-[10px] text-muted-foreground">Running Balance</p><p className="font-display font-bold">{fmt(Number(txn.running_balance))}</p></div>
+                                      </div>
+                                      {!txn.id.startsWith('opening-fallback') && (
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          disabled={deletingTxnId === txn.id}
+                                          onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(txn); }}
+                                          className="text-xs"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                          {deletingTxnId === txn.id ? 'Deleting...' : 'Delete'}
+                                        </Button>
+                                      )}
                                     </div>
                                   </div>
                                 </td>
