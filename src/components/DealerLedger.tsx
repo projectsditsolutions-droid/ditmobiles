@@ -210,6 +210,74 @@ export const DealerLedger: React.FC = () => {
     setShowDealerForm(true);
   };
 
+  const [deletingTxnId, setDeletingTxnId] = useState<string | null>(null);
+
+  const handleDeleteTransaction = async (txn: DealerTransaction) => {
+    if (!confirm('Delete this transaction? Running balances and dealer credit will be recalculated.')) return;
+    setDeletingTxnId(txn.id);
+    try {
+      // Delete the transaction
+      const { error: delError } = await supabase.from('dealer_transactions').delete().eq('id', txn.id);
+      if (delError) { toast.error('Failed: ' + delError.message); return; }
+
+      // Fetch all remaining transactions for this dealer, sorted by date
+      const { data: remaining } = await supabase
+        .from('dealer_transactions')
+        .select('*')
+        .eq('dealer_id', txn.dealer_id)
+        .order('created_at', { ascending: true });
+
+      if (!remaining) { toast.error('Failed to fetch transactions'); return; }
+
+      // Find the dealer to get opening credit (balance without any transactions)
+      const dealer = dealers.find(d => d.id === txn.dealer_id);
+      if (!dealer) return;
+
+      // Recalculate: compute opening from scratch
+      // Opening = current_balance - sum(purchases) + sum(payments) + sum(returns) - sum(adjustments)
+      // But after deletion we need to recompute from the base opening
+      // Base opening = total_credit - purchases + payments + returns (before this deletion)
+      // Simpler: recompute running balances from the first transaction
+
+      // Calculate what the opening balance should be (balance before any transactions)
+      const allRemainingTxns = remaining;
+      
+      // We need to figure out the "base" opening credit
+      // The opening is derived: opening = current_total_credit - sum(purchases) + sum(payments) + sum(returns) - sum(adjustments_positive) + sum(adjustments_negative)
+      // But current total_credit includes the deleted txn's effect. So let's reverse the deleted txn first.
+      let adjustedCredit = Number(dealer.total_credit);
+      if (txn.type === 'purchase') adjustedCredit -= Number(txn.amount);
+      else if (txn.type === 'payment') adjustedCredit += Number(txn.amount);
+      else if (txn.type === 'stock_return') adjustedCredit += Number(txn.amount);
+      else if (txn.type === 'opening_adjustment') adjustedCredit -= Number(txn.amount);
+
+      // Now recalculate running balances
+      // Opening = adjustedCredit - sum(remaining purchases) + sum(remaining payments) + sum(remaining returns) - sum(remaining adjustments)
+      const sumByType = (type: string) => allRemainingTxns.filter(t => t.type === type).reduce((s, t) => s + Number(t.amount), 0);
+      const opening = adjustedCredit - sumByType('purchase') + sumByType('payment') + sumByType('stock_return') - sumByType('opening_adjustment');
+
+      let runningBalance = opening;
+      for (const t of allRemainingTxns) {
+        if (t.type === 'purchase' || (t.type === 'opening_adjustment' && Number(t.amount) > 0)) {
+          runningBalance += Number(t.amount);
+        } else if (t.type === 'payment' || t.type === 'stock_return' || (t.type === 'opening_adjustment' && Number(t.amount) < 0)) {
+          runningBalance -= Math.abs(Number(t.amount));
+        }
+        // Update running balance in DB
+        await supabase.from('dealer_transactions').update({ running_balance: runningBalance }).eq('id', t.id);
+      }
+
+      // Update dealer total_credit
+      await supabase.from('dealers').update({ total_credit: adjustedCredit }).eq('id', txn.dealer_id);
+
+      toast.success('Transaction deleted and balances recalculated');
+      fetchDealers();
+      fetchTransactions();
+    } finally {
+      setDeletingTxnId(null);
+    }
+  };
+
   const handleDeleteDealer = async (id: string) => {
     if (!confirm('Delete this dealer? All transactions will also be deleted.')) return;
     await supabase.from('dealer_transactions').delete().eq('dealer_id', id);
@@ -665,9 +733,23 @@ export const DealerLedger: React.FC = () => {
                                     {txn.imei_ref && <p className="text-muted-foreground"><span className="font-semibold text-foreground">IMEI:</span> <span className="font-mono bg-secondary px-1.5 py-0.5 rounded">{txn.imei_ref}</span></p>}
                                     {txn.invoice_ref && <p className="text-muted-foreground"><span className="font-semibold text-foreground">Invoice Ref:</span> {txn.invoice_ref}</p>}
                                     <p className="text-muted-foreground"><span className="font-semibold text-foreground">Date & Time:</span> {new Date(txn.created_at).toLocaleString('en-IN')}</p>
-                                    <div className="pt-1.5 border-t flex gap-4">
-                                      <div><p className="text-[10px] text-muted-foreground">Amount</p><p className={`font-display font-bold ${meta.colorClass}`}>{fmt(Number(txn.amount))}</p></div>
-                                      <div><p className="text-[10px] text-muted-foreground">Running Balance</p><p className="font-display font-bold">{fmt(Number(txn.running_balance))}</p></div>
+                                    <div className="pt-1.5 border-t flex items-end justify-between">
+                                      <div className="flex gap-4">
+                                        <div><p className="text-[10px] text-muted-foreground">Amount</p><p className={`font-display font-bold ${meta.colorClass}`}>{fmt(Number(txn.amount))}</p></div>
+                                        <div><p className="text-[10px] text-muted-foreground">Running Balance</p><p className="font-display font-bold">{fmt(Number(txn.running_balance))}</p></div>
+                                      </div>
+                                      {!txn.id.startsWith('opening-fallback') && (
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          disabled={deletingTxnId === txn.id}
+                                          onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(txn); }}
+                                          className="text-xs"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                          {deletingTxnId === txn.id ? 'Deleting...' : 'Delete'}
+                                        </Button>
+                                      )}
                                     </div>
                                   </div>
                                 </td>
