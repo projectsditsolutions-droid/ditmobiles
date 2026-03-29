@@ -450,6 +450,14 @@ export const POSBilling: React.FC = () => {
     }));
   };
 
+  const updateItemPrice = (id: string, price: number) => {
+    setItems(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      const discount = item.discountType === 'percentage' ? (price * item.discountValue / 100) : item.discountValue;
+      return { ...item, unitPrice: price, discount, total: (price - discount) * item.quantity };
+    }));
+  };
+
   const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
   const itemDiscountTotal = items.reduce((sum, i) => sum + i.discount * i.quantity, 0);
   const billDiscountAmount = billDiscountType === 'percentage' ? subtotal * billDiscount / 100 : billDiscount;
@@ -921,6 +929,7 @@ export const POSBilling: React.FC = () => {
                       flash={flashId === item.id}
                       onRemove={() => removeItem(item.id)}
                       onUpdateDiscount={(val, type) => updateItemDiscount(item.id, val, type)}
+                      onUpdatePrice={(price) => updateItemPrice(item.id, price)}
                       discountEnabled={settings?.discount_enabled ?? true}
                     />
                   ))}

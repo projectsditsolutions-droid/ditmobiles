@@ -18,10 +18,11 @@ interface Props {
   flash: boolean;
   onRemove: () => void;
   onUpdateDiscount: (value: number, type: 'percentage' | 'flat') => void;
+  onUpdatePrice: (price: number) => void;
   discountEnabled: boolean;
 }
 
-export const BillItemRow: React.FC<Props> = ({ item, index, flash, onRemove, onUpdateDiscount, discountEnabled }) => {
+export const BillItemRow: React.FC<Props> = ({ item, index, flash, onRemove, onUpdateDiscount, onUpdatePrice, discountEnabled }) => {
   return (
     <tr className={`border-b border-border/50 hover:bg-accent/30 transition-all duration-150 ${flash ? 'imei-flash' : ''}`}>
       <td className="px-4 py-3 text-muted-foreground font-display text-xs">{index + 1}</td>
@@ -42,7 +43,13 @@ export const BillItemRow: React.FC<Props> = ({ item, index, flash, onRemove, onU
         <span className="font-mono text-xs bg-secondary/60 px-2 py-1 rounded-md">{item.imei || '—'}</span>
       </td>
       <td className="px-4 py-3 text-right">
-        <div className="price-text text-sm">₹{item.unitPrice.toLocaleString('en-IN')}</div>
+        <input
+          type="number"
+          value={item.unitPrice || ''}
+          onChange={e => onUpdatePrice(Number(e.target.value))}
+          className="w-24 h-7 text-right text-sm font-display font-semibold rounded-md border border-input bg-card px-2 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+          min={0}
+        />
         {item.quantity > 1 && <div className="text-[10px] text-muted-foreground">× {item.quantity}</div>}
       </td>
       <td className="px-4 py-3 text-right">
