@@ -181,7 +181,12 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ profiles, selectedId,
 };
 
 // ─── Main POS Component ───────────────────────────────────────────────────────
-export const POSBilling: React.FC = () => {
+interface POSBillingProps {
+  editingInvoice?: InvoiceData | null;
+  onCancelEdit?: () => void;
+}
+
+export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancelEdit }) => {
   const { user } = useAuth();
   const { activeShop, activeShopId, settings } = useShop();
 

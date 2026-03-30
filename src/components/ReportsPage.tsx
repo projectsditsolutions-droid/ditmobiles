@@ -17,7 +17,11 @@ import type { InvoiceData } from './POSBilling';
 
 type Invoice = Database['public']['Tables']['invoices']['Row'];
 
-export const ReportsPage: React.FC = () => {
+interface ReportsPageProps {
+  onEditInvoice?: (invoice: InvoiceData) => void;
+}
+
+export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
   const { printContent, clearContent } = usePrint();
   const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'generate'>('daily');
