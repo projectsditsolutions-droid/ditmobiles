@@ -229,6 +229,60 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const imeiAutoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [imeiFlash, setImeiFlash] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editInvoiceId, setEditInvoiceId] = useState<string | null>(null);
+  const editLoadedRef = useRef<string | null>(null);
+
+  // Load editing invoice into form
+  useEffect(() => {
+    if (editingInvoice && editingInvoice.id !== editLoadedRef.current) {
+      editLoadedRef.current = editingInvoice.id;
+      setEditMode(true);
+      setEditInvoiceId(editingInvoice.id);
+      setItems(editingInvoice.items);
+      setCustomerName(editingInvoice.customer_name || '');
+      setCustomerPhone(editingInvoice.customer_phone || '');
+      setCustomerGST(editingInvoice.customer_gst || '');
+      setCustomerAddress(editingInvoice.customer_address || '');
+      setIsGSTBill(editingInvoice.is_gst_bill);
+      setCustomerType(editingInvoice.customer_gst ? 'B2B' : 'B2C');
+      setGstBearer(editingInvoice.gst_bearer as 'customer' | 'seller');
+      setPaymentMethod(editingInvoice.payment_method as any);
+      setBillDiscount(editingInvoice.bill_discount || 0);
+      setBillDiscountType((editingInvoice.bill_discount_type || 'flat') as 'percentage' | 'flat');
+      setWarrantyMobile(editingInvoice.warranty_mobile || '');
+      setWarrantyAccessories(editingInvoice.warranty_accessories || '');
+      setEmiLendingPartner(editingInvoice.emi_lending_partner || '');
+      if (editingInvoice.date) {
+        setBillDate(new Date(editingInvoice.date).toISOString().slice(0, 16));
+        setIsDateManual(true);
+      }
+      if ((editingInvoice as any).payment_details) {
+        setMixedPayment((editingInvoice as any).payment_details);
+      }
+      toast.info(`Editing invoice: ${editingInvoice.invoice_number}`);
+    }
+  }, [editingInvoice]);
+
+  const cancelEdit = () => {
+    setEditMode(false);
+    setEditInvoiceId(null);
+    editLoadedRef.current = null;
+    setItems([]);
+    scanningImeiRef.current.clear();
+    setCustomerName('');
+    setCustomerPhone('');
+    setCustomerGST('');
+    setCustomerAddress('');
+    setMixedPayment({ cash: 0, upi: 0, card: 0, emi: 0 });
+    setBillDiscount(0);
+    setWarrantyMobile('1 Year Manufacturer Warranty');
+    setWarrantyAccessories('6 Months Warranty');
+    setEmiLendingPartner('');
+    setBillDate(new Date().toISOString().slice(0, 16));
+    setIsDateManual(false);
+    onCancelEdit?.();
+  };
 
   // Reset customer GST when switching to B2C
   useEffect(() => {
