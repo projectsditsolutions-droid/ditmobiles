@@ -285,9 +285,9 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     onCancelEdit?.();
   };
 
-  // Reset customer GST when switching to B2C
+  // Reset customer GST when switching to B2C (but not during edit load)
   useEffect(() => {
-    if (customerType === 'B2C') setCustomerGST('');
+    if (customerType === 'B2C' && !editMode) setCustomerGST('');
   }, [customerType]);
 
   // Fetch GST profiles for this shop
