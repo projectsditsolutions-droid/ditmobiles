@@ -4,7 +4,7 @@ import { useShop } from '@/contexts/ShopContext';
 import {
   TrendingUp, Package, FileText, Calendar, DollarSign, Eye, Printer,
   IndianRupee, ShoppingBag, Download, Trash2, CheckSquare, Filter, X,
-  ChevronDown, ChevronUp, Search, FileDown
+  ChevronDown, ChevronUp, Search, FileDown, Edit2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -503,6 +503,14 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                         <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => openInvoice(inv)}>
                           <Eye className="w-3.5 h-3.5" />
                         </Button>
+                        {onEditInvoice && (
+                          <Button variant="outline" size="sm" className="h-8 px-2" onClick={async () => {
+                            const data = await buildInvoiceData(inv);
+                            if (data) onEditInvoice(data);
+                          }} title="Edit Invoice">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                         <Button size="sm" className="h-8 px-2" onClick={() => openInvoice(inv)}>
                           <Printer className="w-3.5 h-3.5" />
                         </Button>

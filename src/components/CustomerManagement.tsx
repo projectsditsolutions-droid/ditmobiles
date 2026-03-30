@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Search, Phone, User, MapPin, Hash, Mail, Edit2, Trash2, X,
-  ShoppingBag, CalendarDays, FileText, ChevronRight, Users, Printer, Eye
+  ShoppingBag, CalendarDays, FileText, ChevronRight, Users, Printer, Eye, Pencil
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { InvoicePreview } from './InvoicePreview';
@@ -383,6 +383,47 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
                                 >
                                   <Eye className="w-4 h-4 text-primary" />
                                 </button>
+                                {onEditInvoice && (
+                                  <button
+                                    onClick={async () => {
+                                      // Build InvoiceData from the invoice
+                                      const { data: fullInvoice } = await supabase.from('invoices').select('*').eq('id', inv.id).single();
+                                      if (!fullInvoice) { toast.error('Invoice not found'); return; }
+                                      const { data: itms } = await supabase.from('invoice_items').select('*, products(*)').eq('invoice_id', inv.id);
+                                      const invoiceData: InvoiceData = {
+                                        id: fullInvoice.id, invoice_number: fullInvoice.invoice_number, shop_id: fullInvoice.shop_id,
+                                        date: fullInvoice.date, customer_name: fullInvoice.customer_name, customer_phone: fullInvoice.customer_phone,
+                                        customer_gst: fullInvoice.customer_gst || undefined,
+                                        items: (itms || []).map((item: any) => ({
+                                          id: item.id, productId: item.product_id, product: item.products, imei: item.imei || '',
+                                          quantity: item.quantity, unitPrice: Number(item.unit_price), discount: Number(item.discount),
+                                          discountType: item.discount_type, discountValue: Number(item.discount_value), total: Number(item.total),
+                                        })),
+                                        subtotal: Number(fullInvoice.subtotal), total_discount: Number(fullInvoice.total_discount),
+                                        bill_discount: Number(fullInvoice.bill_discount), bill_discount_type: fullInvoice.bill_discount_type,
+                                        cgst: Number(fullInvoice.cgst), sgst: Number(fullInvoice.sgst), grand_total: Number(fullInvoice.grand_total),
+                                        payment_method: fullInvoice.payment_method, is_gst_bill: fullInvoice.is_gst_bill, gst_bearer: fullInvoice.gst_bearer,
+                                        print_type: fullInvoice.print_type, status: fullInvoice.status,
+                                        billing_business_name: fullInvoice.billing_business_name || undefined,
+                                        billing_address: fullInvoice.billing_address || undefined,
+                                        billing_phone: fullInvoice.billing_phone || undefined,
+                                        billing_gst_number: fullInvoice.billing_gst_number || undefined,
+                                        warranty_mobile: fullInvoice.warranty_mobile || undefined,
+                                        warranty_accessories: fullInvoice.warranty_accessories || undefined,
+                                        customer_address: fullInvoice.customer_address || undefined,
+                                        billing_sub_heading: fullInvoice.billing_sub_heading || undefined,
+                                        billing_logo_url: fullInvoice.billing_logo_url || undefined,
+                                        emi_lending_partner: fullInvoice.emi_lending_partner || undefined,
+                                      };
+                                      (invoiceData as any).payment_details = fullInvoice.payment_details;
+                                      onEditInvoice(invoiceData);
+                                    }}
+                                    className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center hover:bg-warning/20 transition-colors"
+                                    title="Edit Invoice"
+                                  >
+                                    <Pencil className="w-4 h-4 text-warning" />
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => openInvoice(inv, true)}
                                   className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center hover:bg-success/20 transition-colors"
