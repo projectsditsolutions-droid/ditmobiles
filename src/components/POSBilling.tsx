@@ -388,13 +388,28 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         return;
       }
 
-      const { data: record } = await supabase
+      // In edit mode, also allow IMEIs sold to THIS invoice
+      let record: any = null;
+      const { data: inStockRecord } = await supabase
         .from('imei_records')
         .select('*, products(*)')
         .eq('imei', imei)
         .eq('shop_id', activeShopId)
         .eq('status', 'in_stock')
         .maybeSingle();
+      record = inStockRecord;
+
+      if (!record && editMode && editInvoiceId) {
+        const { data: soldRecord } = await supabase
+          .from('imei_records')
+          .select('*, products(*)')
+          .eq('imei', imei)
+          .eq('shop_id', activeShopId)
+          .eq('status', 'sold')
+          .eq('invoice_id', editInvoiceId)
+          .maybeSingle();
+        record = soldRecord;
+      }
 
       if (!record) {
         toast.error('IMEI not found or already sold');
@@ -629,6 +644,43 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       if (updErr) {
         toast.error(`Failed to update invoice: ${updErr.message}`);
         return;
+      }
+
+      // ── Inventory reconciliation: compare old vs new items ──
+      // Fetch old invoice items to determine what changed
+      const { data: oldItems } = await supabase
+        .from('invoice_items')
+        .select('*, products(*)')
+        .eq('invoice_id', editInvoiceId);
+
+      const oldImeis = new Set((oldItems || []).map((i: any) => i.imei).filter(Boolean));
+      const newImeis = new Set(items.map(i => i.imei).filter(Boolean));
+
+      // IMEIs removed from invoice → revert to in_stock + increment stock
+      for (const oldItem of (oldItems || [])) {
+        if (oldItem.imei && !newImeis.has(oldItem.imei)) {
+          await supabase.from('imei_records').update({
+            status: 'in_stock',
+            sold_date: null,
+            invoice_id: null,
+          }).eq('imei', oldItem.imei).eq('shop_id', activeShopId);
+          // Increment stock back
+          await supabase.from('products').update({
+            stock_quantity: (oldItem.products as any).stock_quantity + 1,
+          }).eq('id', oldItem.product_id);
+        }
+      }
+
+      // IMEIs newly added to invoice → mark as sold + decrement stock
+      for (const item of items) {
+        if (item.imei && !oldImeis.has(item.imei)) {
+          await supabase.from('imei_records').update({
+            status: 'sold',
+            sold_date: new Date().toISOString(),
+            invoice_id: editInvoiceId,
+          }).eq('imei', item.imei).eq('shop_id', activeShopId);
+          await supabase.rpc('decrement_stock', { p_product_id: item.productId } as any);
+        }
       }
 
       // Delete old invoice items and re-insert
