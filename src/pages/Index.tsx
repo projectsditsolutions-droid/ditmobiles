@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+import type { InvoiceData } from '@/components/POSBilling';
+
 type AppModule = 'billing' | 'inventory' | 'purchases' | 'dealers' | 'customers' | 'reports' | 'settings';
 
 const MODULES: { key: AppModule; label: string; icon: React.ElementType; protected: boolean; color: string }[] = [
@@ -35,7 +37,13 @@ const Index = () => {
   const { shops, loading: shopLoading, refreshShops } = useShop();
   const [activeModule, setActiveModule] = useState<AppModule>('billing');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceData | null>(null);
   const pin = usePinLock();
+
+  const handleEditInvoice = (invoice: InvoiceData) => {
+    setEditingInvoice(invoice);
+    setActiveModule('billing');
+  };
 
   if (authLoading) {
     return (
@@ -133,12 +141,12 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {activeModule === 'billing' && <POSBilling />}
+        {activeModule === 'billing' && <POSBilling editingInvoice={editingInvoice} onCancelEdit={() => setEditingInvoice(null)} />}
         {activeModule === 'inventory' && <InventoryManagement />}
         {activeModule === 'purchases' && <PurchaseEntry />}
         {activeModule === 'dealers' && <DealerLedger />}
-        {activeModule === 'customers' && <CustomerManagement />}
-        {activeModule === 'reports' && <ReportsPage />}
+        {activeModule === 'customers' && <CustomerManagement onEditInvoice={handleEditInvoice} />}
+        {activeModule === 'reports' && <ReportsPage onEditInvoice={handleEditInvoice} />}
         {activeModule === 'settings' && <SettingsPage />}
       </main>
 

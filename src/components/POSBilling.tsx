@@ -10,7 +10,8 @@ import { BillItemRow } from '@/components/BillItemRow';
 import { InvoicePreview } from '@/components/InvoicePreview';
 import {
   Search, Barcode, Keyboard, Receipt, ScanLine,
-  Building2, ChevronDown, Store, Tag, CheckCircle2, AlertTriangle, CalendarIcon
+  Building2, ChevronDown, Store, Tag, CheckCircle2, AlertTriangle, CalendarIcon,
+  Edit2, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -181,7 +182,12 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ profiles, selectedId,
 };
 
 // ─── Main POS Component ───────────────────────────────────────────────────────
-export const POSBilling: React.FC = () => {
+interface POSBillingProps {
+  editingInvoice?: InvoiceData | null;
+  onCancelEdit?: () => void;
+}
+
+export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancelEdit }) => {
   const { user } = useAuth();
   const { activeShop, activeShopId, settings } = useShop();
 
@@ -224,6 +230,60 @@ export const POSBilling: React.FC = () => {
   const imeiAutoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [imeiFlash, setImeiFlash] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editInvoiceId, setEditInvoiceId] = useState<string | null>(null);
+  const editLoadedRef = useRef<string | null>(null);
+
+  // Load editing invoice into form
+  useEffect(() => {
+    if (editingInvoice && editingInvoice.id !== editLoadedRef.current) {
+      editLoadedRef.current = editingInvoice.id;
+      setEditMode(true);
+      setEditInvoiceId(editingInvoice.id);
+      setItems(editingInvoice.items);
+      setCustomerName(editingInvoice.customer_name || '');
+      setCustomerPhone(editingInvoice.customer_phone || '');
+      setCustomerGST(editingInvoice.customer_gst || '');
+      setCustomerAddress(editingInvoice.customer_address || '');
+      setIsGSTBill(editingInvoice.is_gst_bill);
+      setCustomerType(editingInvoice.customer_gst ? 'B2B' : 'B2C');
+      setGstBearer(editingInvoice.gst_bearer as 'customer' | 'seller');
+      setPaymentMethod(editingInvoice.payment_method as any);
+      setBillDiscount(editingInvoice.bill_discount || 0);
+      setBillDiscountType((editingInvoice.bill_discount_type || 'flat') as 'percentage' | 'flat');
+      setWarrantyMobile(editingInvoice.warranty_mobile || '');
+      setWarrantyAccessories(editingInvoice.warranty_accessories || '');
+      setEmiLendingPartner(editingInvoice.emi_lending_partner || '');
+      if (editingInvoice.date) {
+        setBillDate(new Date(editingInvoice.date).toISOString().slice(0, 16));
+        setIsDateManual(true);
+      }
+      if ((editingInvoice as any).payment_details) {
+        setMixedPayment((editingInvoice as any).payment_details);
+      }
+      toast.info(`Editing invoice: ${editingInvoice.invoice_number}`);
+    }
+  }, [editingInvoice]);
+
+  const cancelEdit = () => {
+    setEditMode(false);
+    setEditInvoiceId(null);
+    editLoadedRef.current = null;
+    setItems([]);
+    scanningImeiRef.current.clear();
+    setCustomerName('');
+    setCustomerPhone('');
+    setCustomerGST('');
+    setCustomerAddress('');
+    setMixedPayment({ cash: 0, upi: 0, card: 0, emi: 0 });
+    setBillDiscount(0);
+    setWarrantyMobile('1 Year Manufacturer Warranty');
+    setWarrantyAccessories('6 Months Warranty');
+    setEmiLendingPartner('');
+    setBillDate(new Date().toISOString().slice(0, 16));
+    setIsDateManual(false);
+    onCancelEdit?.();
+  };
 
   // Reset customer GST when switching to B2C
   useEffect(() => {
@@ -512,6 +572,122 @@ export const POSBilling: React.FC = () => {
     setSaving(true);
     try {
 
+    // ─── EDIT MODE: Update existing invoice ───────────────────────────
+    if (editMode && editInvoiceId) {
+      const invoiceNumber = editingInvoice?.invoice_number || '';
+
+      // Auto-save / link customer
+      let customerId: string | null = null;
+      if (customerPhone.length >= 10) {
+        const { data: existing } = await supabase
+          .from('customers')
+          .select('id, total_purchases')
+          .eq('shop_id', activeShopId)
+          .eq('phone', customerPhone)
+          .maybeSingle();
+
+        if (existing) {
+          customerId = existing.id;
+          await supabase.from('customers').update({
+            name: customerName || existing.id,
+            address: customerAddress || '',
+            gstin: customerGST || '',
+          }).eq('id', existing.id);
+        }
+      }
+
+      // Update the invoice record
+      const { error: updErr } = await supabase.from('invoices').update({
+        date: new Date(billDate).toISOString(),
+        customer_name: customerName || 'Walk-in Customer',
+        customer_phone: customerPhone,
+        customer_gst: customerType === 'B2B' ? (customerGST || null) : null,
+        customer_id: customerId,
+        subtotal,
+        total_discount: itemDiscountTotal + billDiscountAmount,
+        bill_discount: billDiscountAmount,
+        bill_discount_type: billDiscountType,
+        cgst: gstCalc.cgst,
+        sgst: gstCalc.sgst,
+        grand_total: grandTotal,
+        payment_method: paymentMethod,
+        payment_details: paymentMethod === 'mixed' ? mixedPayment : null,
+        customer_address: customerAddress,
+        is_gst_bill: isGSTBill,
+        gst_bearer: gstBearer,
+        billing_business_name: selectedProfile?.business_name || activeShop.name,
+        billing_address: selectedProfile?.address || activeShop.address,
+        billing_phone: selectedProfile?.phone || activeShop.phone,
+        billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
+        billing_sub_heading: selectedProfile?.sub_heading || (activeShop as any).sub_heading || '',
+        billing_logo_url: selectedProfile?.logo_url || activeShop.logo_url || '',
+        warranty_mobile: warrantyMobile || '',
+        warranty_accessories: warrantyAccessories || '',
+        emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : '',
+      } as any).eq('id', editInvoiceId);
+
+      if (updErr) {
+        toast.error(`Failed to update invoice: ${updErr.message}`);
+        return;
+      }
+
+      // Delete old invoice items and re-insert
+      await supabase.from('invoice_items').delete().eq('invoice_id', editInvoiceId);
+      const invoiceItems = items.map(item => ({
+        invoice_id: editInvoiceId,
+        product_id: item.productId,
+        imei: item.imei || null,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        discount: item.discount,
+        discount_type: item.discountType,
+        discount_value: item.discountValue,
+        total: item.total,
+      }));
+      await supabase.from('invoice_items').insert(invoiceItems);
+
+      const invoiceData: InvoiceData = {
+        id: editInvoiceId,
+        invoice_number: invoiceNumber,
+        shop_id: activeShopId,
+        date: new Date(billDate).toISOString(),
+        customer_name: customerName || 'Walk-in Customer',
+        customer_phone: customerPhone,
+        customer_gst: customerType === 'B2B' ? (customerGST || undefined) : undefined,
+        items,
+        subtotal,
+        total_discount: itemDiscountTotal + billDiscountAmount,
+        bill_discount: billDiscountAmount,
+        bill_discount_type: billDiscountType,
+        cgst: gstCalc.cgst,
+        sgst: gstCalc.sgst,
+        grand_total: grandTotal,
+        payment_method: paymentMethod,
+        is_gst_bill: isGSTBill,
+        gst_bearer: gstBearer,
+        print_type: settings?.default_print_type || 'thermal',
+        status: 'completed',
+        billing_business_name: selectedProfile?.business_name || activeShop.name,
+        billing_address: selectedProfile?.address || activeShop.address,
+        billing_phone: selectedProfile?.phone || activeShop.phone,
+        billing_gst_number: selectedProfile?.gst_number || activeShop.gst_number,
+        billing_sub_heading: selectedProfile?.sub_heading || (activeShop as any).sub_heading || '',
+        billing_logo_url: selectedProfile?.logo_url || activeShop.logo_url || '',
+        profile_type: selectedProfile?.profile_type,
+        warranty_mobile: warrantyMobile || undefined,
+        warranty_accessories: warrantyAccessories || undefined,
+        customer_address: customerAddress || undefined,
+        emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
+      };
+      if (paymentMethod === 'mixed') (invoiceData as any).payment_details = mixedPayment;
+
+      setShowInvoice(invoiceData);
+      toast.success(`Invoice updated: ${invoiceNumber}`);
+      cancelEdit();
+      return;
+    }
+
+    // ─── NEW MODE: Create new invoice ─────────────────────────────────
     // Use ATOMIC DB functions to prevent duplicate invoice numbers under concurrent saves
     let invoiceNumber: string;
     if (selectedProfile) {
@@ -641,8 +817,6 @@ export const POSBilling: React.FC = () => {
 
           if (dealer) {
             const costValue = Number(imeiRecord.purchase_price || 0);
-            // Record sale_deduction as informational only — don't change dealer balance
-            // Settlement happens only via manual Record Payment
             await supabase.from('dealer_transactions').insert({
               dealer_id: imeiRecord.dealer_id,
               shop_id: activeShopId,
@@ -712,11 +886,24 @@ export const POSBilling: React.FC = () => {
     setBillDate(new Date().toISOString().slice(0, 16));
     setIsDateManual(false);
     } finally { setSaving(false); }
-  }, [saving, items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories, mixedPayment, emiLendingPartner, billDate]);
+  }, [saving, items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, user, selectedProfile, warrantyMobile, warrantyAccessories, mixedPayment, emiLendingPartner, billDate, editMode, editInvoiceId, editingInvoice]);
 
   return (
     <div className="flex h-full flex-col md:flex-row">
       <div className="flex-1 flex flex-col min-w-0">
+
+        {/* ── Edit Mode Banner ──────────────────────────────────────────── */}
+        {editMode && (
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-warning/15 border-b border-warning/30">
+            <Edit2 className="w-4 h-4 text-warning" />
+            <span className="text-sm font-display font-bold text-warning">
+              Editing Invoice: {editingInvoice?.invoice_number}
+            </span>
+            <Button variant="outline" size="sm" className="ml-auto h-7 text-xs" onClick={cancelEdit}>
+              <X className="w-3 h-3 mr-1" /> Cancel Edit
+            </Button>
+          </div>
+        )}
 
         {/* ── Top Bar ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 h-14 bg-card border-b flex-wrap">
