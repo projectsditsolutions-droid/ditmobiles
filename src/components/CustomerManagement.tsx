@@ -58,7 +58,11 @@ const Modal: React.FC<{ open: boolean; onClose: () => void; title: string; subti
   );
 };
 
-export const CustomerManagement: React.FC = () => {
+interface CustomerManagementProps {
+  onEditInvoice?: (invoice: InvoiceData) => void;
+}
+
+export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditInvoice }) => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
