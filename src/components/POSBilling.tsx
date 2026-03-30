@@ -10,7 +10,8 @@ import { BillItemRow } from '@/components/BillItemRow';
 import { InvoicePreview } from '@/components/InvoicePreview';
 import {
   Search, Barcode, Keyboard, Receipt, ScanLine,
-  Building2, ChevronDown, Store, Tag, CheckCircle2, AlertTriangle, CalendarIcon
+  Building2, ChevronDown, Store, Tag, CheckCircle2, AlertTriangle, CalendarIcon,
+  Edit2, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -890,6 +891,19 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   return (
     <div className="flex h-full flex-col md:flex-row">
       <div className="flex-1 flex flex-col min-w-0">
+
+        {/* ── Edit Mode Banner ──────────────────────────────────────────── */}
+        {editMode && (
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-warning/15 border-b border-warning/30">
+            <Edit2 className="w-4 h-4 text-warning" />
+            <span className="text-sm font-display font-bold text-warning">
+              Editing Invoice: {editingInvoice?.invoice_number}
+            </span>
+            <Button variant="outline" size="sm" className="ml-auto h-7 text-xs" onClick={cancelEdit}>
+              <X className="w-3 h-3 mr-1" /> Cancel Edit
+            </Button>
+          </div>
+        )}
 
         {/* ── Top Bar ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 h-14 bg-card border-b flex-wrap">
