@@ -388,13 +388,28 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         return;
       }
 
-      const { data: record } = await supabase
+      // In edit mode, also allow IMEIs sold to THIS invoice
+      let record: any = null;
+      const { data: inStockRecord } = await supabase
         .from('imei_records')
         .select('*, products(*)')
         .eq('imei', imei)
         .eq('shop_id', activeShopId)
         .eq('status', 'in_stock')
         .maybeSingle();
+      record = inStockRecord;
+
+      if (!record && editMode && editInvoiceId) {
+        const { data: soldRecord } = await supabase
+          .from('imei_records')
+          .select('*, products(*)')
+          .eq('imei', imei)
+          .eq('shop_id', activeShopId)
+          .eq('status', 'sold')
+          .eq('invoice_id', editInvoiceId)
+          .maybeSingle();
+        record = soldRecord;
+      }
 
       if (!record) {
         toast.error('IMEI not found or already sold');
