@@ -513,6 +513,7 @@ export type Database = {
           id: string
           invoice_prefix: string
           is_default: boolean
+          last_invoice_fy_start: number
           last_invoice_number: number
           logo_url: string | null
           phone: string
@@ -530,6 +531,7 @@ export type Database = {
           id?: string
           invoice_prefix?: string
           is_default?: boolean
+          last_invoice_fy_start?: number
           last_invoice_number?: number
           logo_url?: string | null
           phone?: string
@@ -547,6 +549,7 @@ export type Database = {
           id?: string
           invoice_prefix?: string
           is_default?: boolean
+          last_invoice_fy_start?: number
           last_invoice_number?: number
           logo_url?: string | null
           phone?: string
@@ -650,6 +653,7 @@ export type Database = {
           gst_number: string
           id: string
           invoice_prefix: string
+          last_invoice_fy_start: number
           last_invoice_number: number
           logo_url: string | null
           name: string
@@ -665,6 +669,7 @@ export type Database = {
           gst_number?: string
           id?: string
           invoice_prefix?: string
+          last_invoice_fy_start?: number
           last_invoice_number?: number
           logo_url?: string | null
           name: string
@@ -680,6 +685,7 @@ export type Database = {
           gst_number?: string
           id?: string
           invoice_prefix?: string
+          last_invoice_fy_start?: number
           last_invoice_number?: number
           logo_url?: string | null
           name?: string
