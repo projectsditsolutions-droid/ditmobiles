@@ -212,10 +212,61 @@ export const DealerLedger: React.FC = () => {
 
   const [deletingTxnId, setDeletingTxnId] = useState<string | null>(null);
 
-  const handleDeleteTransaction = async (txn: DealerTransaction) => {
-    if (!confirm('Delete this transaction? Running balances and dealer credit will be recalculated.')) return;
+   const handleDeleteTransaction = async (txn: DealerTransaction) => {
+    if (!confirm('Delete this transaction? Running balances and dealer credit will be recalculated.' + 
+      (txn.type === 'purchase' ? '\n\nAssociated IMEI records will also be deleted from inventory.' : 
+       txn.type === 'stock_return' ? '\n\nReturned IMEI will be reverted back to in-stock.' : ''))) return;
     setDeletingTxnId(txn.id);
     try {
+      // Reverse inventory effects based on transaction type
+      if (txn.type === 'purchase' && txn.imei_ref) {
+        const imeiList = txn.imei_ref.split(',').map(s => s.trim()).filter(Boolean);
+        if (imeiList.length > 0) {
+          // Find the IMEI records to get product IDs before deleting
+          const { data: imeiRecords } = await supabase.from('imei_records')
+            .select('id, product_id, status')
+            .in('imei', imeiList)
+            .eq('dealer_id', txn.dealer_id);
+          
+          if (imeiRecords && imeiRecords.length > 0) {
+            // Only delete in_stock IMEIs (sold ones should remain)
+            const inStockRecords = imeiRecords.filter(r => r.status === 'in_stock');
+            if (inStockRecords.length > 0) {
+              // Delete IMEI records
+              await supabase.from('imei_records').delete().in('id', inStockRecords.map(r => r.id));
+              
+              // Decrement stock for each product
+              const productCounts: Record<string, number> = {};
+              for (const r of inStockRecords) {
+                productCounts[r.product_id] = (productCounts[r.product_id] || 0) + 1;
+              }
+              for (const [productId, count] of Object.entries(productCounts)) {
+                const product = products.find(p => p.id === productId);
+                if (product) {
+                  await supabase.from('products').update({ 
+                    stock_quantity: Math.max(0, product.stock_quantity - count) 
+                  }).eq('id', productId);
+                }
+              }
+            }
+          }
+        }
+      } else if (txn.type === 'stock_return' && txn.imei_ref) {
+        // Revert returned IMEI back to in_stock
+        const { data: imeiRecord } = await supabase.from('imei_records')
+          .select('id, product_id')
+          .eq('imei', txn.imei_ref.trim())
+          .eq('status', 'returned')
+          .maybeSingle();
+        if (imeiRecord) {
+          await supabase.from('imei_records').update({ status: 'in_stock' }).eq('id', imeiRecord.id);
+          const product = products.find(p => p.id === imeiRecord.product_id);
+          if (product) {
+            await supabase.from('products').update({ stock_quantity: product.stock_quantity + 1 }).eq('id', imeiRecord.product_id);
+          }
+        }
+      }
+
       // Delete the transaction
       const { error: delError } = await supabase.from('dealer_transactions').delete().eq('id', txn.id);
       if (delError) { toast.error('Failed: ' + delError.message); return; }
