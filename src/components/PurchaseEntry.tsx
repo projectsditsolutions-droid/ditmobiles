@@ -159,6 +159,7 @@ export const PurchaseEntry: React.FC = () => {
       let totalAdded = 0;
       let totalPurchaseValue = 0;
       const productDescs: string[] = [];
+      const allAddedImeis: string[] = [];
 
       for (const li of lineItems) {
         const imeiList = li.imeis.split('\n').map(v => v.trim()).filter(v => /^\d{15}$/.test(v));
@@ -174,7 +175,7 @@ export const PurchaseEntry: React.FC = () => {
             purchase_price: li.unit_price,
             sale_price: li.sale_price,
           });
-          if (!error) added++;
+          if (!error) { added++; allAddedImeis.push(imei); }
         }
 
         if (added > 0) {
@@ -202,7 +203,7 @@ export const PurchaseEntry: React.FC = () => {
       const newBalance = Number(dealer.total_credit) + totalPurchaseValue;
       await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', dealer.id);
 
-      // Create transaction record
+      // Create transaction record with IMEI references
       await supabase.from('dealer_transactions').insert({
         dealer_id: selectedDealerId,
         shop_id: activeShopId,
@@ -210,6 +211,7 @@ export const PurchaseEntry: React.FC = () => {
         amount: totalPurchaseValue,
         running_balance: newBalance,
         description: `Purchase: ${productDescs.join(' | ')}`,
+        imei_ref: allAddedImeis.join(','),
       });
 
       toast.success(`✅ ${totalAdded} units added | ${fmt(totalPurchaseValue)} credited to dealer`);
