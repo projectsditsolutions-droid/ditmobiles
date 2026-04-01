@@ -324,6 +324,7 @@ export const DealerLedger: React.FC = () => {
       toast.success('Transaction deleted and balances recalculated');
       fetchDealers();
       fetchTransactions();
+      fetchProducts();
     } finally {
       setDeletingTxnId(null);
     }
