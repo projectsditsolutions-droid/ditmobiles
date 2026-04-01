@@ -459,7 +459,6 @@ export const DealerLedger: React.FC = () => {
     const purchaseValue = added * stockForm.unit_price;
     const newBalance = Number(selectedDealer.total_credit) + purchaseValue;
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
-    const imeiList = stockForm.imeis.split('\n').map(v => v.trim()).filter(v => /^\d{15}$/.test(v));
     await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'purchase', amount: purchaseValue, running_balance: newBalance, description: `Purchase ${added} × ${product?.brand || ''} ${product?.model || ''} @ ₹${stockForm.unit_price.toLocaleString('en-IN')}`, imei_ref: imeiList.join(',') });
     setShowStockEntry(false);
     setStockForm({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
