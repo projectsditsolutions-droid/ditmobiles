@@ -206,13 +206,21 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const [warrantyMobile, setWarrantyMobile] = useState('1 Year Manufacturer Warranty');
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
-  const [billDate, setBillDate] = useState(() => new Date().toISOString().slice(0, 16));
+  // Helper: get current IST datetime string for datetime-local input
+  const getISTNow = () => {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST = UTC+5:30
+    const ist = new Date(now.getTime() + istOffset);
+    return ist.toISOString().slice(0, 16);
+  };
+
+  const [billDate, setBillDate] = useState(() => getISTNow());
   const [isDateManual, setIsDateManual] = useState(false);
 
-  // Keep billDate synced to current time unless manually edited
+  // Keep billDate synced to live IST unless manually edited
   useEffect(() => {
     if (isDateManual) return;
-    const tick = () => setBillDate(new Date().toISOString().slice(0, 16));
+    const tick = () => setBillDate(getISTNow());
     tick();
     const id = setInterval(tick, 10000);
     return () => clearInterval(id);
