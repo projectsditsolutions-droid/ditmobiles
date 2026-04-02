@@ -501,7 +501,9 @@ export const InventoryManagement: React.FC = () => {
                             {brandImeis.map(r => {
                               const product = r.products as unknown as Product | undefined;
                               const isDuplicate = (imeiCountMap.get(r.imei) || 0) > 1;
-                              const margin = Number(r.sale_price) - Number(r.purchase_price);
+                              const cost = Number(r.purchase_price) || (product ? Number(product.purchase_price) : 0);
+                              const sale = Number(r.sale_price) || (product ? Number(product.sale_price) : 0);
+                              const margin = sale - cost;
                               return (
                                 <tr key={r.id} className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${isDuplicate ? 'bg-destructive/5' : ''}`}>
                                   <td className="px-4 py-2 font-mono text-xs font-semibold">
@@ -517,8 +519,8 @@ export const InventoryManagement: React.FC = () => {
                                       r.status === 'sold' ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
                                     }`}>{r.status.replace('_', ' ')}</span>
                                   </td>
-                                  <td className="px-4 py-2 text-right price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
-                                  <td className="px-4 py-2 text-right price-text text-xs">₹{Number(r.sale_price).toLocaleString('en-IN')}</td>
+                                  <td className="px-4 py-2 text-right price-text text-xs">₹{cost.toLocaleString('en-IN')}</td>
+                                  <td className="px-4 py-2 text-right price-text text-xs">₹{sale.toLocaleString('en-IN')}</td>
                                   <td className="px-4 py-2 text-right text-xs">
                                     <span className={margin >= 0 ? 'text-success' : 'text-destructive'}>₹{margin.toLocaleString('en-IN')}</span>
                                   </td>
