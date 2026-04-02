@@ -275,10 +275,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       setWarrantyAccessories(editingInvoice.warranty_accessories || '');
       setEmiLendingPartner(editingInvoice.emi_lending_partner || '');
       if (editingInvoice.date) {
-        const d = new Date(editingInvoice.date);
-        const istOffset = 5.5 * 60 * 60 * 1000;
-        const ist = new Date(d.getTime() + istOffset);
-        setBillDate(ist.toISOString().slice(0, 16));
+        setBillDate(fmtIST(new Date(editingInvoice.date)));
         setIsDateManual(true);
       }
       if ((editingInvoice as any).payment_details) {
