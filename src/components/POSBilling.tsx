@@ -206,13 +206,29 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const [warrantyMobile, setWarrantyMobile] = useState('1 Year Manufacturer Warranty');
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
-  const [billDate, setBillDate] = useState(() => new Date().toISOString().slice(0, 16));
+  // Helper: get current IST datetime string for datetime-local input
+  const getISTNow = () => {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST = UTC+5:30
+    const ist = new Date(now.getTime() + istOffset);
+    return ist.toISOString().slice(0, 16);
+  };
+
+  // Helper: convert IST datetime-local string back to UTC ISO string for DB storage
+  const istToUTC = (istStr: string) => {
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const asUTC = new Date(istStr + ':00.000Z'); // treat input as UTC first
+    const corrected = new Date(asUTC.getTime() - istOffset); // subtract IST offset
+    return corrected.toISOString();
+  };
+
+  const [billDate, setBillDate] = useState(() => getISTNow());
   const [isDateManual, setIsDateManual] = useState(false);
 
-  // Keep billDate synced to current time unless manually edited
+  // Keep billDate synced to live IST unless manually edited
   useEffect(() => {
     if (isDateManual) return;
-    const tick = () => setBillDate(new Date().toISOString().slice(0, 16));
+    const tick = () => setBillDate(getISTNow());
     tick();
     const id = setInterval(tick, 10000);
     return () => clearInterval(id);
@@ -255,7 +271,10 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       setWarrantyAccessories(editingInvoice.warranty_accessories || '');
       setEmiLendingPartner(editingInvoice.emi_lending_partner || '');
       if (editingInvoice.date) {
-        setBillDate(new Date(editingInvoice.date).toISOString().slice(0, 16));
+        const d = new Date(editingInvoice.date);
+        const istOffset = 5.5 * 60 * 60 * 1000;
+        const ist = new Date(d.getTime() + istOffset);
+        setBillDate(ist.toISOString().slice(0, 16));
         setIsDateManual(true);
       }
       if ((editingInvoice as any).payment_details) {
@@ -280,7 +299,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setWarrantyMobile('1 Year Manufacturer Warranty');
     setWarrantyAccessories('6 Months Warranty');
     setEmiLendingPartner('');
-    setBillDate(new Date().toISOString().slice(0, 16));
+    setBillDate(getISTNow());
     setIsDateManual(false);
     onCancelEdit?.();
   };
@@ -548,7 +567,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       id: 'preview',
       invoice_number: 'PREVIEW',
       shop_id: activeShopId,
-      date: new Date(billDate).toISOString(),
+      date: istToUTC(billDate),
       customer_name: customerName || 'Walk-in Customer',
       customer_phone: customerPhone,
       customer_gst: customerType === 'B2B' ? (customerGST || undefined) : undefined,
@@ -613,7 +632,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
 
       // Update the invoice record
       const { error: updErr } = await supabase.from('invoices').update({
-        date: new Date(billDate).toISOString(),
+        date: istToUTC(billDate),
         customer_name: customerName || 'Walk-in Customer',
         customer_phone: customerPhone,
         customer_gst: customerType === 'B2B' ? (customerGST || null) : null,
@@ -702,7 +721,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         id: editInvoiceId,
         invoice_number: invoiceNumber,
         shop_id: activeShopId,
-        date: new Date(billDate).toISOString(),
+        date: istToUTC(billDate),
         customer_name: customerName || 'Walk-in Customer',
         customer_phone: customerPhone,
         customer_gst: customerType === 'B2B' ? (customerGST || undefined) : undefined,
@@ -797,7 +816,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       invoice_number: invoiceNumber,
       shop_id: activeShopId,
       user_id: user.id,
-      date: new Date(billDate).toISOString(),
+      date: istToUTC(billDate),
       customer_name: customerName || 'Walk-in Customer',
       customer_phone: customerPhone,
       customer_gst: customerType === 'B2B' ? (customerGST || null) : null,
@@ -890,7 +909,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       id: invoice.id,
       invoice_number: invoiceNumber,
       shop_id: activeShopId,
-      date: new Date(billDate).toISOString(),
+      date: istToUTC(billDate),
       customer_name: customerName || 'Walk-in Customer',
       customer_phone: customerPhone,
       customer_gst: customerType === 'B2B' ? (customerGST || undefined) : undefined,
