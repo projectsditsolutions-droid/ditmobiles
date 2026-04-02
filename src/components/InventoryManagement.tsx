@@ -339,11 +339,14 @@ export const InventoryManagement: React.FC = () => {
                               </div>
                               {(() => {
                                 const pImeis = getProductIMEIs(p.id);
+                                // For each IMEI: use its own price if > 0, else fall back to product-level
+                                const getEffCost = (r: any) => Number(r.purchase_price) > 0 ? Number(r.purchase_price) : Number(p.purchase_price);
+                                const getEffSale = (r: any) => Number(r.sale_price) > 0 ? Number(r.sale_price) : Number(p.sale_price);
                                 const avgPurchase = pImeis.length > 0
-                                  ? pImeis.reduce((s, r) => s + (Number(r.purchase_price) || Number(p.purchase_price)), 0) / pImeis.length
+                                  ? pImeis.reduce((s, r) => s + getEffCost(r), 0) / pImeis.length
                                   : Number(p.purchase_price);
                                 const avgSale = pImeis.length > 0
-                                  ? pImeis.reduce((s, r) => s + (Number(r.sale_price) || Number(p.sale_price)), 0) / pImeis.length
+                                  ? pImeis.reduce((s, r) => s + getEffSale(r), 0) / pImeis.length
                                   : Number(p.sale_price);
                                 return (
                                   <>
