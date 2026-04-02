@@ -387,7 +387,8 @@ export const InventoryManagement: React.FC = () => {
                                           </button>
                                         </td>
                                       </tr>
-                                    ))}
+                                      );
+                                    })}
                                   </tbody>
                                 </table>
                               </div>
