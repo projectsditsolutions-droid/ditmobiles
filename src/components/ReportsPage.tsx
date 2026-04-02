@@ -4,8 +4,9 @@ import { useShop } from '@/contexts/ShopContext';
 import {
   TrendingUp, Package, FileText, Calendar, DollarSign, Eye, Printer,
   IndianRupee, ShoppingBag, Download, Trash2, CheckSquare, Filter, X,
-  ChevronDown, ChevronUp, Search, FileDown, Edit2
+  ChevronDown, ChevronUp, Search, FileDown, Edit2, BarChart3
 } from 'lucide-react';
+import { BrandAnalytics } from './BrandAnalytics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,7 +25,7 @@ interface ReportsPageProps {
 export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
   const { printContent, clearContent } = usePrint();
-  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'generate'>('daily');
+  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'brands' | 'generate'>('daily');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stockData, setStockData] = useState<any[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
@@ -284,6 +285,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
     { key: 'stock', label: 'Stock', icon: Package },
     { key: 'gst', label: 'GST', icon: FileText },
     { key: 'profit', label: 'Profit', icon: DollarSign },
+    { key: 'brands', label: 'Brands', icon: BarChart3 },
     { key: 'generate', label: 'Generate', icon: FileDown },
   ] as const;
 
@@ -1192,6 +1194,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
           </div>
         );
       })()}
+
+      {tab === 'brands' && <BrandAnalytics />}
 
       {selectedInvoice && <InvoicePreview invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />}
     </div>
