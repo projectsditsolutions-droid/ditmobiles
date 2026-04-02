@@ -1106,7 +1106,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                         <div style="display:flex;justify-content:space-between;align-items:center">
                           <div>
                             <strong style="font-size:12px">${inv.invoice_number}</strong>
-                            <span style="margin-left:12px;color:#666">${new Date(inv.date).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'})}</span>
+                            <span style="margin-left:12px;color:#666">${new Date(inv.date).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short', timeZone:'Asia/Kolkata'})}</span>
                             ${inv.is_gst_bill ? '<span style="margin-left:8px;background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:3px;font-size:9px">GST</span>' : '<span style="margin-left:8px;background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:3px;font-size:9px">Non-GST</span>'}
                           </div>
                           <strong style="font-size:13px">₹${Number(inv.grand_total).toLocaleString('en-IN')}</strong>
