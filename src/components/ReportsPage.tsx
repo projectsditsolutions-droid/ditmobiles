@@ -1038,11 +1038,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-muted-foreground font-display font-medium">Quick:</span>
               {[
-                { label: 'Today', fn: () => { const d = new Date().toISOString().slice(0, 10); setRptDateFrom(d); setRptDateTo(d); } },
-                { label: 'Yesterday', fn: () => { const d = new Date(Date.now() - 86400000).toISOString().slice(0, 10); setRptDateFrom(d); setRptDateTo(d); } },
-                { label: 'This Week', fn: () => { const now = new Date(); const start = new Date(now); start.setDate(now.getDate() - now.getDay()); setRptDateFrom(start.toISOString().slice(0, 10)); setRptDateTo(now.toISOString().slice(0, 10)); } },
-                { label: 'This Month', fn: () => { const now = new Date(); setRptDateFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`); setRptDateTo(now.toISOString().slice(0, 10)); } },
-                { label: 'Last Month', fn: () => { const now = new Date(); const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); const le = new Date(now.getFullYear(), now.getMonth(), 0); setRptDateFrom(lm.toISOString().slice(0, 10)); setRptDateTo(le.toISOString().slice(0, 10)); } },
+                { label: 'Today', fn: () => { const d = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); setRptDateFrom(d); setRptDateTo(d); } },
+                { label: 'Yesterday', fn: () => { const d = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); setRptDateFrom(d); setRptDateTo(d); } },
+                { label: 'This Week', fn: () => { const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); const now = new Date(todayIST + 'T00:00:00'); const start = new Date(now); start.setDate(now.getDate() - now.getDay()); setRptDateFrom(start.toISOString().slice(0, 10)); setRptDateTo(todayIST); } },
+                { label: 'This Month', fn: () => { const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); setRptDateFrom(todayIST.slice(0, 8) + '01'); setRptDateTo(todayIST); } },
+                { label: 'Last Month', fn: () => { const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); const [y, m] = todayIST.split('-').map(Number); const lmStart = `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, '0')}-01`; const lmEnd = new Date(y, m - 1, 0).toISOString().slice(0, 10); setRptDateFrom(lmStart); setRptDateTo(lmEnd); } },
                 { label: 'All Time', fn: () => { setRptDateFrom(''); setRptDateTo(''); } },
               ].map(p => (
                 <Button key={p.label} variant="outline" size="sm" className="h-7 text-xs" onClick={p.fn}>{p.label}</Button>
