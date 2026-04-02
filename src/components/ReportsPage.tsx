@@ -1195,6 +1195,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
         );
       })()}
 
+      {tab === 'brands' && <BrandAnalytics />}
+
       {selectedInvoice && <InvoicePreview invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />}
     </div>
   );
