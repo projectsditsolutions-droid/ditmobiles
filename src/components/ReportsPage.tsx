@@ -285,6 +285,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
     { key: 'stock', label: 'Stock', icon: Package },
     { key: 'gst', label: 'GST', icon: FileText },
     { key: 'profit', label: 'Profit', icon: DollarSign },
+    { key: 'brands', label: 'Brands', icon: BarChart3 },
     { key: 'generate', label: 'Generate', icon: FileDown },
   ] as const;
 
