@@ -879,6 +879,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
           status: 'sold',
           sold_date: new Date().toISOString(),
           invoice_id: invoice.id,
+          sale_price: item.unitPrice,
         }).eq('imei', item.imei);
 
         if (imeiRecord?.dealer_id) {
