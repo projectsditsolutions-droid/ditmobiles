@@ -883,7 +883,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
           if (filtered.length === 0) { toast.error('No data for selected range'); return; }
           const dailyMap: Record<string, { count: number; total: number; cash: number; upi: number; card: number; emi: number; mixed: number }> = {};
           filtered.forEach(inv => {
-            const day = inv.date.slice(0, 10);
+            const day = toISTDate(inv.date);
             if (!dailyMap[day]) dailyMap[day] = { count: 0, total: 0, cash: 0, upi: 0, card: 0, emi: 0, mixed: 0 };
             dailyMap[day].count++;
             dailyMap[day].total += Number(inv.grand_total);
