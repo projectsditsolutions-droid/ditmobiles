@@ -178,13 +178,15 @@ export const InventoryManagement: React.FC = () => {
 
   // Brand grouping
   const brandGroups = useMemo(() => {
-    const groups = new Map<string, Product[]>();
+    const groups = new Map<string, { displayName: string; products: Product[] }>();
     filteredProducts.forEach(p => {
-      const brand = p.brand || 'Other';
-      if (!groups.has(brand)) groups.set(brand, []);
-      groups.get(brand)!.push(p);
+      const key = (p.brand || 'Other').toLowerCase();
+      if (!groups.has(key)) groups.set(key, { displayName: p.brand || 'Other', products: [] });
+      groups.get(key)!.products.push(p);
     });
-    return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return Array.from(groups.values())
+      .map(g => [g.displayName, g.products] as [string, Product[]])
+      .sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }));
   }, [filteredProducts]);
 
   return (
