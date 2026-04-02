@@ -471,7 +471,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       <Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} />
                     </td>
                     <td className="px-4 py-2.5 font-display font-semibold text-primary text-xs">{inv.invoice_number}</td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</td>
                     <td className="px-4 py-2.5">
                       <div className="font-display text-sm">{inv.customer_name}</div>
                       {inv.customer_phone && <div className="text-[10px] text-muted-foreground">{inv.customer_phone}</div>}
