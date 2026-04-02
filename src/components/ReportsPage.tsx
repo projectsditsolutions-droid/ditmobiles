@@ -263,8 +263,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
     toast.success('Backup downloaded');
   };
 
-  const today = new Date().toDateString();
-  const todaySales = invoices.filter(i => new Date(i.date).toDateString() === today);
+  const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
+  const todaySales = invoices.filter(i => new Date(i.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) === todayIST);
   const todayTotal = todaySales.reduce((s, i) => s + Number(i.grand_total), 0);
   const totalSales = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
   const totalInStock = stockData.reduce((s, p) => s + p.inStock, 0);
