@@ -214,6 +214,14 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     return ist.toISOString().slice(0, 16);
   };
 
+  // Helper: convert IST datetime-local string back to UTC ISO string for DB storage
+  const istToUTC = (istStr: string) => {
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const asUTC = new Date(istStr + ':00.000Z'); // treat input as UTC first
+    const corrected = new Date(asUTC.getTime() - istOffset); // subtract IST offset
+    return corrected.toISOString();
+  };
+
   const [billDate, setBillDate] = useState(() => getISTNow());
   const [isDateManual, setIsDateManual] = useState(false);
 
