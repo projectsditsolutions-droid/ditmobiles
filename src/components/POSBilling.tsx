@@ -206,20 +206,24 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const [warrantyMobile, setWarrantyMobile] = useState('1 Year Manufacturer Warranty');
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
-  // Helper: get current IST datetime string for datetime-local input
-  const getISTNow = () => {
-    const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000; // IST = UTC+5:30
-    const ist = new Date(now.getTime() + istOffset);
-    return ist.toISOString().slice(0, 16);
+  // Helper: get current IST datetime string for datetime-local input using Intl (robust)
+  const fmtIST = (d = new Date()) => {
+    const p = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).formatToParts(d).reduce((a, x) => ((a[x.type] = x.value), a), {} as Record<string, string>);
+    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
   };
 
   // Helper: convert IST datetime-local string back to UTC ISO string for DB storage
   const istToUTC = (istStr: string) => {
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const asUTC = new Date(istStr + ':00.000Z'); // treat input as UTC first
-    const corrected = new Date(asUTC.getTime() - istOffset); // subtract IST offset
-    return corrected.toISOString();
+    // Parse the IST string parts and construct a Date using IST offset
+    const [datePart, timePart] = istStr.split('T');
+    const [y, m, d] = datePart.split('-').map(Number);
+    const [h, min] = timePart.split(':').map(Number);
+    // Create UTC date, then subtract IST offset (5:30)
+    const utc = new Date(Date.UTC(y, m - 1, d, h - 5, min - 30));
+    return utc.toISOString();
   };
 
   const [billDate, setBillDate] = useState(() => getISTNow());
