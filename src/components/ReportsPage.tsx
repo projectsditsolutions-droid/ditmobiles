@@ -242,7 +242,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const downloadInvoicesCSV = () => {
     const data = (selectedIds.size > 0 ? filteredInvoices.filter(i => selectedIds.has(i.id)) : filteredInvoices).map(inv => ({
       Invoice: inv.invoice_number,
-      Date: new Date(inv.date).toLocaleString('en-IN'),
+      Date: new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
       Customer: inv.customer_name,
       Phone: inv.customer_phone,
       Payment: inv.payment_method,
@@ -835,7 +835,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
             items.forEach((item: any) => {
               rows.push({
                 Invoice: inv.invoice_number,
-                Date: new Date(inv.date).toLocaleString('en-IN'),
+                Date: new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
                 Customer: inv.customer_name,
                 Phone: inv.customer_phone,
                 Address: inv.customer_address || '',
@@ -858,7 +858,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
             if (items.length === 0) {
               rows.push({
                 Invoice: inv.invoice_number,
-                Date: new Date(inv.date).toLocaleString('en-IN'),
+                Date: new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
                 Customer: inv.customer_name,
                 Phone: inv.customer_phone,
                 Address: inv.customer_address || '',
@@ -932,7 +932,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
           if (filtered.length === 0) { toast.error('No GST invoices in range'); return; }
           const data = filtered.map(inv => ({
             Invoice: inv.invoice_number,
-            Date: new Date(inv.date).toLocaleString('en-IN'),
+            Date: new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
             Customer: inv.customer_name,
             Customer_GST: inv.customer_gst || '',
             Type: inv.customer_gst ? 'B2B' : 'B2C',
