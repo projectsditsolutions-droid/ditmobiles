@@ -179,11 +179,13 @@ export const PurchaseEntry: React.FC = () => {
         }
 
         if (added > 0) {
-          // Update product stock & HSN
+          // Update product stock, HSN, and prices
           const product = products.find(p => p.id === li.product_id);
           if (product) {
             const updateData: Record<string, any> = { stock_quantity: product.stock_quantity + added };
             if (li.hsn_code) updateData.hsn_code = li.hsn_code;
+            if (li.unit_price > 0) updateData.purchase_price = li.unit_price;
+            if (li.sale_price > 0) updateData.sale_price = li.sale_price;
             await supabase.from('products').update(updateData).eq('id', product.id);
           }
           totalAdded += added;
