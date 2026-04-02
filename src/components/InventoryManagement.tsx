@@ -464,14 +464,17 @@ export const InventoryManagement: React.FC = () => {
           {/* Brand-grouped IMEI records */}
           <div className="space-y-3">
             {(() => {
-              const brandMap = new Map<string, typeof filteredIMEIs>();
+              const brandMap = new Map<string, { displayName: string; items: typeof filteredIMEIs }>();
               filteredIMEIs.forEach(r => {
                 const product = r.products as unknown as Product | undefined;
                 const brand = product?.brand || 'Unknown';
-                if (!brandMap.has(brand)) brandMap.set(brand, []);
-                brandMap.get(brand)!.push(r);
+                const key = brand.toLowerCase();
+                if (!brandMap.has(key)) brandMap.set(key, { displayName: brand, items: [] });
+                brandMap.get(key)!.items.push(r);
               });
-              const brandEntries = Array.from(brandMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+              const brandEntries = Array.from(brandMap.values())
+                .map(g => [g.displayName, g.items] as [string, typeof filteredIMEIs])
+                .sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }));
 
               if (brandEntries.length === 0) {
                 return (
