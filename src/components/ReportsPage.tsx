@@ -79,9 +79,14 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
     fetchData();
   }, [activeShopId]);
 
+  // Convert UTC date to IST YYYY-MM-DD
+  const toISTDate = (utcStr: string) => new Date(utcStr).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const toISTString = (utcStr: string) => new Date(utcStr).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
   const filteredInvoices = invoices.filter(inv => {
-    if (dateFrom && inv.date < dateFrom) return false;
-    if (dateTo && inv.date > dateTo + 'T23:59:59') return false;
+    const istDate = toISTDate(inv.date);
+    if (dateFrom && istDate < dateFrom) return false;
+    if (dateTo && istDate > dateTo) return false;
     if (paymentFilter !== 'all' && inv.payment_method !== paymentFilter) return false;
     if (modeFilter === 'gst' && !inv.is_gst_bill) return false;
     if (modeFilter === 'non-gst' && inv.is_gst_bill) return false;
@@ -237,7 +242,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const downloadInvoicesCSV = () => {
     const data = (selectedIds.size > 0 ? filteredInvoices.filter(i => selectedIds.has(i.id)) : filteredInvoices).map(inv => ({
       Invoice: inv.invoice_number,
-      Date: new Date(inv.date).toLocaleString('en-IN'),
+      Date: new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
       Customer: inv.customer_name,
       Phone: inv.customer_phone,
       Payment: inv.payment_method,
@@ -271,7 +276,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const totalStockValue = stockData.reduce((s, p) => s + p.stockValue, 0);
 
   const monthlyData = invoices.reduce((acc: Record<string, { count: number; total: number }>, inv) => {
-    const month = inv.date.slice(0, 7);
+    const month = toISTDate(inv.date).slice(0, 7);
     if (!acc[month]) acc[month] = { count: 0, total: 0 };
     acc[month].count++;
     acc[month].total += Number(inv.grand_total);
@@ -799,8 +804,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
 
         const filterByDate = (list: Invoice[]) => {
           return list.filter(inv => {
-            if (rptDateFrom && inv.date < rptDateFrom) return false;
-            if (rptDateTo && inv.date > rptDateTo + 'T23:59:59') return false;
+            const istDate = toISTDate(inv.date);
+            if (rptDateFrom && istDate < rptDateFrom) return false;
+            if (rptDateTo && istDate > rptDateTo) return false;
             return true;
           });
         };
@@ -829,7 +835,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
             items.forEach((item: any) => {
               rows.push({
                 Invoice: inv.invoice_number,
-                Date: new Date(inv.date).toLocaleString('en-IN'),
+                Date: new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
                 Customer: inv.customer_name,
                 Phone: inv.customer_phone,
                 Address: inv.customer_address || '',
@@ -852,7 +858,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
             if (items.length === 0) {
               rows.push({
                 Invoice: inv.invoice_number,
-                Date: new Date(inv.date).toLocaleString('en-IN'),
+                Date: new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
                 Customer: inv.customer_name,
                 Phone: inv.customer_phone,
                 Address: inv.customer_address || '',
@@ -877,7 +883,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
           if (filtered.length === 0) { toast.error('No data for selected range'); return; }
           const dailyMap: Record<string, { count: number; total: number; cash: number; upi: number; card: number; emi: number; mixed: number }> = {};
           filtered.forEach(inv => {
-            const day = inv.date.slice(0, 10);
+            const day = toISTDate(inv.date);
             if (!dailyMap[day]) dailyMap[day] = { count: 0, total: 0, cash: 0, upi: 0, card: 0, emi: 0, mixed: 0 };
             dailyMap[day].count++;
             dailyMap[day].total += Number(inv.grand_total);
@@ -926,7 +932,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
           if (filtered.length === 0) { toast.error('No GST invoices in range'); return; }
           const data = filtered.map(inv => ({
             Invoice: inv.invoice_number,
-            Date: new Date(inv.date).toLocaleString('en-IN'),
+            Date: new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
             Customer: inv.customer_name,
             Customer_GST: inv.customer_gst || '',
             Type: inv.customer_gst ? 'B2B' : 'B2C',
@@ -1032,11 +1038,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-muted-foreground font-display font-medium">Quick:</span>
               {[
-                { label: 'Today', fn: () => { const d = new Date().toISOString().slice(0, 10); setRptDateFrom(d); setRptDateTo(d); } },
-                { label: 'Yesterday', fn: () => { const d = new Date(Date.now() - 86400000).toISOString().slice(0, 10); setRptDateFrom(d); setRptDateTo(d); } },
-                { label: 'This Week', fn: () => { const now = new Date(); const start = new Date(now); start.setDate(now.getDate() - now.getDay()); setRptDateFrom(start.toISOString().slice(0, 10)); setRptDateTo(now.toISOString().slice(0, 10)); } },
-                { label: 'This Month', fn: () => { const now = new Date(); setRptDateFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`); setRptDateTo(now.toISOString().slice(0, 10)); } },
-                { label: 'Last Month', fn: () => { const now = new Date(); const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); const le = new Date(now.getFullYear(), now.getMonth(), 0); setRptDateFrom(lm.toISOString().slice(0, 10)); setRptDateTo(le.toISOString().slice(0, 10)); } },
+                { label: 'Today', fn: () => { const d = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); setRptDateFrom(d); setRptDateTo(d); } },
+                { label: 'Yesterday', fn: () => { const d = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); setRptDateFrom(d); setRptDateTo(d); } },
+                { label: 'This Week', fn: () => { const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); const now = new Date(todayIST + 'T00:00:00'); const start = new Date(now); start.setDate(now.getDate() - now.getDay()); setRptDateFrom(start.toISOString().slice(0, 10)); setRptDateTo(todayIST); } },
+                { label: 'This Month', fn: () => { const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); setRptDateFrom(todayIST.slice(0, 8) + '01'); setRptDateTo(todayIST); } },
+                { label: 'Last Month', fn: () => { const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); const [y, m] = todayIST.split('-').map(Number); const lmStart = `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, '0')}-01`; const lmEnd = new Date(y, m - 1, 0).toISOString().slice(0, 10); setRptDateFrom(lmStart); setRptDateTo(lmEnd); } },
                 { label: 'All Time', fn: () => { setRptDateFrom(''); setRptDateTo(''); } },
               ].map(p => (
                 <Button key={p.label} variant="outline" size="sm" className="h-7 text-xs" onClick={p.fn}>{p.label}</Button>
@@ -1052,8 +1058,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                 // Generate PDF via print
                 const filterByDateLocal = (list: Invoice[]) => {
                   return list.filter(inv => {
-                    if (rptDateFrom && inv.date < rptDateFrom) return false;
-                    if (rptDateTo && inv.date > rptDateTo + 'T23:59:59') return false;
+                    const istDate = toISTDate(inv.date);
+                    if (rptDateFrom && istDate < rptDateFrom) return false;
+                    if (rptDateTo && istDate > rptDateTo) return false;
                     return true;
                   });
                 };
@@ -1099,7 +1106,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                         <div style="display:flex;justify-content:space-between;align-items:center">
                           <div>
                             <strong style="font-size:12px">${inv.invoice_number}</strong>
-                            <span style="margin-left:12px;color:#666">${new Date(inv.date).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'})}</span>
+                            <span style="margin-left:12px;color:#666">${new Date(inv.date).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short', timeZone:'Asia/Kolkata'})}</span>
                             ${inv.is_gst_bill ? '<span style="margin-left:8px;background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:3px;font-size:9px">GST</span>' : '<span style="margin-left:8px;background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:3px;font-size:9px">Non-GST</span>'}
                           </div>
                           <strong style="font-size:13px">₹${Number(inv.grand_total).toLocaleString('en-IN')}</strong>
@@ -1151,7 +1158,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                 } else {
                   const dailyMap: Record<string, {count:number;total:number}> = {};
                   filtered.forEach(inv => {
-                    const day = inv.date.slice(0, 10);
+                    const day = toISTDate(inv.date);
                     if (!dailyMap[day]) dailyMap[day] = {count:0,total:0};
                     dailyMap[day].count++;
                     dailyMap[day].total += Number(inv.grand_total);
@@ -1165,7 +1172,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                 const html = `<div style="font-family:Inter,Arial,sans-serif;padding:0;width:100%">
                   <div style="text-align:center;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px">
                     <div style="font-size:20px;font-weight:900">${title}</div>
-                    <div style="font-size:10px;color:#666;margin-top:4px">Period: ${period} · Generated: ${new Date().toLocaleString('en-IN')}</div>
+                    <div style="font-size:10px;color:#666;margin-top:4px">Period: ${period} · Generated: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
                   </div>
                   <table style="width:100%;border-collapse:collapse;font-size:10px">
                     <thead>${headerRow}</thead>
