@@ -1158,7 +1158,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                 } else {
                   const dailyMap: Record<string, {count:number;total:number}> = {};
                   filtered.forEach(inv => {
-                    const day = inv.date.slice(0, 10);
+                    const day = toISTDate(inv.date);
                     if (!dailyMap[day]) dailyMap[day] = {count:0,total:0};
                     dailyMap[day].count++;
                     dailyMap[day].total += Number(inv.grand_total);
