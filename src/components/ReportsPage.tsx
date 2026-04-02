@@ -25,7 +25,7 @@ interface ReportsPageProps {
 export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
   const { printContent, clearContent } = usePrint();
-  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'generate'>('daily');
+  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'brands' | 'generate'>('daily');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stockData, setStockData] = useState<any[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
