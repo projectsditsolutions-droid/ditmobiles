@@ -337,14 +337,27 @@ export const InventoryManagement: React.FC = () => {
                                   {' · '}{p.category}
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <div className="text-xs text-muted-foreground">Purchase</div>
-                                <div className="price-text text-xs">₹{Number(p.purchase_price).toLocaleString('en-IN')}</div>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-xs text-muted-foreground">Sale</div>
-                                <div className="price-text text-sm font-semibold">₹{Number(p.sale_price).toLocaleString('en-IN')}</div>
-                              </div>
+                              {(() => {
+                                const pImeis = getProductIMEIs(p.id);
+                                const avgPurchase = pImeis.length > 0
+                                  ? pImeis.reduce((s, r) => s + (Number(r.purchase_price) || Number(p.purchase_price)), 0) / pImeis.length
+                                  : Number(p.purchase_price);
+                                const avgSale = pImeis.length > 0
+                                  ? pImeis.reduce((s, r) => s + (Number(r.sale_price) || Number(p.sale_price)), 0) / pImeis.length
+                                  : Number(p.sale_price);
+                                return (
+                                  <>
+                                    <div className="text-right">
+                                      <div className="text-xs text-muted-foreground">Purchase</div>
+                                      <div className="price-text text-xs">₹{Math.round(avgPurchase).toLocaleString('en-IN')}</div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="text-xs text-muted-foreground">Sale</div>
+                                      <div className="price-text text-sm font-semibold">₹{Math.round(avgSale).toLocaleString('en-IN')}</div>
+                                    </div>
+                                  </>
+                                );
+                              })()}
                               <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-display font-bold ${
                                 stock === 0 ? 'bg-destructive/10 text-destructive' : isLow ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
                               }`}>
@@ -366,14 +379,18 @@ export const InventoryManagement: React.FC = () => {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {productImeis.map(r => (
+                                    {productImeis.map(r => {
+                                      const cost = Number(r.purchase_price) || (r.products ? Number(r.products.purchase_price) : 0);
+                                      const sale = Number(r.sale_price) || (r.products ? Number(r.products.sale_price) : 0);
+                                      const margin = sale - cost;
+                                      return (
                                       <tr key={r.id} className="border-t border-border/10 hover:bg-accent/30 transition-colors">
                                         <td className="px-6 py-1.5 pl-8 font-mono font-semibold">{r.imei}</td>
-                                        <td className="px-4 py-1.5 text-right price-text">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
-                                        <td className="px-4 py-1.5 text-right price-text">₹{Number(r.sale_price).toLocaleString('en-IN')}</td>
+                                        <td className="px-4 py-1.5 text-right price-text">₹{cost.toLocaleString('en-IN')}</td>
+                                        <td className="px-4 py-1.5 text-right price-text">₹{sale.toLocaleString('en-IN')}</td>
                                         <td className="px-4 py-1.5 text-right">
-                                          <span className={Number(r.sale_price) - Number(r.purchase_price) >= 0 ? 'text-success' : 'text-destructive'}>
-                                            ₹{(Number(r.sale_price) - Number(r.purchase_price)).toLocaleString('en-IN')}
+                                          <span className={margin >= 0 ? 'text-success' : 'text-destructive'}>
+                                            ₹{margin.toLocaleString('en-IN')}
                                           </span>
                                         </td>
                                         <td className="px-4 py-1.5 text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
@@ -383,7 +400,8 @@ export const InventoryManagement: React.FC = () => {
                                           </button>
                                         </td>
                                       </tr>
-                                    ))}
+                                      );
+                                    })}
                                   </tbody>
                                 </table>
                               </div>
@@ -496,7 +514,9 @@ export const InventoryManagement: React.FC = () => {
                             {brandImeis.map(r => {
                               const product = r.products as unknown as Product | undefined;
                               const isDuplicate = (imeiCountMap.get(r.imei) || 0) > 1;
-                              const margin = Number(r.sale_price) - Number(r.purchase_price);
+                              const cost = Number(r.purchase_price) || (product ? Number(product.purchase_price) : 0);
+                              const sale = Number(r.sale_price) || (product ? Number(product.sale_price) : 0);
+                              const margin = sale - cost;
                               return (
                                 <tr key={r.id} className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${isDuplicate ? 'bg-destructive/5' : ''}`}>
                                   <td className="px-4 py-2 font-mono text-xs font-semibold">
@@ -512,8 +532,8 @@ export const InventoryManagement: React.FC = () => {
                                       r.status === 'sold' ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
                                     }`}>{r.status.replace('_', ' ')}</span>
                                   </td>
-                                  <td className="px-4 py-2 text-right price-text text-xs">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
-                                  <td className="px-4 py-2 text-right price-text text-xs">₹{Number(r.sale_price).toLocaleString('en-IN')}</td>
+                                  <td className="px-4 py-2 text-right price-text text-xs">₹{cost.toLocaleString('en-IN')}</td>
+                                  <td className="px-4 py-2 text-right price-text text-xs">₹{sale.toLocaleString('en-IN')}</td>
                                   <td className="px-4 py-2 text-right text-xs">
                                     <span className={margin >= 0 ? 'text-success' : 'text-destructive'}>₹{margin.toLocaleString('en-IN')}</span>
                                   </td>
