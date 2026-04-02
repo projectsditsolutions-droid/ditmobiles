@@ -276,7 +276,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const totalStockValue = stockData.reduce((s, p) => s + p.stockValue, 0);
 
   const monthlyData = invoices.reduce((acc: Record<string, { count: number; total: number }>, inv) => {
-    const month = inv.date.slice(0, 7);
+    const month = toISTDate(inv.date).slice(0, 7);
     if (!acc[month]) acc[month] = { count: 0, total: 0 };
     acc[month].count++;
     acc[month].total += Number(inv.grand_total);
