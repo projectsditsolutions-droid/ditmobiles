@@ -263,8 +263,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
     toast.success('Backup downloaded');
   };
 
-  const today = new Date().toDateString();
-  const todaySales = invoices.filter(i => new Date(i.date).toDateString() === today);
+  const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
+  const todaySales = invoices.filter(i => new Date(i.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) === todayIST);
   const todayTotal = todaySales.reduce((s, i) => s + Number(i.grand_total), 0);
   const totalSales = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
   const totalInStock = stockData.reduce((s, p) => s + p.inStock, 0);
@@ -471,7 +471,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       <Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} />
                     </td>
                     <td className="px-4 py-2.5 font-display font-semibold text-primary text-xs">{inv.invoice_number}</td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</td>
                     <td className="px-4 py-2.5">
                       <div className="font-display text-sm">{inv.customer_name}</div>
                       {inv.customer_phone && <div className="text-[10px] text-muted-foreground">{inv.customer_phone}</div>}
