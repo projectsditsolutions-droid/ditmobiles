@@ -1058,8 +1058,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                 // Generate PDF via print
                 const filterByDateLocal = (list: Invoice[]) => {
                   return list.filter(inv => {
-                    if (rptDateFrom && inv.date < rptDateFrom) return false;
-                    if (rptDateTo && inv.date > rptDateTo + 'T23:59:59') return false;
+                    const istDate = toISTDate(inv.date);
+                    if (rptDateFrom && istDate < rptDateFrom) return false;
+                    if (rptDateTo && istDate > rptDateTo) return false;
                     return true;
                   });
                 };
