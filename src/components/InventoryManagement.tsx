@@ -337,14 +337,27 @@ export const InventoryManagement: React.FC = () => {
                                   {' · '}{p.category}
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <div className="text-xs text-muted-foreground">Purchase</div>
-                                <div className="price-text text-xs">₹{Number(p.purchase_price).toLocaleString('en-IN')}</div>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-xs text-muted-foreground">Sale</div>
-                                <div className="price-text text-sm font-semibold">₹{Number(p.sale_price).toLocaleString('en-IN')}</div>
-                              </div>
+                              {(() => {
+                                const pImeis = getProductIMEIs(p.id);
+                                const avgPurchase = pImeis.length > 0
+                                  ? pImeis.reduce((s, r) => s + (Number(r.purchase_price) || Number(p.purchase_price)), 0) / pImeis.length
+                                  : Number(p.purchase_price);
+                                const avgSale = pImeis.length > 0
+                                  ? pImeis.reduce((s, r) => s + (Number(r.sale_price) || Number(p.sale_price)), 0) / pImeis.length
+                                  : Number(p.sale_price);
+                                return (
+                                  <>
+                                    <div className="text-right">
+                                      <div className="text-xs text-muted-foreground">Purchase</div>
+                                      <div className="price-text text-xs">₹{Math.round(avgPurchase).toLocaleString('en-IN')}</div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="text-xs text-muted-foreground">Sale</div>
+                                      <div className="price-text text-sm font-semibold">₹{Math.round(avgSale).toLocaleString('en-IN')}</div>
+                                    </div>
+                                  </>
+                                );
+                              })()}
                               <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-display font-bold ${
                                 stock === 0 ? 'bg-destructive/10 text-destructive' : isLow ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
                               }`}>
