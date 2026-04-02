@@ -226,13 +226,13 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     return utc.toISOString();
   };
 
-  const [billDate, setBillDate] = useState(() => getISTNow());
+  const [billDate, setBillDate] = useState(() => fmtIST());
   const [isDateManual, setIsDateManual] = useState(false);
 
   // Keep billDate synced to live IST unless manually edited
   useEffect(() => {
     if (isDateManual) return;
-    const tick = () => setBillDate(getISTNow());
+    const tick = () => setBillDate(fmtIST());
     tick();
     const id = setInterval(tick, 10000);
     return () => clearInterval(id);
@@ -303,7 +303,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setWarrantyMobile('1 Year Manufacturer Warranty');
     setWarrantyAccessories('6 Months Warranty');
     setEmiLendingPartner('');
-    setBillDate(getISTNow());
+    setBillDate(fmtIST());
     setIsDateManual(false);
     onCancelEdit?.();
   };
