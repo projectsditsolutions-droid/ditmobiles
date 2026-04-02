@@ -366,14 +366,18 @@ export const InventoryManagement: React.FC = () => {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {productImeis.map(r => (
+                                    {productImeis.map(r => {
+                                      const cost = Number(r.purchase_price) || (r.products ? Number(r.products.purchase_price) : 0);
+                                      const sale = Number(r.sale_price) || (r.products ? Number(r.products.sale_price) : 0);
+                                      const margin = sale - cost;
+                                      return (
                                       <tr key={r.id} className="border-t border-border/10 hover:bg-accent/30 transition-colors">
                                         <td className="px-6 py-1.5 pl-8 font-mono font-semibold">{r.imei}</td>
-                                        <td className="px-4 py-1.5 text-right price-text">₹{Number(r.purchase_price).toLocaleString('en-IN')}</td>
-                                        <td className="px-4 py-1.5 text-right price-text">₹{Number(r.sale_price).toLocaleString('en-IN')}</td>
+                                        <td className="px-4 py-1.5 text-right price-text">₹{cost.toLocaleString('en-IN')}</td>
+                                        <td className="px-4 py-1.5 text-right price-text">₹{sale.toLocaleString('en-IN')}</td>
                                         <td className="px-4 py-1.5 text-right">
-                                          <span className={Number(r.sale_price) - Number(r.purchase_price) >= 0 ? 'text-success' : 'text-destructive'}>
-                                            ₹{(Number(r.sale_price) - Number(r.purchase_price)).toLocaleString('en-IN')}
+                                          <span className={margin >= 0 ? 'text-success' : 'text-destructive'}>
+                                            ₹{margin.toLocaleString('en-IN')}
                                           </span>
                                         </td>
                                         <td className="px-4 py-1.5 text-muted-foreground">{new Date(r.purchase_date).toLocaleDateString('en-IN')}</td>
