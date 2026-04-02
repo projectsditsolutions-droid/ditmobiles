@@ -698,6 +698,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
             status: 'sold',
             sold_date: new Date().toISOString(),
             invoice_id: editInvoiceId,
+            sale_price: item.unitPrice,
           }).eq('imei', item.imei).eq('shop_id', activeShopId);
           await supabase.rpc('decrement_stock', { p_product_id: item.productId } as any);
         }
