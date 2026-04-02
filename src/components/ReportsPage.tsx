@@ -79,9 +79,14 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
     fetchData();
   }, [activeShopId]);
 
+  // Convert UTC date to IST YYYY-MM-DD
+  const toISTDate = (utcStr: string) => new Date(utcStr).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const toISTString = (utcStr: string) => new Date(utcStr).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
   const filteredInvoices = invoices.filter(inv => {
-    if (dateFrom && inv.date < dateFrom) return false;
-    if (dateTo && inv.date > dateTo + 'T23:59:59') return false;
+    const istDate = toISTDate(inv.date);
+    if (dateFrom && istDate < dateFrom) return false;
+    if (dateTo && istDate > dateTo) return false;
     if (paymentFilter !== 'all' && inv.payment_method !== paymentFilter) return false;
     if (modeFilter === 'gst' && !inv.is_gst_bill) return false;
     if (modeFilter === 'non-gst' && inv.is_gst_bill) return false;
