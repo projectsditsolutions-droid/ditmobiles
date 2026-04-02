@@ -1172,7 +1172,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                 const html = `<div style="font-family:Inter,Arial,sans-serif;padding:0;width:100%">
                   <div style="text-align:center;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px">
                     <div style="font-size:20px;font-weight:900">${title}</div>
-                    <div style="font-size:10px;color:#666;margin-top:4px">Period: ${period} · Generated: ${new Date().toLocaleString('en-IN')}</div>
+                    <div style="font-size:10px;color:#666;margin-top:4px">Period: ${period} · Generated: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
                   </div>
                   <table style="width:100%;border-collapse:collapse;font-size:10px">
                     <thead>${headerRow}</thead>
