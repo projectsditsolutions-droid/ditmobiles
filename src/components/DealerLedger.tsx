@@ -399,7 +399,7 @@ export const DealerLedger: React.FC = () => {
     fetchTransactions();
   };
 
-  const defaultPaymentForm = { amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'opening_credit' as const, soldCostAmount: 0, openingCreditAmount: 0 };
+  const defaultPaymentForm = { amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'opening_credit' as 'sold_cost' | 'opening_credit' | 'both' | 'direct', soldCostAmount: 0, openingCreditAmount: 0 };
 
   const handlePayment = async () => {
     if (!selectedDealer || !activeShopId) return;
