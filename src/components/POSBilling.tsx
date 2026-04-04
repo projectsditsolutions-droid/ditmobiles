@@ -497,9 +497,16 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   }, [searchInput, showSearch, activeShopId]);
 
   const addProductManually = async (product: Product) => {
-    // Stock check
+    // Fresh stock check using actual IMEI count (not potentially stale stock_quantity)
+    const { count: actualStock } = await supabase
+      .from('imei_records')
+      .select('id', { count: 'exact', head: true })
+      .eq('product_id', product.id)
+      .eq('shop_id', activeShopId!)
+      .eq('status', 'in_stock');
     const currentQtyInBill = items.filter(i => i.productId === product.id).reduce((sum, i) => sum + i.quantity, 0);
-    if (product.stock_quantity <= currentQtyInBill) {
+    const available = (actualStock ?? product.stock_quantity) - currentQtyInBill;
+    if (available <= 0) {
       toast.error(`Out of stock: ${product.brand} ${product.model}`);
       return;
     }
