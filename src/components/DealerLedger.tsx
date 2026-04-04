@@ -1008,7 +1008,7 @@ export const DealerLedger: React.FC = () => {
           ) : (
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                Amount (max: {paymentForm.settleFrom === 'sold_cost' ? fmt(totals.availableSoldCost) : fmt(totals.availableOpeningCredit)})
+                {paymentForm.settleFrom === 'direct' ? 'Amount' : `Amount (max: ${paymentForm.settleFrom === 'sold_cost' ? fmt(totals.availableSoldCost) : fmt(totals.availableOpeningCredit)})`}
               </label>
               <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} className="h-11 text-lg font-mono" placeholder="0" />
             </div>
