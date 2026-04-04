@@ -77,6 +77,7 @@ export const DealerLedger: React.FC = () => {
   const [showEditCredit, setShowEditCredit] = useState(false);
   const [editCreditValue, setEditCreditValue] = useState(0);
   const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
+  const [txnSearchQ, setTxnSearchQ] = useState('');
   const [reportDealerMode, setReportDealerMode] = useState<'selected' | 'all'>('selected');
   const [showStatement, setShowStatement] = useState(false);
 
