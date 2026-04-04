@@ -704,10 +704,6 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
             sold_date: null,
             invoice_id: null,
           }).eq('imei', oldItem.imei).eq('shop_id', activeShopId);
-          // Increment stock back
-          await supabase.from('products').update({
-            stock_quantity: (oldItem.products as any).stock_quantity + 1,
-          }).eq('id', oldItem.product_id);
         }
       }
 
@@ -720,7 +716,6 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
             invoice_id: editInvoiceId,
             sale_price: item.unitPrice,
           }).eq('imei', item.imei).eq('shop_id', activeShopId);
-          await supabase.rpc('decrement_stock', { p_product_id: item.productId } as any);
         }
       }
 
@@ -924,7 +919,6 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
           }
         }
 
-        await supabase.rpc('decrement_stock', { p_product_id: item.productId } as any);
       }
     }
 
