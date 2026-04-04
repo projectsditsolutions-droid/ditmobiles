@@ -526,23 +526,27 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       return;
     }
 
-    const { data: imeiRecord } = await supabase
+    const { data: imeiRecords } = await supabase
       .from('imei_records')
-      .select('imei')
+      .select('imei, sale_price')
       .eq('product_id', product.id)
       .eq('shop_id', activeShopId!)
       .eq('status', 'in_stock')
-      .limit(1)
-      .maybeSingle();
+      .order('created_at', { ascending: true })
+      .limit(25);
 
     const usedImeis = items.map(i => i.imei).filter(Boolean);
-    const imei = imeiRecord && !usedImeis.includes(imeiRecord.imei) ? imeiRecord.imei : undefined;
+    const availableImei = (imeiRecords || []).find(r => !usedImeis.includes(r.imei));
+    const imei = availableImei?.imei;
+    const effectiveProduct = availableImei && Number(availableImei.sale_price) > 0
+      ? { ...product, sale_price: Number(availableImei.sale_price) }
+      : product;
 
-    addNewItem(product, imei);
+    const added = addNewItem(effectiveProduct, imei);
     setShowSearch(false);
     setSearchInput('');
     setSearchResults([]);
-    toast.success(`Added: ${product.brand} ${product.model}`);
+    if (added) toast.success(`Added: ${product.brand} ${product.model}`);
   };
 
   const removeItem = (id: string) => {
