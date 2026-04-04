@@ -75,14 +75,8 @@ export const InventoryManagement: React.FC = () => {
     if (!confirm(`Delete IMEI record ${record.imei}?`)) return;
     const { error } = await supabase.from('imei_records').delete().eq('id', record.id);
     if (error) { toast.error(error.message); return; }
-    if (record.status === 'in_stock') {
-      await supabase.from('products').update({
-        stock_quantity: Math.max(0, (products.find(p => p.id === record.product_id)?.stock_quantity || 1) - 1),
-      }).eq('id', record.product_id);
-      fetchProducts();
-    }
     toast.success('IMEI record removed');
-    fetchIMEIs();
+    fetchProducts(); fetchIMEIs();
   };
 
 
@@ -149,10 +143,6 @@ export const InventoryManagement: React.FC = () => {
       else toast.error(error.message);
       return;
     }
-
-    await supabase.from('products').update({
-      stock_quantity: (products.find(p => p.id === productId)?.stock_quantity || 0) + 1,
-    }).eq('id', productId);
 
     setNewIMEI('');
     setAddingIMEIFor(null);

@@ -242,11 +242,6 @@ export const DealerLedger: React.FC = () => {
               }
               for (const [productId, count] of Object.entries(productCounts)) {
                 const product = products.find(p => p.id === productId);
-                if (product) {
-                  await supabase.from('products').update({ 
-                    stock_quantity: Math.max(0, product.stock_quantity - count) 
-                  }).eq('id', productId);
-                }
               }
             }
           }
@@ -260,10 +255,6 @@ export const DealerLedger: React.FC = () => {
           .maybeSingle();
         if (imeiRecord) {
           await supabase.from('imei_records').update({ status: 'in_stock' }).eq('id', imeiRecord.id);
-          const product = products.find(p => p.id === imeiRecord.product_id);
-          if (product) {
-            await supabase.from('products').update({ stock_quantity: product.stock_quantity + 1 }).eq('id', imeiRecord.product_id);
-          }
         }
       }
 
@@ -451,11 +442,13 @@ export const DealerLedger: React.FC = () => {
     if (added === 0) { toast.error('No IMEIs were added (duplicates?)'); return; }
     const product = products.find(p => p.id === stockForm.product_id);
     if (product) {
-      const updateData: any = { stock_quantity: product.stock_quantity + added };
+      const updateData: any = {};
       if (stockForm.hsn_code) updateData.hsn_code = stockForm.hsn_code;
       if (stockForm.unit_price > 0) updateData.purchase_price = stockForm.unit_price;
       if (stockForm.sale_price > 0) updateData.sale_price = stockForm.sale_price;
-      await supabase.from('products').update(updateData).eq('id', product.id);
+      if (Object.keys(updateData).length > 0) {
+        await supabase.from('products').update(updateData).eq('id', product.id);
+      }
     }
     const purchaseValue = added * stockForm.unit_price;
     const newBalance = Number(selectedDealer.total_credit) + purchaseValue;
@@ -479,7 +472,6 @@ export const DealerLedger: React.FC = () => {
     const product = imeiRecord.products as unknown as Product;
     const costValue = Number(imeiRecord.purchase_price || 0);
     await supabase.from('imei_records').update({ status: 'returned' }).eq('id', imeiRecord.id);
-    await supabase.from('products').update({ stock_quantity: Math.max(0, (product?.stock_quantity || 0) - 1) }).eq('id', imeiRecord.product_id);
     const newBalance = Number(selectedDealer.total_credit) - costValue;
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
     await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'stock_return', amount: costValue, running_balance: newBalance, description: `Return ${product?.brand || ''} ${product?.model || ''} (IMEI: ${returnForm.imei.trim()})${returnForm.reason ? ` - ${returnForm.reason}` : ''}`, imei_ref: returnForm.imei.trim() });
