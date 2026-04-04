@@ -404,7 +404,10 @@ export const DealerLedger: React.FC = () => {
   const handlePayment = async () => {
     if (!selectedDealer || !activeShopId) return;
     let totalAmount = 0;
-    if (paymentForm.settleFrom === 'both') {
+    if (paymentForm.settleFrom === 'direct') {
+      totalAmount = paymentForm.amount;
+      if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
+    } else if (paymentForm.settleFrom === 'both') {
       totalAmount = paymentForm.soldCostAmount + paymentForm.openingCreditAmount;
       if (totalAmount <= 0) { toast.error('Enter valid amounts'); return; }
       if (paymentForm.soldCostAmount > totals.availableSoldCost) { toast.error(`Sold cost amount exceeds available (${fmt(totals.availableSoldCost)})`); return; }
@@ -419,7 +422,7 @@ export const DealerLedger: React.FC = () => {
       if (totalAmount > totals.availableOpeningCredit) { toast.error(`Amount exceeds available opening credit (${fmt(totals.availableOpeningCredit)})`); return; }
     }
     const methods = paymentForm.paymentMethods.length > 0 ? paymentForm.paymentMethods.join(', ') : 'Not specified';
-    const settleLabel = paymentForm.settleFrom === 'sold_cost' ? 'Settled from Sold Cost' : paymentForm.settleFrom === 'opening_credit' ? 'Settled from Opening Credit' : `Sold Cost: ₹${paymentForm.soldCostAmount.toLocaleString('en-IN')}, Opening: ₹${paymentForm.openingCreditAmount.toLocaleString('en-IN')}`;
+    const settleLabel = paymentForm.settleFrom === 'direct' ? 'Direct Payment' : paymentForm.settleFrom === 'sold_cost' ? 'Settled from Sold Cost' : paymentForm.settleFrom === 'opening_credit' ? 'Settled from Opening Credit' : `Sold Cost: ₹${paymentForm.soldCostAmount.toLocaleString('en-IN')}, Opening: ₹${paymentForm.openingCreditAmount.toLocaleString('en-IN')}`;
     const desc = [settleLabel, `via ${methods}`, paymentForm.notes ? `Notes: ${paymentForm.notes}` : '', paymentForm.description || ''].filter(Boolean).join(' | ');
     const newBalance = Number(selectedDealer.total_credit) - totalAmount;
     const { error: txnError } = await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'payment', amount: totalAmount, running_balance: newBalance, description: desc });
