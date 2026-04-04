@@ -448,14 +448,19 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
 
       // Use IMEI sale_price if available, otherwise product sale_price
       const imeiSalePrice = Number(record.sale_price) > 0 ? Number(record.sale_price) : Number(product.sale_price);
-      addNewItem({ ...product, sale_price: imeiSalePrice }, imei, true);
+      const added = addNewItem({ ...product, sale_price: imeiSalePrice }, imei, true);
       setImeiInput('');
       setImeiFlash(true);
       setTimeout(() => setImeiFlash(false), 600);
-      toast.success(`Added: ${product.brand} ${product.model}`);
+      if (added) {
+        toast.success(`Added: ${product.brand} ${product.model}`);
+      } else {
+        toast.error(`Failed to add: ${product.brand} ${product.model}`);
+      }
     } finally {
-      // Don't remove from ref here — keep it to prevent race conditions
-      // with stale `items` state. Ref is cleared on sale completion.
+      // Remove after short delay to prevent barcode scanner double-fire
+      const scannedImei = (overrideImei || imeiInput).trim();
+      setTimeout(() => scanningImeiRef.current.delete(scannedImei), 500);
     }
   }, [imeiInput, items, activeShopId]);
 
