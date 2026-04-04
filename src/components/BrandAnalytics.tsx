@@ -79,17 +79,17 @@ export const BrandAnalytics: React.FC = () => {
       const inStockImeis = productImeis.filter(r => r.status === 'in_stock');
       const soldImeis = productImeis.filter(r => r.status === 'sold');
 
-      const totalCost = soldImeis.reduce((s, r) => s + (Number(r.purchase_price) || Number(p.purchase_price)), 0);
-      const totalRevenue = soldImeis.reduce((s, r) => s + (Number(r.sale_price) || Number(p.sale_price)), 0);
-      const stockValue = inStockImeis.reduce((s, r) => s + (Number(r.purchase_price) || Number(p.purchase_price)), 0);
+      const totalCost = soldImeis.reduce((s, r) => s + (Number(r.purchase_price) > 0 ? Number(r.purchase_price) : Number(p.purchase_price)), 0);
+      const totalRevenue = soldImeis.reduce((s, r) => s + (Number(r.sale_price) > 0 ? Number(r.sale_price) : Number(p.sale_price)), 0);
+      const stockValue = inStockImeis.reduce((s, r) => s + (Number(r.purchase_price) > 0 ? Number(r.purchase_price) : Number(p.purchase_price)), 0);
       const profit = totalRevenue - totalCost;
       const marginPct = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
 
       const avgCost = productImeis.length > 0
-        ? productImeis.reduce((s, r) => s + (Number(r.purchase_price) || Number(p.purchase_price)), 0) / productImeis.length
+        ? productImeis.reduce((s, r) => s + (Number(r.purchase_price) > 0 ? Number(r.purchase_price) : Number(p.purchase_price)), 0) / productImeis.length
         : Number(p.purchase_price);
       const avgSale = productImeis.length > 0
-        ? productImeis.reduce((s, r) => s + (Number(r.sale_price) || Number(p.sale_price)), 0) / productImeis.length
+        ? productImeis.reduce((s, r) => s + (Number(r.sale_price) > 0 ? Number(r.sale_price) : Number(p.sale_price)), 0) / productImeis.length
         : Number(p.sale_price);
 
       const modelData: ModelData = {
