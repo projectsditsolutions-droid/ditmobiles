@@ -724,14 +724,30 @@ export const DealerLedger: React.FC = () => {
               <div className="p-5 flex-1 overflow-auto">
                 <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
                   <h3 className="font-display font-bold">Transaction History</h3>
-                  <select value={txnFilter} onChange={e => setTxnFilter(e.target.value as any)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option value="all">All Types</option>
-                    <option value="purchase">📦 Purchases</option>
-                    <option value="sale_deduction">💰 Sales</option>
-                    <option value="payment">✅ Payments</option>
-                    <option value="stock_return">↩ Returns</option>
-                    <option value="opening_adjustment">✏️ Adjustments</option>
-                  </select>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                      <input
+                        value={txnSearchQ}
+                        onChange={e => setTxnSearchQ(e.target.value)}
+                        placeholder="Search IMEI, product, invoice..."
+                        className="h-9 pl-8 pr-3 w-[220px] rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/60"
+                      />
+                      {txnSearchQ && (
+                        <button onClick={() => setTxnSearchQ('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <select value={txnFilter} onChange={e => setTxnFilter(e.target.value as any)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                      <option value="all">All Types</option>
+                      <option value="purchase">📦 Purchases</option>
+                      <option value="sale_deduction">💰 Sales</option>
+                      <option value="payment">✅ Payments</option>
+                      <option value="stock_return">↩ Returns</option>
+                      <option value="opening_adjustment">✏️ Adjustments</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="rounded-xl border overflow-hidden">
