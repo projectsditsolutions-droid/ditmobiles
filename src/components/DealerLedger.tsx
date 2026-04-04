@@ -195,7 +195,15 @@ export const DealerLedger: React.FC = () => {
     );
   }, [selectedDealer, selectedTxns, totals.opening]);
 
-  const visibleTxns = historyTxns.filter(t => txnFilter === 'all' || t.type === txnFilter);
+  const visibleTxns = historyTxns.filter(t => {
+    if (txnFilter !== 'all' && t.type !== txnFilter) return false;
+    if (txnSearchQ.trim()) {
+      const q = txnSearchQ.toLowerCase().trim();
+      const searchable = [t.description, t.imei_ref, t.invoice_ref].filter(Boolean).join(' ').toLowerCase();
+      if (!searchable.includes(q)) return false;
+    }
+    return true;
+  });
 
   const totalOutstanding = dealers.reduce((sum, dealer) => sum + Number(dealer.total_credit), 0);
 
