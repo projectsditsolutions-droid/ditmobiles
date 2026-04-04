@@ -385,8 +385,8 @@ export const InventoryManagement: React.FC = () => {
                                   </thead>
                                   <tbody>
                                     {productImeis.map(r => {
-                                      const cost = Number(r.purchase_price) || (r.products ? Number(r.products.purchase_price) : 0);
-                                      const sale = Number(r.sale_price) || (r.products ? Number(r.products.sale_price) : 0);
+                                      const cost = Number(r.purchase_price) > 0 ? Number(r.purchase_price) : Number(p.purchase_price);
+                                      const sale = Number(r.sale_price) > 0 ? Number(r.sale_price) : Number(p.sale_price);
                                       const margin = sale - cost;
                                       return (
                                       <tr key={r.id} className="border-t border-border/10 hover:bg-accent/30 transition-colors">
@@ -522,8 +522,8 @@ export const InventoryManagement: React.FC = () => {
                             {brandImeis.map(r => {
                               const product = r.products as unknown as Product | undefined;
                               const isDuplicate = (imeiCountMap.get(r.imei) || 0) > 1;
-                              const cost = Number(r.purchase_price) || (product ? Number(product.purchase_price) : 0);
-                              const sale = Number(r.sale_price) || (product ? Number(product.sale_price) : 0);
+                              const cost = Number(r.purchase_price) > 0 ? Number(r.purchase_price) : (product ? Number(product.purchase_price) : 0);
+                              const sale = Number(r.sale_price) > 0 ? Number(r.sale_price) : (product ? Number(product.sale_price) : 0);
                               const margin = sale - cost;
                               return (
                                 <tr key={r.id} className={`border-t border-border/50 hover:bg-accent/30 transition-colors ${isDuplicate ? 'bg-destructive/5' : ''}`}>

@@ -337,12 +337,14 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setTimeout(() => setFlashId(null), 500);
   };
 
-  const addNewItem = (product: Product, imei?: string) => {
-    // Stock availability check
-    const currentQtyInBill = items.filter(i => i.productId === product.id).reduce((sum, i) => sum + i.quantity, 0);
-    if (product.stock_quantity <= currentQtyInBill) {
-      toast.error(`Out of stock: ${product.brand} ${product.model} (Available: ${product.stock_quantity})`);
-      return null;
+  const addNewItem = (product: Product, imei?: string, skipStockCheck = false) => {
+    // Stock availability check — skip when IMEI was already verified as in_stock
+    if (!skipStockCheck) {
+      const currentQtyInBill = items.filter(i => i.productId === product.id).reduce((sum, i) => sum + i.quantity, 0);
+      if (product.stock_quantity <= currentQtyInBill) {
+        toast.error(`Out of stock: ${product.brand} ${product.model} (Available: ${product.stock_quantity})`);
+        return null;
+      }
     }
 
     const newItem: BillItem = {
@@ -444,7 +446,9 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         return;
       }
 
-      addNewItem(product, imei);
+      // Use IMEI sale_price if available, otherwise product sale_price
+      const imeiSalePrice = Number(record.sale_price) > 0 ? Number(record.sale_price) : Number(product.sale_price);
+      addNewItem({ ...product, sale_price: imeiSalePrice }, imei, true);
       setImeiInput('');
       setImeiFlash(true);
       setTimeout(() => setImeiFlash(false), 600);
@@ -493,9 +497,16 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   }, [searchInput, showSearch, activeShopId]);
 
   const addProductManually = async (product: Product) => {
-    // Stock check
+    // Fresh stock check using actual IMEI count (not potentially stale stock_quantity)
+    const { count: actualStock } = await supabase
+      .from('imei_records')
+      .select('id', { count: 'exact', head: true })
+      .eq('product_id', product.id)
+      .eq('shop_id', activeShopId!)
+      .eq('status', 'in_stock');
     const currentQtyInBill = items.filter(i => i.productId === product.id).reduce((sum, i) => sum + i.quantity, 0);
-    if (product.stock_quantity <= currentQtyInBill) {
+    const available = (actualStock ?? product.stock_quantity) - currentQtyInBill;
+    if (available <= 0) {
       toast.error(`Out of stock: ${product.brand} ${product.model}`);
       return;
     }
