@@ -980,8 +980,8 @@ export const DealerLedger: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Settle From</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[['opening_credit', 'Opening Credit', fmt(totals.availableOpeningCredit)], ['sold_cost', 'Sold Cost', fmt(totals.availableSoldCost)], ['both', 'Split Both', '']].map(([v, l, avail]) => (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[['opening_credit', 'Opening Credit', fmt(totals.availableOpeningCredit)], ['sold_cost', 'Sold Cost', fmt(totals.availableSoldCost)], ['both', 'Split Both', ''], ['direct', 'Direct Payment', '']].map(([v, l, avail]) => (
                 <button key={v} onClick={() => setPaymentForm({ ...paymentForm, settleFrom: v as any, amount: 0, soldCostAmount: 0, openingCreditAmount: 0 })}
                   className={`p-3 rounded-xl border text-left transition-all ${paymentForm.settleFrom === v ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'hover:bg-accent/30'}`}>
                   <p className="font-display font-bold text-xs">{l}</p>
