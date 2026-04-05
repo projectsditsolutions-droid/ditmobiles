@@ -9,6 +9,7 @@ import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, Rot
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { DealerStatement } from '@/components/DealerStatement';
+import { DealerStockAnalytics } from '@/components/DealerStockAnalytics';
 
 type Dealer = Database['public']['Tables']['dealers']['Row'];
 type DealerTransaction = Database['public']['Tables']['dealer_transactions']['Row'];
