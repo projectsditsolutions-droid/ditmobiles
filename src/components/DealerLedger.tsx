@@ -73,7 +73,7 @@ export const DealerLedger: React.FC = () => {
   const [showNewProductInStock, setShowNewProductInStock] = useState(false);
   const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', gst_percent: 18, hsn_code: '', category: 'mobile' });
   const [returnForm, setReturnForm] = useState({ imei: '', reason: '' });
-  const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'opening_credit' as 'sold_cost' | 'opening_credit' | 'both', soldCostAmount: 0, openingCreditAmount: 0 });
+  const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'direct' as 'sold_cost' | 'opening_credit' | 'both' | 'direct', soldCostAmount: 0, openingCreditAmount: 0 });
   const [showEditCredit, setShowEditCredit] = useState(false);
   const [editCreditValue, setEditCreditValue] = useState(0);
   const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
@@ -399,12 +399,15 @@ export const DealerLedger: React.FC = () => {
     fetchTransactions();
   };
 
-  const defaultPaymentForm = { amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'opening_credit' as const, soldCostAmount: 0, openingCreditAmount: 0 };
+  const defaultPaymentForm = { amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'direct' as const, soldCostAmount: 0, openingCreditAmount: 0 };
 
   const handlePayment = async () => {
     if (!selectedDealer || !activeShopId) return;
     let totalAmount = 0;
-    if (paymentForm.settleFrom === 'both') {
+    if (paymentForm.settleFrom === 'direct') {
+      totalAmount = paymentForm.amount;
+      if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
+    } else if (paymentForm.settleFrom === 'both') {
       totalAmount = paymentForm.soldCostAmount + paymentForm.openingCreditAmount;
       if (totalAmount <= 0) { toast.error('Enter valid amounts'); return; }
       if (paymentForm.soldCostAmount > totals.availableSoldCost) { toast.error(`Sold cost amount exceeds available (${fmt(totals.availableSoldCost)})`); return; }
@@ -419,7 +422,7 @@ export const DealerLedger: React.FC = () => {
       if (totalAmount > totals.availableOpeningCredit) { toast.error(`Amount exceeds available opening credit (${fmt(totals.availableOpeningCredit)})`); return; }
     }
     const methods = paymentForm.paymentMethods.length > 0 ? paymentForm.paymentMethods.join(', ') : 'Not specified';
-    const settleLabel = paymentForm.settleFrom === 'sold_cost' ? 'Settled from Sold Cost' : paymentForm.settleFrom === 'opening_credit' ? 'Settled from Opening Credit' : `Sold Cost: ₹${paymentForm.soldCostAmount.toLocaleString('en-IN')}, Opening: ₹${paymentForm.openingCreditAmount.toLocaleString('en-IN')}`;
+    const settleLabel = paymentForm.settleFrom === 'direct' ? 'Direct Payment' : paymentForm.settleFrom === 'sold_cost' ? 'Settled from Sold Cost' : paymentForm.settleFrom === 'opening_credit' ? 'Settled from Opening Credit' : `Sold Cost: ₹${paymentForm.soldCostAmount.toLocaleString('en-IN')}, Opening: ₹${paymentForm.openingCreditAmount.toLocaleString('en-IN')}`;
     const desc = [settleLabel, `via ${methods}`, paymentForm.notes ? `Notes: ${paymentForm.notes}` : '', paymentForm.description || ''].filter(Boolean).join(' | ');
     const newBalance = Number(selectedDealer.total_credit) - totalAmount;
     const { error: txnError } = await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'payment', amount: totalAmount, running_balance: newBalance, description: desc });
@@ -977,8 +980,8 @@ export const DealerLedger: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Settle From</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[['opening_credit', 'Opening Credit', fmt(totals.availableOpeningCredit)], ['sold_cost', 'Sold Cost', fmt(totals.availableSoldCost)], ['both', 'Split Both', '']].map(([v, l, avail]) => (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[['direct', 'Direct Payment', ''], ['opening_credit', 'Opening Credit', fmt(totals.availableOpeningCredit)], ['sold_cost', 'Sold Cost', fmt(totals.availableSoldCost)], ['both', 'Split Both', '']].map(([v, l, avail]) => (
                 <button key={v} onClick={() => setPaymentForm({ ...paymentForm, settleFrom: v as any, amount: 0, soldCostAmount: 0, openingCreditAmount: 0 })}
                   className={`p-3 rounded-xl border text-left transition-all ${paymentForm.settleFrom === v ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'hover:bg-accent/30'}`}>
                   <p className="font-display font-bold text-xs">{l}</p>
@@ -1001,6 +1004,12 @@ export const DealerLedger: React.FC = () => {
               <div className="col-span-2 rounded-lg bg-secondary/50 px-3 py-2 text-sm">
                 Total: <span className="font-display font-bold text-primary">{fmt(paymentForm.soldCostAmount + paymentForm.openingCreditAmount)}</span>
               </div>
+            </div>
+          ) : paymentForm.settleFrom === 'direct' ? (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment Amount</label>
+              <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} className="h-11 text-lg font-mono" placeholder="0" />
+              <p className="text-[10px] text-muted-foreground mt-1">No limit — pay any amount (advance, partial, or full settlement)</p>
             </div>
           ) : (
             <div>
