@@ -238,6 +238,10 @@ export const BrandAnalytics: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground font-display">Margin</p>
                     <MarginBadge pct={bd.avgMarginPct} />
                   </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-display">Stock Value</p>
+                    <p className="font-display font-bold text-sm text-warning">{fmt(bd.stockValue)}</p>
+                  </div>
                   <div className="flex gap-2">
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-success/10 text-success font-display font-bold">{bd.inStock} stock</span>
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground font-display font-bold">{bd.sold} sold</span>
