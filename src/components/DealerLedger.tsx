@@ -9,6 +9,7 @@ import { Plus, Search, Phone, Hash, Building2, Wallet, Package, IndianRupee, Rot
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { DealerStatement } from '@/components/DealerStatement';
+import { DealerStockAnalytics } from '@/components/DealerStockAnalytics';
 
 type Dealer = Database['public']['Tables']['dealers']['Row'];
 type DealerTransaction = Database['public']['Tables']['dealer_transactions']['Row'];
@@ -727,6 +728,12 @@ export const DealerLedger: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground mt-0.5">Removes IMEI + reduces balance</p>
                   </button>
                 </div>
+              </div>
+
+              {/* Stock Analytics */}
+              <div className="p-5 border-b">
+                <h3 className="font-display font-bold mb-3">Stock Analytics</h3>
+                <DealerStockAnalytics dealerId={selectedDealer.id} />
               </div>
 
               {/* Transaction History */}
