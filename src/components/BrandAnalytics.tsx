@@ -266,6 +266,7 @@ export const BrandAnalytics: React.FC = () => {
                           <th className="text-right px-3 py-2.5 font-display font-semibold text-muted-foreground">Revenue</th>
                           <th className="text-right px-3 py-2.5 font-display font-semibold text-muted-foreground">Cost</th>
                           <th className="text-right px-3 py-2.5 font-display font-semibold text-muted-foreground">Profit</th>
+                          <th className="text-right px-3 py-2.5 font-display font-semibold text-muted-foreground">Stock Val</th>
                           <th className="text-center px-3 py-2.5 font-display font-semibold text-muted-foreground">Margin</th>
                         </tr>
                       </thead>
