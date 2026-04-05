@@ -238,6 +238,10 @@ export const BrandAnalytics: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground font-display">Margin</p>
                     <MarginBadge pct={bd.avgMarginPct} />
                   </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-display">Stock Value</p>
+                    <p className="font-display font-bold text-sm text-warning">{fmt(bd.stockValue)}</p>
+                  </div>
                   <div className="flex gap-2">
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-success/10 text-success font-display font-bold">{bd.inStock} stock</span>
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground font-display font-bold">{bd.sold} sold</span>
@@ -262,6 +266,7 @@ export const BrandAnalytics: React.FC = () => {
                           <th className="text-right px-3 py-2.5 font-display font-semibold text-muted-foreground">Revenue</th>
                           <th className="text-right px-3 py-2.5 font-display font-semibold text-muted-foreground">Cost</th>
                           <th className="text-right px-3 py-2.5 font-display font-semibold text-muted-foreground">Profit</th>
+                          <th className="text-right px-3 py-2.5 font-display font-semibold text-muted-foreground">Stock Val</th>
                           <th className="text-center px-3 py-2.5 font-display font-semibold text-muted-foreground">Margin</th>
                         </tr>
                       </thead>
@@ -284,6 +289,7 @@ export const BrandAnalytics: React.FC = () => {
                             <td className="px-3 py-2.5 text-right font-mono font-bold">
                               <span className={m.profit >= 0 ? 'text-success' : 'text-destructive'}>{fmt(m.profit)}</span>
                             </td>
+                            <td className="px-3 py-2.5 text-right font-mono text-warning font-medium">{m.stockValue > 0 ? fmt(m.stockValue) : '—'}</td>
                             <td className="px-3 py-2.5 text-center"><MarginBadge pct={m.marginPct} /></td>
                           </tr>
                         ))}
@@ -296,6 +302,7 @@ export const BrandAnalytics: React.FC = () => {
                           <td className="px-3 py-2.5 text-right font-mono text-primary">{fmt(bd.totalRevenue)}</td>
                           <td className="px-3 py-2.5 text-right font-mono">{fmt(bd.totalCost)}</td>
                           <td className="px-3 py-2.5 text-right font-mono text-success">{fmt(bd.totalProfit)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-warning">{fmt(bd.stockValue)}</td>
                           <td className="px-3 py-2.5 text-center"><MarginBadge pct={bd.avgMarginPct} /></td>
                         </tr>
                       </tbody>
