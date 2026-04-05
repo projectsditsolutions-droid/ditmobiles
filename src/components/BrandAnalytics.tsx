@@ -302,6 +302,7 @@ export const BrandAnalytics: React.FC = () => {
                           <td className="px-3 py-2.5 text-right font-mono text-primary">{fmt(bd.totalRevenue)}</td>
                           <td className="px-3 py-2.5 text-right font-mono">{fmt(bd.totalCost)}</td>
                           <td className="px-3 py-2.5 text-right font-mono text-success">{fmt(bd.totalProfit)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-warning">{fmt(bd.stockValue)}</td>
                           <td className="px-3 py-2.5 text-center"><MarginBadge pct={bd.avgMarginPct} /></td>
                         </tr>
                       </tbody>
