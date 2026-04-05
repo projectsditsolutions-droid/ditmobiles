@@ -14,7 +14,11 @@ type Dealer = Database['public']['Tables']['dealers']['Row'];
 type DealerTransaction = Database['public']['Tables']['dealer_transactions']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
 
-const fmt = (n: number) => `₹${Math.abs(n).toLocaleString('en-IN')}`;
+const fmt = (n: number) => {
+  const abs = Math.abs(n).toLocaleString('en-IN');
+  if (n < 0) return `-₹${abs}`;
+  return `₹${abs}`;
+};
 
 const Modal: React.FC<{ open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode }> = ({ open, onClose, title, subtitle, children }) => {
   if (!open) return null;
