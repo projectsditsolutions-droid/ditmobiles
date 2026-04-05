@@ -68,7 +68,7 @@ export const DealerLedger: React.FC = () => {
   const [sortBy, setSortBy] = useState<'credit_desc' | 'credit_asc' | 'recent'>('credit_desc');
   const [txnFilter, setTxnFilter] = useState<'all' | 'purchase' | 'payment' | 'sale_deduction' | 'stock_return' | 'opening_adjustment'>('all');
   const [dealerForm, setDealerForm] = useState({ brand_name: '', dealer_name: '', phone: '', address: '', gstin: '', total_credit: 0 });
-  const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
+  const [stockForm, setStockForm] = useState({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '', paidImmediately: false });
   const [stockSearch, setStockSearch] = useState('');
   const [showNewProductInStock, setShowNewProductInStock] = useState(false);
   const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', gst_percent: 18, hsn_code: '', category: 'mobile' });
