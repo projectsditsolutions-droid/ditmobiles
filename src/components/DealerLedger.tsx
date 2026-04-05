@@ -466,12 +466,18 @@ export const DealerLedger: React.FC = () => {
     const newBalance = Number(selectedDealer.total_credit) + purchaseValue;
     await supabase.from('dealers').update({ total_credit: newBalance }).eq('id', selectedDealer.id);
     await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'purchase', amount: purchaseValue, running_balance: newBalance, description: `Purchase ${added} × ${product?.brand || ''} ${product?.model || ''} @ ₹${stockForm.unit_price.toLocaleString('en-IN')}`, imei_ref: imeiList.join(',') });
+    // Auto-record payment if "Paid Immediately" is checked
+    if (stockForm.paidImmediately && purchaseValue > 0) {
+      const balanceAfterPayment = newBalance - purchaseValue;
+      await supabase.from('dealers').update({ total_credit: balanceAfterPayment }).eq('id', selectedDealer.id);
+      await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'payment', amount: purchaseValue, running_balance: balanceAfterPayment, description: `Paid Immediately — ${added} × ${product?.brand || ''} ${product?.model || ''} @ ₹${stockForm.unit_price.toLocaleString('en-IN')}` });
+    }
     setShowStockEntry(false);
-    setStockForm({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '' });
+    setStockForm({ product_id: '', unit_price: 0, sale_price: 0, imeis: '', hsn_code: '', paidImmediately: false });
     setShowNewProductInStock(false);
     setNewProductForm({ brand: '', model: '', variant: '', color: '', gst_percent: 18, hsn_code: '', category: 'mobile' });
     setStockSearch('');
-    toast.success(`Added ${added} units to inventory and ledger`);
+    toast.success(`Added ${added} units to inventory${stockForm.paidImmediately ? ' (payment recorded)' : ' and ledger'}`);
     fetchDealers();
     fetchTransactions();
     fetchProducts();
@@ -971,6 +977,10 @@ export const DealerLedger: React.FC = () => {
               </div>
             );
           })()}
+          <div className="flex items-center gap-2 py-1">
+            <Checkbox id="paidImmediately" checked={stockForm.paidImmediately} onCheckedChange={(v) => setStockForm({ ...stockForm, paidImmediately: !!v })} />
+            <label htmlFor="paidImmediately" className="text-sm cursor-pointer select-none">Paid Immediately (auto-record payment)</label>
+          </div>
           <Button onClick={handleStockEntry} className="w-full gradient-primary border-0 text-primary-foreground">Add to Inventory</Button>
         </div>
       </Modal>
