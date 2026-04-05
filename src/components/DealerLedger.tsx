@@ -730,6 +730,12 @@ export const DealerLedger: React.FC = () => {
                 </div>
               </div>
 
+              {/* Stock Analytics */}
+              <div className="p-5 border-b">
+                <h3 className="font-display font-bold mb-3">Stock Analytics</h3>
+                <DealerStockAnalytics dealerId={selectedDealer.id} />
+              </div>
+
               {/* Transaction History */}
               <div className="p-5 flex-1 overflow-auto">
                 <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
