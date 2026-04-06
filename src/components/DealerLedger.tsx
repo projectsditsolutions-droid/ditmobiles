@@ -81,6 +81,7 @@ export const DealerLedger: React.FC = () => {
   const [txnSearchQ, setTxnSearchQ] = useState('');
   const [reportDealerMode, setReportDealerMode] = useState<'selected' | 'all'>('selected');
   const [showStatement, setShowStatement] = useState(false);
+  const [detailPopup, setDetailPopup] = useState<null | 'opening' | 'purchases' | 'sold' | 'returns' | 'purchase_payments' | 'opening_settlement' | 'net_balance'>(null);
 
   const fetchDealers = async () => {
     if (!activeShopId && !isAllShops) return;
@@ -190,6 +191,39 @@ export const DealerLedger: React.FC = () => {
 
     return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock: totalPaidAgainstStock, advancePayments, purchasePending, netBalance, purchasePayments, openingPending };
   }, [selectedDealer, selectedTxns]);
+
+  // Filtered txns for detail popups
+  const detailTxns = useMemo(() => {
+    if (!detailPopup) return [];
+    switch (detailPopup) {
+      case 'opening':
+        return selectedTxns.filter(t => t.type === 'opening_adjustment');
+      case 'purchases':
+        return selectedTxns.filter(t => t.type === 'purchase');
+      case 'sold':
+        return selectedTxns.filter(t => t.type === 'sale_deduction');
+      case 'returns':
+        return selectedTxns.filter(t => t.type === 'stock_return');
+      case 'purchase_payments':
+        return selectedTxns.filter(t => t.type === 'payment' && !t.description.includes('Opening Credit') && !t.description.includes('Settled from Opening Credit'));
+      case 'opening_settlement':
+        return selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Opening Credit') || t.description.includes('Settled from Opening Credit')));
+      case 'net_balance':
+        return selectedTxns.filter(t => ['purchase', 'payment', 'stock_return'].includes(t.type) && !t.description.includes('Opening Credit') && !t.description.includes('Settled from Opening Credit'));
+      default:
+        return [];
+    }
+  }, [detailPopup, selectedTxns]);
+
+  const detailPopupTitle: Record<string, string> = {
+    opening: 'Opening Balance Details',
+    purchases: 'Purchase Transactions',
+    sold: 'Sold Cost Transactions',
+    returns: 'Return Transactions',
+    purchase_payments: 'Purchase Payments',
+    opening_settlement: 'Opening Settlement Payments',
+    net_balance: 'Net Balance Breakdown',
+  };
 
   const historyTxns = useMemo(() => {
     if (!selectedDealer) return selectedTxns;
@@ -681,10 +715,10 @@ export const DealerLedger: React.FC = () => {
               <div className="p-5 border-b">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                   {/* Opening Credit */}
-                  <div className="rounded-xl border-2 border-muted bg-background p-3">
+                  <div onClick={() => setDetailPopup('opening')} className="rounded-xl border-2 border-muted bg-background p-3 cursor-pointer hover:border-primary/30 hover:shadow-sm transition-all">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground font-bold">Opening Balance</p>
-                      <button onClick={() => { setEditCreditValue(totals.opening); setShowEditCredit(true); }} className="text-primary hover:bg-primary/10 rounded p-0.5 transition-colors">
+                      <button onClick={e => { e.stopPropagation(); setEditCreditValue(totals.opening); setShowEditCredit(true); }} className="text-primary hover:bg-primary/10 rounded p-0.5 transition-colors">
                         <Edit2 className="w-3 h-3" />
                       </button>
                     </div>
@@ -702,7 +736,7 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Purchases */}
-                  <div className="rounded-xl border bg-background p-3">
+                  <div onClick={() => setDetailPopup('purchases')} className="rounded-xl border bg-background p-3 cursor-pointer hover:border-primary/30 hover:shadow-sm transition-all">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Purchases</p>
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.purchaseCount}×</span>
@@ -735,7 +769,7 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Sold Cost */}
-                  <div className="rounded-xl border bg-background p-3">
+                  <div onClick={() => setDetailPopup('sold')} className="rounded-xl border bg-background p-3 cursor-pointer hover:border-primary/30 hover:shadow-sm transition-all">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Sold Cost</p>
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.saleCount}×</span>
@@ -754,7 +788,7 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Returns */}
-                  <div className="rounded-xl border bg-background p-3">
+                  <div onClick={() => setDetailPopup('returns')} className="rounded-xl border bg-background p-3 cursor-pointer hover:border-primary/30 hover:shadow-sm transition-all">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Returns</p>
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.returnCount}×</span>
@@ -766,7 +800,7 @@ export const DealerLedger: React.FC = () => {
                 {/* Second row: Payment summary + Net Balance */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                   {/* Purchase Payments (excluding opening) */}
-                  <div className="rounded-xl border bg-success/5 p-3">
+                  <div onClick={() => setDetailPopup('purchase_payments')} className="rounded-xl border bg-success/5 p-3 cursor-pointer hover:border-success/30 hover:shadow-sm transition-all">
                     <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground mb-1.5">Purchase Payments</p>
                     <p className="font-display text-xl font-extrabold text-success">-{fmt(totals.purchasePayments)}</p>
                     <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
@@ -792,7 +826,7 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Opening Settlement (separate) */}
-                  <div className="rounded-xl border bg-warning/5 p-3">
+                  <div onClick={() => setDetailPopup('opening_settlement')} className="rounded-xl border bg-warning/5 p-3 cursor-pointer hover:border-warning/30 hover:shadow-sm transition-all">
                     <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground mb-1.5">Opening Settlement</p>
                     <p className="font-display text-xl font-extrabold text-success">-{fmt(totals.paidAgainstOpening)}</p>
                     <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
@@ -804,7 +838,7 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Net Balance */}
-                  <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-3">
+                  <div onClick={() => setDetailPopup('net_balance')} className="rounded-xl border-2 border-primary/20 bg-primary/5 p-3 cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all">
                     <p className="text-[10px] font-display uppercase tracking-wider text-primary/70 mb-1.5">Net Balance</p>
                     <p className={`font-display text-xl font-extrabold ${getBalanceTone(totals.netBalance)}`}>{fmt(totals.netBalance)}</p>
                     <p className="text-[8px] text-muted-foreground mt-1">Purchase − Purchase Paid − Returns</p>
@@ -1230,6 +1264,164 @@ export const DealerLedger: React.FC = () => {
             <Download className="w-4 h-4 mr-2" /> Download CSV Report
           </Button>
         </div>
+      </Modal>
+
+      {/* ── Detail Popup Modal ── */}
+      <Modal open={!!detailPopup} onClose={() => setDetailPopup(null)} title={detailPopup ? detailPopupTitle[detailPopup] : ''} subtitle={selectedDealer?.dealer_name}>
+        {detailPopup && (
+          <div className="space-y-4">
+            {/* Summary bar */}
+            {detailPopup === 'opening' && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Total</p>
+                  <p className="font-display font-extrabold text-foreground">{fmt(totals.opening)}</p>
+                </div>
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Settled</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.paidAgainstOpening)}</p>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Pending</p>
+                  <p className="font-display font-extrabold text-warning">{fmt(totals.openingPending)}</p>
+                </div>
+              </div>
+            )}
+            {detailPopup === 'purchases' && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-destructive/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Total</p>
+                  <p className="font-display font-extrabold text-destructive">{fmt(totals.purchase)}</p>
+                </div>
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Direct Paid</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.paidAgainstStock)}</p>
+                </div>
+                <div className="rounded-lg bg-primary/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">From Sold</p>
+                  <p className="font-display font-extrabold text-primary">{fmt(totals.paidFromSold)}</p>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Pending</p>
+                  <p className="font-display font-extrabold text-warning">{fmt(totals.purchasePending)}</p>
+                </div>
+              </div>
+            )}
+            {detailPopup === 'sold' && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-primary/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Total Sold</p>
+                  <p className="font-display font-extrabold text-primary">{fmt(totals.sold)}</p>
+                </div>
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Settled</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.paidFromSold)}</p>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Available</p>
+                  <p className="font-display font-extrabold text-warning">{fmt(totals.availableSoldCost)}</p>
+                </div>
+              </div>
+            )}
+            {detailPopup === 'purchase_payments' && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Total</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.purchasePayments)}</p>
+                </div>
+                <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Direct</p>
+                  <p className="font-display font-extrabold">{fmt(totals.paidAgainstStock)}</p>
+                </div>
+                <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">From Sold</p>
+                  <p className="font-display font-extrabold">{fmt(totals.paidFromSold)}</p>
+                </div>
+                <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Advance</p>
+                  <p className="font-display font-extrabold">{fmt(totals.advancePayments)}</p>
+                </div>
+              </div>
+            )}
+            {detailPopup === 'opening_settlement' && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Opening</p>
+                  <p className="font-display font-extrabold text-foreground">{fmt(totals.opening)}</p>
+                </div>
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Paid</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.paidAgainstOpening)}</p>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Pending</p>
+                  <p className="font-display font-extrabold text-warning">{fmt(totals.openingPending)}</p>
+                </div>
+              </div>
+            )}
+            {detailPopup === 'net_balance' && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-destructive/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Purchases</p>
+                  <p className="font-display font-extrabold text-destructive">{fmt(totals.purchase)}</p>
+                </div>
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Paid</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.purchasePayments)}</p>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Returns</p>
+                  <p className="font-display font-extrabold text-warning">{fmt(totals.returned)}</p>
+                </div>
+                <div className="rounded-lg bg-primary/10 p-3 text-center border-2 border-primary/20">
+                  <p className="text-[10px] text-muted-foreground uppercase">Net Balance</p>
+                  <p className={`font-display font-extrabold ${getBalanceTone(totals.netBalance)}`}>{fmt(totals.netBalance)}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Transaction list */}
+            {detailTxns.length > 0 ? (
+              <div className="rounded-xl border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary/50">
+                    <tr className="text-left font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <th className="px-3 py-2">Date</th>
+                      <th className="px-3 py-2">Details</th>
+                      <th className="px-3 py-2 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailTxns.map(txn => {
+                      const meta = TXN_META[txn.type] || { label: txn.type, colorClass: 'text-foreground', bgClass: 'bg-secondary', sign: '' };
+                      return (
+                        <tr key={txn.id} className="border-t hover:bg-accent/20">
+                          <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">
+                            {new Date(txn.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${meta.bgClass} ${meta.colorClass}`}>{meta.label}</span>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{txn.description}</p>
+                            {txn.imei_ref && <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono">{txn.imei_ref.split(',').slice(0, 3).join(', ')}{txn.imei_ref.split(',').length > 3 ? ` +${txn.imei_ref.split(',').length - 3}` : ''}</p>}
+                          </td>
+                          <td className={`px-3 py-2 text-right font-display font-bold ${meta.colorClass}`}>
+                            {meta.sign}{fmt(Number(txn.amount))}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground text-sm py-6">No transactions found</p>
+            )}
+
+            {detailPopup === 'returns' && detailTxns.length === 0 && (
+              <p className="text-center text-muted-foreground text-sm py-2">No returns recorded for this dealer</p>
+            )}
+          </div>
+        )}
       </Modal>
 
       {/* ── Dealer Statement Modal ── */}
