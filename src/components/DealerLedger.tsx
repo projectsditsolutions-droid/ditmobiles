@@ -74,7 +74,7 @@ export const DealerLedger: React.FC = () => {
   const [showNewProductInStock, setShowNewProductInStock] = useState(false);
   const [newProductForm, setNewProductForm] = useState({ brand: '', model: '', variant: '', color: '', gst_percent: 18, hsn_code: '', category: 'mobile' });
   const [returnForm, setReturnForm] = useState({ imei: '', reason: '' });
-  const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'direct' as 'sold_cost' | 'opening_credit' | 'both' | 'direct', soldCostAmount: 0, openingCreditAmount: 0 });
+  const [paymentForm, setPaymentForm] = useState({ amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'stock_direct' as 'sold_cost' | 'opening_credit' | 'stock_direct' | 'advance', soldCostAmount: 0, openingCreditAmount: 0 });
   const [showEditCredit, setShowEditCredit] = useState(false);
   const [editCreditValue, setEditCreditValue] = useState(0);
   const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
@@ -153,18 +153,23 @@ export const DealerLedger: React.FC = () => {
     const adjustments = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
     const opening = current - purchase + payment + returned;
-    const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => {
+    const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Sold Cost') || t.description.includes('Settled from Sold Cost'))).reduce((s, t) => {
       const bothMatch = t.description.match(/Sold Cost: ₹([\d,]+)/);
       if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
       if (t.description.includes('Settled from Sold Cost')) return s + Number(t.amount);
       return s;
     }, 0);
-    const openingCreditSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Opening Credit')).reduce((s, t) => {
+    const openingCreditSettled = selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Opening Credit') || t.description.includes('Settled from Opening Credit'))).reduce((s, t) => {
       const bothMatch = t.description.match(/Opening: ₹([\d,]+)/);
       if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
       if (t.description.includes('Settled from Opening Credit')) return s + Number(t.amount);
       return s;
     }, 0);
+    const paidAgainstStockDirect = selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Paid Against Stock (Direct)') || t.description.includes('Paid Immediately'))).reduce((s, t) => s + Number(t.amount), 0);
+    const advancePayments = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Advance Payment')).reduce((s, t) => s + Number(t.amount), 0);
+    // Legacy "Direct Payment" entries (from old system) — count as stock direct
+    const legacyDirect = selectedTxns.filter(t => t.type === 'payment' && t.description.startsWith('Direct Payment')).reduce((s, t) => s + Number(t.amount), 0);
+    const totalPaidAgainstStock = paidAgainstStockDirect + legacyDirect;
     const availableSoldCost = Math.max(0, sold - soldCostSettled);
     const availableOpeningCredit = Math.max(0, opening - openingCreditSettled);
     const purchaseCount = selectedTxns.filter(t => t.type === 'purchase').length;
@@ -173,10 +178,11 @@ export const DealerLedger: React.FC = () => {
     // Payment breakdown
     const paidFromSold = soldCostSettled;
     const paidAgainstOpening = openingCreditSettled;
-    const paidAgainstStock = payment - paidFromSold - paidAgainstOpening;
+    // Purchase pending = purchases - returns - paid against stock (direct) - paid from sold
+    const purchasePending = Math.max(0, purchase - returned - totalPaidAgainstStock - paidFromSold);
     // Net balance without opening
     const netBalance = purchase - payment - returned;
-    return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock, netBalance };
+    return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock: totalPaidAgainstStock, advancePayments, purchasePending, netBalance };
   }, [selectedDealer, selectedTxns]);
 
   const historyTxns = useMemo(() => {
@@ -406,30 +412,26 @@ export const DealerLedger: React.FC = () => {
     fetchTransactions();
   };
 
-  const defaultPaymentForm = { amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'direct' as const, soldCostAmount: 0, openingCreditAmount: 0 };
+  const defaultPaymentForm = { amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'stock_direct' as const, soldCostAmount: 0, openingCreditAmount: 0 };
 
   const handlePayment = async () => {
     if (!selectedDealer || !activeShopId) return;
     let totalAmount = 0;
-    if (paymentForm.settleFrom === 'direct') {
+    const sf = paymentForm.settleFrom;
+    if (sf === 'stock_direct' || sf === 'advance') {
       totalAmount = paymentForm.amount;
       if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
-    } else if (paymentForm.settleFrom === 'both') {
-      totalAmount = paymentForm.soldCostAmount + paymentForm.openingCreditAmount;
-      if (totalAmount <= 0) { toast.error('Enter valid amounts'); return; }
-      if (paymentForm.soldCostAmount > totals.availableSoldCost) { toast.error(`Sold cost amount exceeds available (${fmt(totals.availableSoldCost)})`); return; }
-      if (paymentForm.openingCreditAmount > totals.availableOpeningCredit) { toast.error(`Opening credit amount exceeds available (${fmt(totals.availableOpeningCredit)})`); return; }
-    } else if (paymentForm.settleFrom === 'sold_cost') {
+    } else if (sf === 'sold_cost') {
       totalAmount = paymentForm.amount;
       if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
       if (totalAmount > totals.availableSoldCost) { toast.error(`Amount exceeds available sold cost (${fmt(totals.availableSoldCost)})`); return; }
-    } else {
+    } else if (sf === 'opening_credit') {
       totalAmount = paymentForm.amount;
       if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
       if (totalAmount > totals.availableOpeningCredit) { toast.error(`Amount exceeds available opening credit (${fmt(totals.availableOpeningCredit)})`); return; }
     }
     const methods = paymentForm.paymentMethods.length > 0 ? paymentForm.paymentMethods.join(', ') : 'Not specified';
-    const settleLabel = paymentForm.settleFrom === 'direct' ? 'Direct Payment' : paymentForm.settleFrom === 'sold_cost' ? 'Settled from Sold Cost' : paymentForm.settleFrom === 'opening_credit' ? 'Settled from Opening Credit' : `Sold Cost: ₹${paymentForm.soldCostAmount.toLocaleString('en-IN')}, Opening: ₹${paymentForm.openingCreditAmount.toLocaleString('en-IN')}`;
+    const settleLabel = sf === 'stock_direct' ? 'Paid Against Stock (Direct)' : sf === 'sold_cost' ? 'Settled from Sold Cost' : sf === 'opening_credit' ? 'Settled from Opening Credit' : 'Advance Payment';
     const desc = [settleLabel, `via ${methods}`, paymentForm.notes ? `Notes: ${paymentForm.notes}` : '', paymentForm.description || ''].filter(Boolean).join(' | ');
     const newBalance = Number(selectedDealer.total_credit) - totalAmount;
     const { error: txnError } = await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'payment', amount: totalAmount, running_balance: newBalance, description: desc });
@@ -696,6 +698,17 @@ export const DealerLedger: React.FC = () => {
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.purchaseCount}×</span>
                     </div>
                     <p className="font-display text-lg font-extrabold text-destructive">+{fmt(totals.purchase)}</p>
+                    <div className="mt-1 space-y-0.5">
+                      {totals.paidAgainstStock > 0 && (
+                        <p className="text-[9px] text-success">Direct: -{fmt(totals.paidAgainstStock)}</p>
+                      )}
+                      {totals.paidFromSold > 0 && (
+                        <p className="text-[9px] text-primary">Sold: -{fmt(totals.paidFromSold)}</p>
+                      )}
+                      {totals.purchasePending > 0 && (
+                        <p className="text-[9px] text-warning">Pending: {fmt(totals.purchasePending)}</p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Sold Cost */}
@@ -705,7 +718,8 @@ export const DealerLedger: React.FC = () => {
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.saleCount}×</span>
                     </div>
                     <p className="font-display text-lg font-extrabold text-primary">{fmt(totals.sold)}</p>
-                    {totals.availableSoldCost > 0 && <p className="text-[9px] text-primary/70 mt-0.5">Pending: {fmt(totals.availableSoldCost)}</p>}
+                    {totals.paidFromSold > 0 && <p className="text-[9px] text-success mt-0.5">Settled: {fmt(totals.paidFromSold)}</p>}
+                    {totals.availableSoldCost > 0 && <p className="text-[9px] text-warning mt-0.5">Available: {fmt(totals.availableSoldCost)}</p>}
                   </div>
 
                   {/* Returns */}
@@ -725,19 +739,25 @@ export const DealerLedger: React.FC = () => {
                       {totals.paidAgainstStock > 0 && (
                         <p className="text-[9px] text-muted-foreground">
                           <span className="inline-block w-1.5 h-1.5 rounded-full bg-success mr-1" />
-                          Stock: {fmt(totals.paidAgainstStock)}
+                          Stock (Direct): {fmt(totals.paidAgainstStock)}
                         </p>
                       )}
                       {totals.paidFromSold > 0 && (
                         <p className="text-[9px] text-muted-foreground">
                           <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1" />
-                          Sold: {fmt(totals.paidFromSold)}
+                          Stock (Sold): {fmt(totals.paidFromSold)}
                         </p>
                       )}
                       {totals.paidAgainstOpening > 0 && (
                         <p className="text-[9px] text-muted-foreground">
                           <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning mr-1" />
                           Opening: {fmt(totals.paidAgainstOpening)}
+                        </p>
+                      )}
+                      {totals.advancePayments > 0 && (
+                        <p className="text-[9px] text-muted-foreground">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground mr-1" />
+                          Advance: {fmt(totals.advancePayments)}
                         </p>
                       )}
                     </div>
@@ -1038,45 +1058,34 @@ export const DealerLedger: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Settle From</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[['direct', 'Direct Payment', ''], ['opening_credit', 'Opening Credit', fmt(totals.availableOpeningCredit)], ['sold_cost', 'Sold Cost', fmt(totals.availableSoldCost)], ['both', 'Split Both', '']].map(([v, l, avail]) => (
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                ['stock_direct', 'Against Purchases', 'Pay from own funds', ''],
+                ['sold_cost', 'From Sold Stock', 'Pay from sold proceeds', fmt(totals.availableSoldCost)],
+                ['opening_credit', 'Against Opening', 'Pay opening balance', fmt(totals.availableOpeningCredit)],
+                ['advance', 'Advance Payment', 'Extra / uncategorized', ''],
+              ] as const).map(([v, l, sub, avail]) => (
                 <button key={v} onClick={() => setPaymentForm({ ...paymentForm, settleFrom: v as any, amount: 0, soldCostAmount: 0, openingCreditAmount: 0 })}
                   className={`p-3 rounded-xl border text-left transition-all ${paymentForm.settleFrom === v ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'hover:bg-accent/30'}`}>
                   <p className="font-display font-bold text-xs">{l}</p>
-                  {avail && <p className="text-[10px] text-muted-foreground mt-0.5">Avail: {avail}</p>}
+                  <p className="text-[9px] text-muted-foreground mt-0.5">{sub}</p>
+                  {avail && <p className="text-[9px] text-primary font-semibold mt-0.5">Avail: {avail}</p>}
                 </button>
               ))}
             </div>
           </div>
 
-          {paymentForm.settleFrom === 'both' ? (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Sold Cost (max: {fmt(totals.availableSoldCost)})</label>
-                <Input type="number" value={paymentForm.soldCostAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, soldCostAmount: parseFloat(e.target.value) || 0 })} className="h-10" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Opening (max: {fmt(totals.availableOpeningCredit)})</label>
-                <Input type="number" value={paymentForm.openingCreditAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, openingCreditAmount: parseFloat(e.target.value) || 0 })} className="h-10" />
-              </div>
-              <div className="col-span-2 rounded-lg bg-secondary/50 px-3 py-2 text-sm">
-                Total: <span className="font-display font-bold text-primary">{fmt(paymentForm.soldCostAmount + paymentForm.openingCreditAmount)}</span>
-              </div>
-            </div>
-          ) : paymentForm.settleFrom === 'direct' ? (
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment Amount</label>
-              <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} className="h-11 text-lg font-mono" placeholder="0" />
-              <p className="text-[10px] text-muted-foreground mt-1">No limit — pay any amount (advance, partial, or full settlement)</p>
-            </div>
-          ) : (
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                Amount (max: {paymentForm.settleFrom === 'sold_cost' ? fmt(totals.availableSoldCost) : fmt(totals.availableOpeningCredit)})
-              </label>
-              <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} className="h-11 text-lg font-mono" placeholder="0" />
-            </div>
-          )}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              Payment Amount
+              {paymentForm.settleFrom === 'sold_cost' && ` (max: ${fmt(totals.availableSoldCost)})`}
+              {paymentForm.settleFrom === 'opening_credit' && ` (max: ${fmt(totals.availableOpeningCredit)})`}
+            </label>
+            <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} className="h-11 text-lg font-mono" placeholder="0" />
+            {(paymentForm.settleFrom === 'stock_direct' || paymentForm.settleFrom === 'advance') && (
+              <p className="text-[10px] text-muted-foreground mt-1">No limit — pay any amount</p>
+            )}
+          </div>
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment Method(s)</label>
