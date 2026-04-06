@@ -651,9 +651,19 @@ export const DealerLedger: React.FC = () => {
                     <Button size="sm" variant="destructive" onClick={() => handleDeleteDealer(selectedDealer.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
-                    <div className="border-l pl-3 ml-1">
-                      <p className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">Balance</p>
-                      <p className={`font-display text-3xl font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
+                    <div className="border-l pl-3 ml-1 flex gap-4">
+                      <div>
+                        <p className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">Opening</p>
+                        <p className="font-display text-xl font-extrabold text-muted-foreground">{fmt(totals.opening)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">Net Balance</p>
+                        <p className={`font-display text-xl font-extrabold ${getBalanceTone(totals.netBalance)}`}>{fmt(totals.netBalance)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">Total</p>
+                        <p className={`font-display text-2xl font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
