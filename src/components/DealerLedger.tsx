@@ -192,6 +192,39 @@ export const DealerLedger: React.FC = () => {
     return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock: totalPaidAgainstStock, advancePayments, purchasePending, netBalance, purchasePayments, openingPending };
   }, [selectedDealer, selectedTxns]);
 
+  // Filtered txns for detail popups
+  const detailTxns = useMemo(() => {
+    if (!detailPopup) return [];
+    switch (detailPopup) {
+      case 'opening':
+        return selectedTxns.filter(t => t.type === 'opening_adjustment');
+      case 'purchases':
+        return selectedTxns.filter(t => t.type === 'purchase');
+      case 'sold':
+        return selectedTxns.filter(t => t.type === 'sale_deduction');
+      case 'returns':
+        return selectedTxns.filter(t => t.type === 'stock_return');
+      case 'purchase_payments':
+        return selectedTxns.filter(t => t.type === 'payment' && !t.description.includes('Opening Credit') && !t.description.includes('Settled from Opening Credit'));
+      case 'opening_settlement':
+        return selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Opening Credit') || t.description.includes('Settled from Opening Credit')));
+      case 'net_balance':
+        return selectedTxns.filter(t => ['purchase', 'payment', 'stock_return'].includes(t.type) && !t.description.includes('Opening Credit') && !t.description.includes('Settled from Opening Credit'));
+      default:
+        return [];
+    }
+  }, [detailPopup, selectedTxns]);
+
+  const detailPopupTitle: Record<string, string> = {
+    opening: 'Opening Balance Details',
+    purchases: 'Purchase Transactions',
+    sold: 'Sold Cost Transactions',
+    returns: 'Return Transactions',
+    purchase_payments: 'Purchase Payments',
+    opening_settlement: 'Opening Settlement Payments',
+    net_balance: 'Net Balance Breakdown',
+  };
+
   const historyTxns = useMemo(() => {
     if (!selectedDealer) return selectedTxns;
     const hasOpeningHistory = selectedTxns.some(t => t.type === 'opening_adjustment');
