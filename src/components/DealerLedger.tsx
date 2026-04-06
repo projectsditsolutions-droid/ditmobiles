@@ -1034,45 +1034,34 @@ export const DealerLedger: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Settle From</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[['direct', 'Direct Payment', ''], ['opening_credit', 'Opening Credit', fmt(totals.availableOpeningCredit)], ['sold_cost', 'Sold Cost', fmt(totals.availableSoldCost)], ['both', 'Split Both', '']].map(([v, l, avail]) => (
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                ['stock_direct', 'Against Purchases', 'Pay from own funds', ''],
+                ['sold_cost', 'From Sold Stock', 'Pay from sold proceeds', fmt(totals.availableSoldCost)],
+                ['opening_credit', 'Against Opening', 'Pay opening balance', fmt(totals.availableOpeningCredit)],
+                ['advance', 'Advance Payment', 'Extra / uncategorized', ''],
+              ] as const).map(([v, l, sub, avail]) => (
                 <button key={v} onClick={() => setPaymentForm({ ...paymentForm, settleFrom: v as any, amount: 0, soldCostAmount: 0, openingCreditAmount: 0 })}
                   className={`p-3 rounded-xl border text-left transition-all ${paymentForm.settleFrom === v ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'hover:bg-accent/30'}`}>
                   <p className="font-display font-bold text-xs">{l}</p>
-                  {avail && <p className="text-[10px] text-muted-foreground mt-0.5">Avail: {avail}</p>}
+                  <p className="text-[9px] text-muted-foreground mt-0.5">{sub}</p>
+                  {avail && <p className="text-[9px] text-primary font-semibold mt-0.5">Avail: {avail}</p>}
                 </button>
               ))}
             </div>
           </div>
 
-          {paymentForm.settleFrom === 'both' ? (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Sold Cost (max: {fmt(totals.availableSoldCost)})</label>
-                <Input type="number" value={paymentForm.soldCostAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, soldCostAmount: parseFloat(e.target.value) || 0 })} className="h-10" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Opening (max: {fmt(totals.availableOpeningCredit)})</label>
-                <Input type="number" value={paymentForm.openingCreditAmount || ''} onChange={e => setPaymentForm({ ...paymentForm, openingCreditAmount: parseFloat(e.target.value) || 0 })} className="h-10" />
-              </div>
-              <div className="col-span-2 rounded-lg bg-secondary/50 px-3 py-2 text-sm">
-                Total: <span className="font-display font-bold text-primary">{fmt(paymentForm.soldCostAmount + paymentForm.openingCreditAmount)}</span>
-              </div>
-            </div>
-          ) : paymentForm.settleFrom === 'direct' ? (
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment Amount</label>
-              <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} className="h-11 text-lg font-mono" placeholder="0" />
-              <p className="text-[10px] text-muted-foreground mt-1">No limit — pay any amount (advance, partial, or full settlement)</p>
-            </div>
-          ) : (
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                Amount (max: {paymentForm.settleFrom === 'sold_cost' ? fmt(totals.availableSoldCost) : fmt(totals.availableOpeningCredit)})
-              </label>
-              <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} className="h-11 text-lg font-mono" placeholder="0" />
-            </div>
-          )}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              Payment Amount
+              {paymentForm.settleFrom === 'sold_cost' && ` (max: ${fmt(totals.availableSoldCost)})`}
+              {paymentForm.settleFrom === 'opening_credit' && ` (max: ${fmt(totals.availableOpeningCredit)})`}
+            </label>
+            <Input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} className="h-11 text-lg font-mono" placeholder="0" />
+            {(paymentForm.settleFrom === 'stock_direct' || paymentForm.settleFrom === 'advance') && (
+              <p className="text-[10px] text-muted-foreground mt-1">No limit — pay any amount</p>
+            )}
+          </div>
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment Method(s)</label>
