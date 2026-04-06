@@ -671,7 +671,6 @@ export const DealerLedger: React.FC = () => {
                       </button>
                     </div>
                     <p className="font-display text-lg font-extrabold text-muted-foreground">{fmt(totals.opening)}</p>
-                    {totals.availableOpeningCredit > 0 && <p className="text-[9px] text-warning mt-0.5">Pending: {fmt(totals.availableOpeningCredit)}</p>}
                   </div>
 
                   {/* Purchases */}
@@ -702,17 +701,37 @@ export const DealerLedger: React.FC = () => {
                     <p className="font-display text-lg font-extrabold text-warning">-{fmt(totals.returned)}</p>
                   </div>
 
-                  {/* Payments */}
+                  {/* Payments - with detailed breakdown */}
                   <div className="rounded-xl border bg-background p-3">
                     <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground mb-1.5">Paid</p>
                     <p className="font-display text-lg font-extrabold text-success">-{fmt(totals.payment)}</p>
+                    <div className="mt-1 space-y-0.5">
+                      {totals.paidAgainstStock > 0 && (
+                        <p className="text-[9px] text-muted-foreground">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-success mr-1" />
+                          Stock: {fmt(totals.paidAgainstStock)}
+                        </p>
+                      )}
+                      {totals.paidFromSold > 0 && (
+                        <p className="text-[9px] text-muted-foreground">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1" />
+                          Sold: {fmt(totals.paidFromSold)}
+                        </p>
+                      )}
+                      {totals.paidAgainstOpening > 0 && (
+                        <p className="text-[9px] text-muted-foreground">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning mr-1" />
+                          Opening: {fmt(totals.paidAgainstOpening)}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Net Balance formula */}
+                  {/* Net Balance - without opening */}
                   <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
                     <p className="text-[10px] font-display uppercase tracking-wider text-primary/70 mb-1.5">Net Balance</p>
-                    <p className={`font-display text-lg font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
-                    <p className="text-[8px] text-muted-foreground mt-0.5">Opening + Purchase − Paid − Returns</p>
+                    <p className={`font-display text-lg font-extrabold ${getBalanceTone(totals.netBalance)}`}>{fmt(totals.netBalance)}</p>
+                    <p className="text-[8px] text-muted-foreground mt-0.5">Purchase − Paid − Returns</p>
                   </div>
                 </div>
 
