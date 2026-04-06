@@ -153,6 +153,8 @@ export const DealerLedger: React.FC = () => {
     const adjustments = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
     const opening = current - purchase + payment + returned;
+
+    // Payment categorization
     const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Sold Cost') || t.description.includes('Settled from Sold Cost'))).reduce((s, t) => {
       const bothMatch = t.description.match(/Sold Cost: ₹([\d,]+)/);
       if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
@@ -167,22 +169,26 @@ export const DealerLedger: React.FC = () => {
     }, 0);
     const paidAgainstStockDirect = selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Paid Against Stock (Direct)') || t.description.includes('Paid Immediately'))).reduce((s, t) => s + Number(t.amount), 0);
     const advancePayments = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Advance Payment')).reduce((s, t) => s + Number(t.amount), 0);
-    // Legacy "Direct Payment" entries (from old system) — count as stock direct
     const legacyDirect = selectedTxns.filter(t => t.type === 'payment' && t.description.startsWith('Direct Payment')).reduce((s, t) => s + Number(t.amount), 0);
     const totalPaidAgainstStock = paidAgainstStockDirect + legacyDirect;
+
     const availableSoldCost = Math.max(0, sold - soldCostSettled);
     const availableOpeningCredit = Math.max(0, opening - openingCreditSettled);
     const purchaseCount = selectedTxns.filter(t => t.type === 'purchase').length;
     const returnCount = selectedTxns.filter(t => t.type === 'stock_return').length;
     const saleCount = selectedTxns.filter(t => t.type === 'sale_deduction').length;
-    // Payment breakdown
     const paidFromSold = soldCostSettled;
     const paidAgainstOpening = openingCreditSettled;
-    // Purchase pending = purchases - returns - paid against stock (direct) - paid from sold
+
+    // Purchase-only payments (excluding opening settlements)
+    const purchasePayments = totalPaidAgainstStock + paidFromSold + advancePayments;
     const purchasePending = Math.max(0, purchase - returned - totalPaidAgainstStock - paidFromSold);
-    // Net balance without opening
-    const netBalance = purchase - payment - returned;
-    return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock: totalPaidAgainstStock, advancePayments, purchasePending, netBalance };
+    // Net balance = purchases - purchase payments - returns (opening is separate)
+    const netBalance = purchase - purchasePayments - returned;
+    // Opening pending
+    const openingPending = Math.max(0, opening - paidAgainstOpening);
+
+    return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock: totalPaidAgainstStock, advancePayments, purchasePending, netBalance, purchasePayments, openingPending };
   }, [selectedDealer, selectedTxns]);
 
   const historyTxns = useMemo(() => {
