@@ -698,6 +698,17 @@ export const DealerLedger: React.FC = () => {
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.purchaseCount}×</span>
                     </div>
                     <p className="font-display text-lg font-extrabold text-destructive">+{fmt(totals.purchase)}</p>
+                    <div className="mt-1 space-y-0.5">
+                      {totals.paidAgainstStock > 0 && (
+                        <p className="text-[9px] text-success">Direct: -{fmt(totals.paidAgainstStock)}</p>
+                      )}
+                      {totals.paidFromSold > 0 && (
+                        <p className="text-[9px] text-primary">Sold: -{fmt(totals.paidFromSold)}</p>
+                      )}
+                      {totals.purchasePending > 0 && (
+                        <p className="text-[9px] text-warning">Pending: {fmt(totals.purchasePending)}</p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Sold Cost */}
@@ -707,7 +718,8 @@ export const DealerLedger: React.FC = () => {
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.saleCount}×</span>
                     </div>
                     <p className="font-display text-lg font-extrabold text-primary">{fmt(totals.sold)}</p>
-                    {totals.availableSoldCost > 0 && <p className="text-[9px] text-primary/70 mt-0.5">Pending: {fmt(totals.availableSoldCost)}</p>}
+                    {totals.paidFromSold > 0 && <p className="text-[9px] text-success mt-0.5">Settled: {fmt(totals.paidFromSold)}</p>}
+                    {totals.availableSoldCost > 0 && <p className="text-[9px] text-warning mt-0.5">Available: {fmt(totals.availableSoldCost)}</p>}
                   </div>
 
                   {/* Returns */}
@@ -727,19 +739,25 @@ export const DealerLedger: React.FC = () => {
                       {totals.paidAgainstStock > 0 && (
                         <p className="text-[9px] text-muted-foreground">
                           <span className="inline-block w-1.5 h-1.5 rounded-full bg-success mr-1" />
-                          Stock: {fmt(totals.paidAgainstStock)}
+                          Stock (Direct): {fmt(totals.paidAgainstStock)}
                         </p>
                       )}
                       {totals.paidFromSold > 0 && (
                         <p className="text-[9px] text-muted-foreground">
                           <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1" />
-                          Sold: {fmt(totals.paidFromSold)}
+                          Stock (Sold): {fmt(totals.paidFromSold)}
                         </p>
                       )}
                       {totals.paidAgainstOpening > 0 && (
                         <p className="text-[9px] text-muted-foreground">
                           <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning mr-1" />
                           Opening: {fmt(totals.paidAgainstOpening)}
+                        </p>
+                      )}
+                      {totals.advancePayments > 0 && (
+                        <p className="text-[9px] text-muted-foreground">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground mr-1" />
+                          Advance: {fmt(totals.advancePayments)}
                         </p>
                       )}
                     </div>
