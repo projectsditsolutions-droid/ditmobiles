@@ -411,25 +411,21 @@ export const DealerLedger: React.FC = () => {
   const handlePayment = async () => {
     if (!selectedDealer || !activeShopId) return;
     let totalAmount = 0;
-    if (paymentForm.settleFrom === 'direct') {
+    const sf = paymentForm.settleFrom;
+    if (sf === 'stock_direct' || sf === 'advance') {
       totalAmount = paymentForm.amount;
       if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
-    } else if (paymentForm.settleFrom === 'both') {
-      totalAmount = paymentForm.soldCostAmount + paymentForm.openingCreditAmount;
-      if (totalAmount <= 0) { toast.error('Enter valid amounts'); return; }
-      if (paymentForm.soldCostAmount > totals.availableSoldCost) { toast.error(`Sold cost amount exceeds available (${fmt(totals.availableSoldCost)})`); return; }
-      if (paymentForm.openingCreditAmount > totals.availableOpeningCredit) { toast.error(`Opening credit amount exceeds available (${fmt(totals.availableOpeningCredit)})`); return; }
-    } else if (paymentForm.settleFrom === 'sold_cost') {
+    } else if (sf === 'sold_cost') {
       totalAmount = paymentForm.amount;
       if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
       if (totalAmount > totals.availableSoldCost) { toast.error(`Amount exceeds available sold cost (${fmt(totals.availableSoldCost)})`); return; }
-    } else {
+    } else if (sf === 'opening_credit') {
       totalAmount = paymentForm.amount;
       if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
       if (totalAmount > totals.availableOpeningCredit) { toast.error(`Amount exceeds available opening credit (${fmt(totals.availableOpeningCredit)})`); return; }
     }
     const methods = paymentForm.paymentMethods.length > 0 ? paymentForm.paymentMethods.join(', ') : 'Not specified';
-    const settleLabel = paymentForm.settleFrom === 'direct' ? 'Direct Payment' : paymentForm.settleFrom === 'sold_cost' ? 'Settled from Sold Cost' : paymentForm.settleFrom === 'opening_credit' ? 'Settled from Opening Credit' : `Sold Cost: ₹${paymentForm.soldCostAmount.toLocaleString('en-IN')}, Opening: ₹${paymentForm.openingCreditAmount.toLocaleString('en-IN')}`;
+    const settleLabel = sf === 'stock_direct' ? 'Paid Against Stock (Direct)' : sf === 'sold_cost' ? 'Settled from Sold Cost' : sf === 'opening_credit' ? 'Settled from Opening Credit' : 'Advance Payment';
     const desc = [settleLabel, `via ${methods}`, paymentForm.notes ? `Notes: ${paymentForm.notes}` : '', paymentForm.description || ''].filter(Boolean).join(' | ');
     const newBalance = Number(selectedDealer.total_credit) - totalAmount;
     const { error: txnError } = await supabase.from('dealer_transactions').insert({ dealer_id: selectedDealer.id, shop_id: activeShopId, type: 'payment', amount: totalAmount, running_balance: newBalance, description: desc });
