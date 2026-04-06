@@ -170,7 +170,13 @@ export const DealerLedger: React.FC = () => {
     const purchaseCount = selectedTxns.filter(t => t.type === 'purchase').length;
     const returnCount = selectedTxns.filter(t => t.type === 'stock_return').length;
     const saleCount = selectedTxns.filter(t => t.type === 'sale_deduction').length;
-    return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount };
+    // Payment breakdown
+    const paidFromSold = soldCostSettled;
+    const paidAgainstOpening = openingCreditSettled;
+    const paidAgainstStock = payment - paidFromSold - paidAgainstOpening;
+    // Net balance without opening
+    const netBalance = purchase - payment - returned;
+    return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock, netBalance };
   }, [selectedDealer, selectedTxns]);
 
   const historyTxns = useMemo(() => {
