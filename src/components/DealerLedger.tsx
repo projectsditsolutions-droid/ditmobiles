@@ -715,10 +715,10 @@ export const DealerLedger: React.FC = () => {
               <div className="p-5 border-b">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                   {/* Opening Credit */}
-                  <div className="rounded-xl border-2 border-muted bg-background p-3">
+                  <div onClick={() => setDetailPopup('opening')} className="rounded-xl border-2 border-muted bg-background p-3 cursor-pointer hover:border-primary/30 hover:shadow-sm transition-all">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground font-bold">Opening Balance</p>
-                      <button onClick={() => { setEditCreditValue(totals.opening); setShowEditCredit(true); }} className="text-primary hover:bg-primary/10 rounded p-0.5 transition-colors">
+                      <button onClick={e => { e.stopPropagation(); setEditCreditValue(totals.opening); setShowEditCredit(true); }} className="text-primary hover:bg-primary/10 rounded p-0.5 transition-colors">
                         <Edit2 className="w-3 h-3" />
                       </button>
                     </div>
@@ -736,7 +736,7 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Purchases */}
-                  <div className="rounded-xl border bg-background p-3">
+                  <div onClick={() => setDetailPopup('purchases')} className="rounded-xl border bg-background p-3 cursor-pointer hover:border-primary/30 hover:shadow-sm transition-all">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Purchases</p>
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.purchaseCount}×</span>
@@ -769,7 +769,7 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Sold Cost */}
-                  <div className="rounded-xl border bg-background p-3">
+                  <div onClick={() => setDetailPopup('sold')} className="rounded-xl border bg-background p-3 cursor-pointer hover:border-primary/30 hover:shadow-sm transition-all">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Sold Cost</p>
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.saleCount}×</span>
@@ -788,7 +788,7 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Returns */}
-                  <div className="rounded-xl border bg-background p-3">
+                  <div onClick={() => setDetailPopup('returns')} className="rounded-xl border bg-background p-3 cursor-pointer hover:border-primary/30 hover:shadow-sm transition-all">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Returns</p>
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.returnCount}×</span>
@@ -800,7 +800,7 @@ export const DealerLedger: React.FC = () => {
                 {/* Second row: Payment summary + Net Balance */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                   {/* Purchase Payments (excluding opening) */}
-                  <div className="rounded-xl border bg-success/5 p-3">
+                  <div onClick={() => setDetailPopup('purchase_payments')} className="rounded-xl border bg-success/5 p-3 cursor-pointer hover:border-success/30 hover:shadow-sm transition-all">
                     <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground mb-1.5">Purchase Payments</p>
                     <p className="font-display text-xl font-extrabold text-success">-{fmt(totals.purchasePayments)}</p>
                     <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
@@ -826,7 +826,7 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Opening Settlement (separate) */}
-                  <div className="rounded-xl border bg-warning/5 p-3">
+                  <div onClick={() => setDetailPopup('opening_settlement')} className="rounded-xl border bg-warning/5 p-3 cursor-pointer hover:border-warning/30 hover:shadow-sm transition-all">
                     <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground mb-1.5">Opening Settlement</p>
                     <p className="font-display text-xl font-extrabold text-success">-{fmt(totals.paidAgainstOpening)}</p>
                     <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
@@ -838,7 +838,7 @@ export const DealerLedger: React.FC = () => {
                   </div>
 
                   {/* Net Balance */}
-                  <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-3">
+                  <div onClick={() => setDetailPopup('net_balance')} className="rounded-xl border-2 border-primary/20 bg-primary/5 p-3 cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all">
                     <p className="text-[10px] font-display uppercase tracking-wider text-primary/70 mb-1.5">Net Balance</p>
                     <p className={`font-display text-xl font-extrabold ${getBalanceTone(totals.netBalance)}`}>{fmt(totals.netBalance)}</p>
                     <p className="text-[8px] text-muted-foreground mt-1">Purchase − Purchase Paid − Returns</p>
