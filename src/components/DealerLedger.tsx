@@ -406,7 +406,7 @@ export const DealerLedger: React.FC = () => {
     fetchTransactions();
   };
 
-  const defaultPaymentForm = { amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'direct' as const, soldCostAmount: 0, openingCreditAmount: 0 };
+  const defaultPaymentForm = { amount: 0, description: '', paymentMethods: [] as string[], notes: '', settleFrom: 'stock_direct' as const, soldCostAmount: 0, openingCreditAmount: 0 };
 
   const handlePayment = async () => {
     if (!selectedDealer || !activeShopId) return;
