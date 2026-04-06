@@ -1266,6 +1266,164 @@ export const DealerLedger: React.FC = () => {
         </div>
       </Modal>
 
+      {/* ── Detail Popup Modal ── */}
+      <Modal open={!!detailPopup} onClose={() => setDetailPopup(null)} title={detailPopup ? detailPopupTitle[detailPopup] : ''} subtitle={selectedDealer?.dealer_name}>
+        {detailPopup && (
+          <div className="space-y-4">
+            {/* Summary bar */}
+            {detailPopup === 'opening' && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Total</p>
+                  <p className="font-display font-extrabold text-foreground">{fmt(totals.opening)}</p>
+                </div>
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Settled</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.paidAgainstOpening)}</p>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Pending</p>
+                  <p className="font-display font-extrabold text-warning">{fmt(totals.openingPending)}</p>
+                </div>
+              </div>
+            )}
+            {detailPopup === 'purchases' && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-destructive/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Total</p>
+                  <p className="font-display font-extrabold text-destructive">{fmt(totals.purchase)}</p>
+                </div>
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Direct Paid</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.paidAgainstStock)}</p>
+                </div>
+                <div className="rounded-lg bg-primary/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">From Sold</p>
+                  <p className="font-display font-extrabold text-primary">{fmt(totals.paidFromSold)}</p>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Pending</p>
+                  <p className="font-display font-extrabold text-warning">{fmt(totals.purchasePending)}</p>
+                </div>
+              </div>
+            )}
+            {detailPopup === 'sold' && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-primary/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Total Sold</p>
+                  <p className="font-display font-extrabold text-primary">{fmt(totals.sold)}</p>
+                </div>
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Settled</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.paidFromSold)}</p>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Available</p>
+                  <p className="font-display font-extrabold text-warning">{fmt(totals.availableSoldCost)}</p>
+                </div>
+              </div>
+            )}
+            {detailPopup === 'purchase_payments' && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Total</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.purchasePayments)}</p>
+                </div>
+                <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Direct</p>
+                  <p className="font-display font-extrabold">{fmt(totals.paidAgainstStock)}</p>
+                </div>
+                <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">From Sold</p>
+                  <p className="font-display font-extrabold">{fmt(totals.paidFromSold)}</p>
+                </div>
+                <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Advance</p>
+                  <p className="font-display font-extrabold">{fmt(totals.advancePayments)}</p>
+                </div>
+              </div>
+            )}
+            {detailPopup === 'opening_settlement' && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Opening</p>
+                  <p className="font-display font-extrabold text-foreground">{fmt(totals.opening)}</p>
+                </div>
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Paid</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.paidAgainstOpening)}</p>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Pending</p>
+                  <p className="font-display font-extrabold text-warning">{fmt(totals.openingPending)}</p>
+                </div>
+              </div>
+            )}
+            {detailPopup === 'net_balance' && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-destructive/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Purchases</p>
+                  <p className="font-display font-extrabold text-destructive">{fmt(totals.purchase)}</p>
+                </div>
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Paid</p>
+                  <p className="font-display font-extrabold text-success">{fmt(totals.purchasePayments)}</p>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase">Returns</p>
+                  <p className="font-display font-extrabold text-warning">{fmt(totals.returned)}</p>
+                </div>
+                <div className="rounded-lg bg-primary/10 p-3 text-center border-2 border-primary/20">
+                  <p className="text-[10px] text-muted-foreground uppercase">Net Balance</p>
+                  <p className={`font-display font-extrabold ${getBalanceTone(totals.netBalance)}`}>{fmt(totals.netBalance)}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Transaction list */}
+            {detailTxns.length > 0 ? (
+              <div className="rounded-xl border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary/50">
+                    <tr className="text-left font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <th className="px-3 py-2">Date</th>
+                      <th className="px-3 py-2">Details</th>
+                      <th className="px-3 py-2 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailTxns.map(txn => {
+                      const meta = TXN_META[txn.type] || { label: txn.type, colorClass: 'text-foreground', bgClass: 'bg-secondary', sign: '' };
+                      return (
+                        <tr key={txn.id} className="border-t hover:bg-accent/20">
+                          <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">
+                            {new Date(txn.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${meta.bgClass} ${meta.colorClass}`}>{meta.label}</span>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{txn.description}</p>
+                            {txn.imei_ref && <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono">{txn.imei_ref.split(',').slice(0, 3).join(', ')}{txn.imei_ref.split(',').length > 3 ? ` +${txn.imei_ref.split(',').length - 3}` : ''}</p>}
+                          </td>
+                          <td className={`px-3 py-2 text-right font-display font-bold ${meta.colorClass}`}>
+                            {meta.sign}{fmt(Number(txn.amount))}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground text-sm py-6">No transactions found</p>
+            )}
+
+            {detailPopup === 'returns' && detailTxns.length === 0 && (
+              <p className="text-center text-muted-foreground text-sm py-2">No returns recorded for this dealer</p>
+            )}
+          </div>
+        )}
+      </Modal>
+
       {/* ── Dealer Statement Modal ── */}
       {showStatement && selectedDealer && (
         <DealerStatement
