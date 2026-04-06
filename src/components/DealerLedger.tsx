@@ -153,18 +153,23 @@ export const DealerLedger: React.FC = () => {
     const adjustments = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
     const opening = current - purchase + payment + returned;
-    const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Sold Cost')).reduce((s, t) => {
+    const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Sold Cost') || t.description.includes('Settled from Sold Cost'))).reduce((s, t) => {
       const bothMatch = t.description.match(/Sold Cost: ₹([\d,]+)/);
       if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
       if (t.description.includes('Settled from Sold Cost')) return s + Number(t.amount);
       return s;
     }, 0);
-    const openingCreditSettled = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Opening Credit')).reduce((s, t) => {
+    const openingCreditSettled = selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Opening Credit') || t.description.includes('Settled from Opening Credit'))).reduce((s, t) => {
       const bothMatch = t.description.match(/Opening: ₹([\d,]+)/);
       if (bothMatch) return s + Number(bothMatch[1].replace(/,/g, ''));
       if (t.description.includes('Settled from Opening Credit')) return s + Number(t.amount);
       return s;
     }, 0);
+    const paidAgainstStockDirect = selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Paid Against Stock (Direct)') || t.description.includes('Paid Immediately'))).reduce((s, t) => s + Number(t.amount), 0);
+    const advancePayments = selectedTxns.filter(t => t.type === 'payment' && t.description.includes('Advance Payment')).reduce((s, t) => s + Number(t.amount), 0);
+    // Legacy "Direct Payment" entries (from old system) — count as stock direct
+    const legacyDirect = selectedTxns.filter(t => t.type === 'payment' && t.description.startsWith('Direct Payment')).reduce((s, t) => s + Number(t.amount), 0);
+    const totalPaidAgainstStock = paidAgainstStockDirect + legacyDirect;
     const availableSoldCost = Math.max(0, sold - soldCostSettled);
     const availableOpeningCredit = Math.max(0, opening - openingCreditSettled);
     const purchaseCount = selectedTxns.filter(t => t.type === 'purchase').length;
@@ -173,10 +178,11 @@ export const DealerLedger: React.FC = () => {
     // Payment breakdown
     const paidFromSold = soldCostSettled;
     const paidAgainstOpening = openingCreditSettled;
-    const paidAgainstStock = payment - paidFromSold - paidAgainstOpening;
+    // Purchase pending = purchases - returns - paid against stock (direct) - paid from sold
+    const purchasePending = Math.max(0, purchase - returned - totalPaidAgainstStock - paidFromSold);
     // Net balance without opening
     const netBalance = purchase - payment - returned;
-    return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock, netBalance };
+    return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock: totalPaidAgainstStock, advancePayments, purchasePending, netBalance };
   }, [selectedDealer, selectedTxns]);
 
   const historyTxns = useMemo(() => {
