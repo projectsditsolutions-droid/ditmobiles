@@ -681,6 +681,12 @@ export const DealerLedger: React.FC = () => {
                       </button>
                     </div>
                     <p className="font-display text-lg font-extrabold text-muted-foreground">{fmt(totals.opening)}</p>
+                    {totals.paidAgainstOpening > 0 && (
+                      <p className="text-[9px] text-success mt-0.5">Paid: {fmt(totals.paidAgainstOpening)}</p>
+                    )}
+                    {totals.availableOpeningCredit > 0 && (
+                      <p className="text-[9px] text-warning mt-0.5">Pending: {fmt(totals.availableOpeningCredit)}</p>
+                    )}
                   </div>
 
                   {/* Purchases */}
