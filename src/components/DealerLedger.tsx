@@ -679,22 +679,26 @@ export const DealerLedger: React.FC = () => {
 
               {/* Balance Summary Cards */}
               <div className="p-5 border-b">
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                   {/* Opening Credit */}
-                  <div className="rounded-xl border bg-background p-3 col-span-1">
+                  <div className="rounded-xl border-2 border-muted bg-background p-3">
                     <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Opening</p>
+                      <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground font-bold">Opening Balance</p>
                       <button onClick={() => { setEditCreditValue(totals.opening); setShowEditCredit(true); }} className="text-primary hover:bg-primary/10 rounded p-0.5 transition-colors">
                         <Edit2 className="w-3 h-3" />
                       </button>
                     </div>
-                    <p className="font-display text-lg font-extrabold text-muted-foreground">{fmt(totals.opening)}</p>
-                    {totals.paidAgainstOpening > 0 && (
-                      <p className="text-[9px] text-success mt-0.5">Paid: {fmt(totals.paidAgainstOpening)}</p>
-                    )}
-                    {totals.availableOpeningCredit > 0 && (
-                      <p className="text-[9px] text-warning mt-0.5">Pending: {fmt(totals.availableOpeningCredit)}</p>
-                    )}
+                    <p className="font-display text-xl font-extrabold text-foreground">{fmt(totals.opening)}</p>
+                    <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-success font-medium">Settled</span>
+                        <span className="text-success font-bold">{fmt(totals.paidAgainstOpening)}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-warning font-medium">Pending</span>
+                        <span className="text-warning font-bold">{fmt(totals.openingPending)}</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Purchases */}
@@ -703,17 +707,30 @@ export const DealerLedger: React.FC = () => {
                       <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Purchases</p>
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.purchaseCount}×</span>
                     </div>
-                    <p className="font-display text-lg font-extrabold text-destructive">+{fmt(totals.purchase)}</p>
-                    <div className="mt-1 space-y-0.5">
+                    <p className="font-display text-xl font-extrabold text-destructive">+{fmt(totals.purchase)}</p>
+                    <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
                       {totals.paidAgainstStock > 0 && (
-                        <p className="text-[9px] text-success">Direct: -{fmt(totals.paidAgainstStock)}</p>
+                        <div className="flex justify-between text-[10px]">
+                          <span className="text-success">Direct Paid</span>
+                          <span className="text-success font-semibold">-{fmt(totals.paidAgainstStock)}</span>
+                        </div>
                       )}
                       {totals.paidFromSold > 0 && (
-                        <p className="text-[9px] text-primary">Sold: -{fmt(totals.paidFromSold)}</p>
+                        <div className="flex justify-between text-[10px]">
+                          <span className="text-primary">From Sold</span>
+                          <span className="text-primary font-semibold">-{fmt(totals.paidFromSold)}</span>
+                        </div>
                       )}
-                      {totals.purchasePending > 0 && (
-                        <p className="text-[9px] text-warning">Pending: {fmt(totals.purchasePending)}</p>
+                      {totals.advancePayments > 0 && (
+                        <div className="flex justify-between text-[10px]">
+                          <span className="text-muted-foreground">Advance</span>
+                          <span className="text-muted-foreground font-semibold">-{fmt(totals.advancePayments)}</span>
+                        </div>
                       )}
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-warning font-medium">Pending</span>
+                        <span className="text-warning font-bold">{fmt(totals.purchasePending)}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -723,9 +740,17 @@ export const DealerLedger: React.FC = () => {
                       <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Sold Cost</p>
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.saleCount}×</span>
                     </div>
-                    <p className="font-display text-lg font-extrabold text-primary">{fmt(totals.sold)}</p>
-                    {totals.paidFromSold > 0 && <p className="text-[9px] text-success mt-0.5">Settled: {fmt(totals.paidFromSold)}</p>}
-                    {totals.availableSoldCost > 0 && <p className="text-[9px] text-warning mt-0.5">Available: {fmt(totals.availableSoldCost)}</p>}
+                    <p className="font-display text-xl font-extrabold text-primary">{fmt(totals.sold)}</p>
+                    <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-success">Settled</span>
+                        <span className="text-success font-semibold">{fmt(totals.paidFromSold)}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-warning">Available</span>
+                        <span className="text-warning font-semibold">{fmt(totals.availableSoldCost)}</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Returns */}
@@ -734,46 +759,56 @@ export const DealerLedger: React.FC = () => {
                       <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Returns</p>
                       <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded">{totals.returnCount}×</span>
                     </div>
-                    <p className="font-display text-lg font-extrabold text-warning">-{fmt(totals.returned)}</p>
+                    <p className="font-display text-xl font-extrabold text-warning">-{fmt(totals.returned)}</p>
                   </div>
+                </div>
 
-                  {/* Payments - with detailed breakdown */}
-                  <div className="rounded-xl border bg-background p-3">
-                    <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground mb-1.5">Paid</p>
-                    <p className="font-display text-lg font-extrabold text-success">-{fmt(totals.payment)}</p>
-                    <div className="mt-1 space-y-0.5">
+                {/* Second row: Payment summary + Net Balance */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                  {/* Purchase Payments (excluding opening) */}
+                  <div className="rounded-xl border bg-success/5 p-3">
+                    <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground mb-1.5">Purchase Payments</p>
+                    <p className="font-display text-xl font-extrabold text-success">-{fmt(totals.purchasePayments)}</p>
+                    <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
                       {totals.paidAgainstStock > 0 && (
-                        <p className="text-[9px] text-muted-foreground">
-                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-success mr-1" />
-                          Stock (Direct): {fmt(totals.paidAgainstStock)}
-                        </p>
+                        <div className="flex justify-between text-[10px]">
+                          <span className="flex items-center gap-1"><span className="inline-block w-1.5 h-1.5 rounded-full bg-success" />Direct</span>
+                          <span className="font-semibold">{fmt(totals.paidAgainstStock)}</span>
+                        </div>
                       )}
                       {totals.paidFromSold > 0 && (
-                        <p className="text-[9px] text-muted-foreground">
-                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1" />
-                          Stock (Sold): {fmt(totals.paidFromSold)}
-                        </p>
-                      )}
-                      {totals.paidAgainstOpening > 0 && (
-                        <p className="text-[9px] text-muted-foreground">
-                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning mr-1" />
-                          Opening: {fmt(totals.paidAgainstOpening)}
-                        </p>
+                        <div className="flex justify-between text-[10px]">
+                          <span className="flex items-center gap-1"><span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />From Sold</span>
+                          <span className="font-semibold">{fmt(totals.paidFromSold)}</span>
+                        </div>
                       )}
                       {totals.advancePayments > 0 && (
-                        <p className="text-[9px] text-muted-foreground">
-                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground mr-1" />
-                          Advance: {fmt(totals.advancePayments)}
-                        </p>
+                        <div className="flex justify-between text-[10px]">
+                          <span className="flex items-center gap-1"><span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground" />Advance</span>
+                          <span className="font-semibold">{fmt(totals.advancePayments)}</span>
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Net Balance - without opening */}
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                  {/* Opening Settlement (separate) */}
+                  <div className="rounded-xl border bg-warning/5 p-3">
+                    <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground mb-1.5">Opening Settlement</p>
+                    <p className="font-display text-xl font-extrabold text-success">-{fmt(totals.paidAgainstOpening)}</p>
+                    <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground">Of {fmt(totals.opening)}</span>
+                        <span className="text-warning font-bold">Pending: {fmt(totals.openingPending)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Net Balance */}
+                  <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-3">
                     <p className="text-[10px] font-display uppercase tracking-wider text-primary/70 mb-1.5">Net Balance</p>
-                    <p className={`font-display text-lg font-extrabold ${getBalanceTone(totals.netBalance)}`}>{fmt(totals.netBalance)}</p>
-                    <p className="text-[8px] text-muted-foreground mt-0.5">Purchase − Paid − Returns</p>
+                    <p className={`font-display text-xl font-extrabold ${getBalanceTone(totals.netBalance)}`}>{fmt(totals.netBalance)}</p>
+                    <p className="text-[8px] text-muted-foreground mt-1">Purchase − Purchase Paid − Returns</p>
+                    <p className="text-[8px] text-muted-foreground">(Opening tracked separately)</p>
                   </div>
                 </div>
 
