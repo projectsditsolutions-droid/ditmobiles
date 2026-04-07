@@ -819,8 +819,8 @@ export const DealerLedger: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Second row: Payment summary + Net Balance */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                {/* Second row: Payment summary + Net Balance + Settle Gap */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                   {/* Purchase Payments (excluding opening) */}
                   <div onClick={() => setDetailPopup('purchase_payments')} className="rounded-xl border bg-success/5 p-3 cursor-pointer hover:border-success/30 hover:shadow-sm transition-all">
                     <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground mb-1.5">Purchase Payments</p>
@@ -866,6 +866,28 @@ export const DealerLedger: React.FC = () => {
                     <p className="text-[8px] text-muted-foreground mt-1">Purchase − Purchase Paid − Returns</p>
                     <p className="text-[8px] text-muted-foreground">(Opening tracked separately)</p>
                   </div>
+
+                  {/* Settle Gap: Net Balance - Stock Value */}
+                  {(() => {
+                    const settleGap = totals.netBalance - dealerStockValue;
+                    return (
+                      <div className="rounded-xl border-2 border-destructive/20 bg-destructive/5 p-3">
+                        <p className="text-[10px] font-display uppercase tracking-wider text-destructive/70 mb-1.5">Settle Gap</p>
+                        <p className={`font-display text-xl font-extrabold ${settleGap > 0 ? 'text-destructive' : 'text-success'}`}>{fmt(settleGap)}</p>
+                        <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-muted-foreground">Net Balance</span>
+                            <span className="font-semibold">{fmt(totals.netBalance)}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-muted-foreground">Stock Value</span>
+                            <span className="font-semibold">-{fmt(dealerStockValue)}</span>
+                          </div>
+                        </div>
+                        <p className="text-[8px] text-muted-foreground mt-1">Amount to pay after selling all stock</p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Action buttons */}
