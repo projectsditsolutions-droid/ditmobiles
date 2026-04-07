@@ -153,7 +153,7 @@ export const DealerLedger: React.FC = () => {
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
     const adjustments = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    const opening = current - purchase + payment + returned - adjustments;
+    const opening = Number((selectedDealer as any)?.opening_balance || 0);
 
     // Payment categorization
     const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Sold Cost') || t.description.includes('Settled from Sold Cost'))).reduce((s, t) => {
