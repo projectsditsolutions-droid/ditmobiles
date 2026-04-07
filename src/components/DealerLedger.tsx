@@ -675,9 +675,9 @@ export const DealerLedger: React.FC = () => {
         </div>
 
         {/* ── Dealer Detail ── */}
-        <div className="bg-card rounded-2xl border shadow-sm overflow-hidden min-h-[700px]">
+        <div className="bg-card rounded-2xl border shadow-sm overflow-y-auto pos-scrollable min-h-[700px]">
           {selectedDealer ? (
-            <div className="h-full flex flex-col">
+            <div className="flex flex-col">
               {/* Header */}
               <div className="p-5 border-b bg-gradient-to-r from-accent/70 to-transparent">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
