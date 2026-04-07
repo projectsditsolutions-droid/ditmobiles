@@ -153,7 +153,7 @@ export const DealerLedger: React.FC = () => {
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
     const adjustments = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
-    const opening = current - purchase + payment + returned - adjustments;
+    const opening = Number((selectedDealer as any)?.opening_balance || 0);
 
     // Payment categorization
     const soldCostSettled = selectedTxns.filter(t => t.type === 'payment' && (t.description.includes('Sold Cost') || t.description.includes('Settled from Sold Cost'))).reduce((s, t) => {
@@ -400,7 +400,7 @@ export const DealerLedger: React.FC = () => {
       if (error) { toast.error('Failed: ' + error.message); return; }
       toast.success('Dealer updated');
     } else {
-      const { error } = await supabase.from('dealers').insert({ shop_id: activeShopId, brand_name: dealerForm.brand_name.trim(), dealer_name: dealerForm.dealer_name.trim(), phone: dealerForm.phone.trim(), address: dealerForm.address.trim(), gstin: dealerForm.gstin.trim(), total_credit: dealerForm.total_credit || 0 });
+      const { error } = await supabase.from('dealers').insert({ shop_id: activeShopId, brand_name: dealerForm.brand_name.trim(), dealer_name: dealerForm.dealer_name.trim(), phone: dealerForm.phone.trim(), address: dealerForm.address.trim(), gstin: dealerForm.gstin.trim(), total_credit: dealerForm.total_credit || 0, opening_balance: dealerForm.total_credit || 0 } as any);
       if (error) { toast.error('Failed: ' + error.message); return; }
       toast.success('Dealer added');
     }
@@ -413,18 +413,17 @@ export const DealerLedger: React.FC = () => {
   const handleEditOpeningCredit = async () => {
     if (!selectedDealer) return;
     const oldOpening = totals.opening;
-    const diff = editCreditValue - oldOpening;
-    if (diff === 0) {
+    if (editCreditValue === oldOpening) {
       setShowEditCredit(false);
       return;
     }
 
-    const newBalance = Number(selectedDealer.total_credit) + diff;
     const shopId = selectedDealer.shop_id;
 
+    // Directly set the new opening_balance
     const { error: dealerError } = await supabase
       .from('dealers')
-      .update({ total_credit: newBalance })
+      .update({ opening_balance: editCreditValue } as any)
       .eq('id', selectedDealer.id);
 
     if (dealerError) {
@@ -432,13 +431,19 @@ export const DealerLedger: React.FC = () => {
       return;
     }
 
+    // Also update total_credit to reflect the change
+    const diff = editCreditValue - oldOpening;
+    const newTotalCredit = Number(selectedDealer.total_credit) + diff;
+    await supabase.from('dealers').update({ total_credit: newTotalCredit }).eq('id', selectedDealer.id);
+
+    // Log audit transaction
     const { error: txnError } = await supabase.from('dealer_transactions').insert({
       dealer_id: selectedDealer.id,
       shop_id: shopId,
       type: 'opening_adjustment',
       amount: diff,
-      running_balance: newBalance,
-      description: `Opening credit adjusted from ₹${oldOpening.toLocaleString('en-IN')} to ₹${editCreditValue.toLocaleString('en-IN')}`,
+      running_balance: newTotalCredit,
+      description: `Opening balance set to ₹${editCreditValue.toLocaleString('en-IN')} (was ₹${oldOpening.toLocaleString('en-IN')})`,
     });
 
     if (txnError) {
@@ -447,7 +452,7 @@ export const DealerLedger: React.FC = () => {
     }
 
     setShowEditCredit(false);
-    toast.success('Opening credit updated');
+    toast.success('Opening balance updated');
     fetchDealers();
     fetchTransactions();
   };

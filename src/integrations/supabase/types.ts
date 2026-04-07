@@ -129,6 +129,7 @@ export type Database = {
           dealer_name: string
           gstin: string
           id: string
+          opening_balance: number
           phone: string
           shop_id: string
           total_credit: number
@@ -141,6 +142,7 @@ export type Database = {
           dealer_name: string
           gstin?: string
           id?: string
+          opening_balance?: number
           phone?: string
           shop_id: string
           total_credit?: number
@@ -153,6 +155,7 @@ export type Database = {
           dealer_name?: string
           gstin?: string
           id?: string
+          opening_balance?: number
           phone?: string
           shop_id?: string
           total_credit?: number
