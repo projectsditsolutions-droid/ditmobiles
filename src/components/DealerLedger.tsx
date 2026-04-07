@@ -400,7 +400,7 @@ export const DealerLedger: React.FC = () => {
       if (error) { toast.error('Failed: ' + error.message); return; }
       toast.success('Dealer updated');
     } else {
-      const { error } = await supabase.from('dealers').insert({ shop_id: activeShopId, brand_name: dealerForm.brand_name.trim(), dealer_name: dealerForm.dealer_name.trim(), phone: dealerForm.phone.trim(), address: dealerForm.address.trim(), gstin: dealerForm.gstin.trim(), total_credit: dealerForm.total_credit || 0 });
+      const { error } = await supabase.from('dealers').insert({ shop_id: activeShopId, brand_name: dealerForm.brand_name.trim(), dealer_name: dealerForm.dealer_name.trim(), phone: dealerForm.phone.trim(), address: dealerForm.address.trim(), gstin: dealerForm.gstin.trim(), total_credit: dealerForm.total_credit || 0, opening_balance: dealerForm.total_credit || 0 } as any);
       if (error) { toast.error('Failed: ' + error.message); return; }
       toast.success('Dealer added');
     }
