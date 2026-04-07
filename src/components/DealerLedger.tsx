@@ -83,6 +83,8 @@ export const DealerLedger: React.FC = () => {
   const [showStatement, setShowStatement] = useState(false);
   const [detailPopup, setDetailPopup] = useState<null | 'opening' | 'purchases' | 'sold' | 'returns' | 'purchase_payments' | 'opening_settlement' | 'net_balance'>(null);
   const [dealerStockValue, setDealerStockValue] = useState<number>(0);
+  const [dealerSoldCost, setDealerSoldCost] = useState<number>(0);
+  const [dealerSoldCount, setDealerSoldCount] = useState<number>(0);
 
   const fetchDealers = async () => {
     if (!activeShopId && !isAllShops) return;
@@ -119,19 +121,26 @@ export const DealerLedger: React.FC = () => {
 
   // Fetch stock value for selected dealer
   useEffect(() => {
-    const fetchStockValue = async () => {
-      if (!selectedDealerId) { setDealerStockValue(0); return; }
+    const fetchImeiValues = async () => {
+      if (!selectedDealerId) { setDealerStockValue(0); setDealerSoldCost(0); setDealerSoldCount(0); return; }
       const shopFilter = isAllShops ? allShopIds : [activeShopId!];
-      const { data } = await supabase
+      const { data: stockData } = await supabase
         .from('imei_records')
         .select('purchase_price')
         .eq('dealer_id', selectedDealerId)
         .eq('status', 'in_stock')
         .in('shop_id', shopFilter);
-      const total = (data || []).reduce((s, r) => s + Number(r.purchase_price), 0);
-      setDealerStockValue(total);
+      setDealerStockValue((stockData || []).reduce((s, r) => s + Number(r.purchase_price), 0));
+      const { data: soldData } = await supabase
+        .from('imei_records')
+        .select('purchase_price')
+        .eq('dealer_id', selectedDealerId)
+        .eq('status', 'sold')
+        .in('shop_id', shopFilter);
+      setDealerSoldCost((soldData || []).reduce((s, r) => s + Number(r.purchase_price), 0));
+      setDealerSoldCount((soldData || []).length);
     };
-    fetchStockValue();
+    fetchImeiValues();
   }, [selectedDealerId, activeShopId, allTxns]);
 
   useEffect(() => {
@@ -167,7 +176,8 @@ export const DealerLedger: React.FC = () => {
   const totals = useMemo(() => {
     const purchase = selectedTxns.filter(t => t.type === 'purchase').reduce((s, t) => s + Number(t.amount), 0);
     const payment = selectedTxns.filter(t => t.type === 'payment').reduce((s, t) => s + Number(t.amount), 0);
-    const sold = selectedTxns.filter(t => t.type === 'sale_deduction').reduce((s, t) => s + Number(t.amount), 0);
+    // Use IMEI-based sold cost as source of truth instead of sale_deduction transactions
+    const sold = dealerSoldCost;
     const returned = selectedTxns.filter(t => t.type === 'stock_return').reduce((s, t) => s + Number(t.amount), 0);
     const adjustments = selectedTxns.filter(t => t.type === 'opening_adjustment').reduce((s, t) => s + Number(t.amount), 0);
     const current = Number(selectedDealer?.total_credit || 0);
@@ -195,7 +205,7 @@ export const DealerLedger: React.FC = () => {
     const availableOpeningCredit = Math.max(0, opening - openingCreditSettled);
     const purchaseCount = selectedTxns.filter(t => t.type === 'purchase').length;
     const returnCount = selectedTxns.filter(t => t.type === 'stock_return').length;
-    const saleCount = selectedTxns.filter(t => t.type === 'sale_deduction').length;
+    const saleCount = dealerSoldCount;
     const paidFromSold = soldCostSettled;
     const paidAgainstOpening = openingCreditSettled;
 
@@ -208,7 +218,7 @@ export const DealerLedger: React.FC = () => {
     const openingPending = Math.max(0, opening - paidAgainstOpening);
 
     return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock: totalPaidAgainstStock, advancePayments, purchasePending, netBalance, purchasePayments, openingPending };
-  }, [selectedDealer, selectedTxns]);
+  }, [selectedDealer, selectedTxns, dealerSoldCost, dealerSoldCount]);
 
   // Filtered txns for detail popups
   const detailTxns = useMemo(() => {
