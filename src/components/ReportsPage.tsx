@@ -1203,12 +1203,6 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
       })()}
 
       {tab === 'sales_report' && (() => {
-        const [salesReportData, setSalesReportData] = React.useState<any[]>([]);
-        const [srLoading, setSrLoading] = React.useState(false);
-        const [srDateFrom, setSrDateFrom] = React.useState('');
-        const [srDateTo, setSrDateTo] = React.useState('');
-        const [srSearch, setSrSearch] = React.useState('');
-        const [srLoaded, setSrLoaded] = React.useState(false);
 
         const loadSalesReport = async () => {
           setSrLoading(true);
