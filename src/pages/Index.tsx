@@ -81,7 +81,7 @@ const Index = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <div className={`flex flex-col bg-card border-r transition-all duration-200 ease-in-out ${sidebarOpen ? 'w-56' : 'w-16'}`}>
         {/* Logo */}
@@ -140,7 +140,7 @@ const Index = () => {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-y-auto">
         {activeModule === 'billing' && <POSBilling editingInvoice={editingInvoice} onCancelEdit={() => setEditingInvoice(null)} />}
         {activeModule === 'inventory' && <InventoryManagement />}
         {activeModule === 'purchases' && <PurchaseEntry />}
