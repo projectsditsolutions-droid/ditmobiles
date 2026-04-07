@@ -205,7 +205,7 @@ export const DealerLedger: React.FC = () => {
     const availableOpeningCredit = Math.max(0, opening - openingCreditSettled);
     const purchaseCount = selectedTxns.filter(t => t.type === 'purchase').length;
     const returnCount = selectedTxns.filter(t => t.type === 'stock_return').length;
-    const saleCount = selectedTxns.filter(t => t.type === 'sale_deduction').length;
+    const saleCount = dealerSoldCount;
     const paidFromSold = soldCostSettled;
     const paidAgainstOpening = openingCreditSettled;
 
