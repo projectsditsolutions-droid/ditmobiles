@@ -1371,6 +1371,97 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                     <Download className="w-3.5 h-3.5" /> Download CSV
                   </Button>
                 )}
+                {srLoaded && searchFiltered.length > 0 && (
+                  <Button variant="outline" className="h-9 gap-1.5" onClick={() => {
+                    const period = `${srDateFrom || 'All'} to ${srDateTo || 'All'}`;
+                    let bodyRows = '';
+                    searchFiltered.forEach((inv: any) => {
+                      const pd = inv.payment_details as any;
+                      const paymentBreakdown = inv.payment_method === 'mixed' && pd
+                        ? Object.entries(pd).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${String(k).charAt(0).toUpperCase() + String(k).slice(1)}: ₹${Number(v).toLocaleString('en-IN')}`).join(' | ')
+                        : inv.payment_method.toUpperCase();
+                      bodyRows += `<tr style="background:#f8f9fa;border-top:2px solid #333;page-break-inside:avoid">
+                        <td colspan="7" style="padding:8px;font-size:11px">
+                          <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                              <strong style="font-size:12px">${inv.invoice_number}</strong>
+                              <span style="margin-left:12px;color:#666">${new Date(inv.date).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'})}</span>
+                              ${inv.is_gst_bill ? '<span style="margin-left:8px;background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:3px;font-size:9px">GST</span>' : '<span style="margin-left:8px;background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:3px;font-size:9px">Non-GST</span>'}
+                            </div>
+                            <strong style="font-size:13px">₹${Number(inv.grand_total).toLocaleString('en-IN')}</strong>
+                          </div>
+                          <div style="margin-top:4px;font-size:10px;color:#555">
+                            <strong>Customer:</strong> ${inv.customer_name}${inv.customer_phone ? ' | Ph: ' + inv.customer_phone : ''}
+                            | <strong>Payment:</strong> ${paymentBreakdown}
+                          </div>
+                        </td>
+                      </tr>`;
+                      inv.itemDetails.forEach((item: any) => {
+                        const profitColor = item.profit >= 0 ? '#16a34a' : '#dc2626';
+                        bodyRows += `<tr style="border-bottom:1px solid #eee;page-break-inside:avoid">
+                          <td style="padding:4px 8px 4px 20px;font-size:10px">${item.productName}</td>
+                          <td style="padding:4px 8px;font-size:10px;color:#666">${item.imei || '—'}</td>
+                          <td style="padding:4px 8px;font-size:10px;text-align:right">₹${item.purchasePrice.toLocaleString('en-IN')}</td>
+                          <td style="padding:4px 8px;font-size:10px;text-align:right">₹${item.salePrice.toLocaleString('en-IN')}</td>
+                          <td style="padding:4px 8px;font-size:10px;text-align:right">₹${item.itemTotal.toLocaleString('en-IN')}</td>
+                          <td style="padding:4px 8px;font-size:10px;text-align:right;font-weight:600;color:${profitColor}">₹${item.profit.toLocaleString('en-IN')}</td>
+                          <td style="padding:4px 8px;font-size:10px;text-align:right">${item.margin.toFixed(1)}%</td>
+                        </tr>`;
+                      });
+                    });
+                    const totalRow = `<tr style="border-top:2px solid #222;font-weight:900">
+                      <td colspan="4" style="padding:8px;text-align:right;font-size:12px">Totals</td>
+                      <td style="padding:8px;text-align:right;font-size:12px">₹${grandRevenue.toLocaleString('en-IN')}</td>
+                      <td style="padding:8px;text-align:right;font-size:12px;color:${grandProfit >= 0 ? '#16a34a' : '#dc2626'}">₹${grandProfit.toLocaleString('en-IN')}</td>
+                      <td style="padding:8px;text-align:right;font-size:12px">${grandRevenue > 0 ? (grandProfit / grandRevenue * 100).toFixed(1) : '0'}%</td>
+                    </tr>`;
+                    const html = `<div style="font-family:Inter,Arial,sans-serif;padding:0;width:100%">
+                      <div style="text-align:center;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px">
+                        <div style="font-size:20px;font-weight:900">Sales & Profit Report</div>
+                        <div style="font-size:10px;color:#666;margin-top:4px">Period: ${period} · ${searchFiltered.length} invoices · Generated: ${new Date().toLocaleString('en-IN')}</div>
+                      </div>
+                      <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+                        <div style="flex:1;min-width:120px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;text-align:center">
+                          <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">Revenue</div>
+                          <div style="font-size:16px;font-weight:900;color:#166534">₹${grandRevenue.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div style="flex:1;min-width:120px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;text-align:center">
+                          <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">Cost</div>
+                          <div style="font-size:16px;font-weight:900;color:#991b1b">₹${grandCost.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div style="flex:1;min-width:120px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;text-align:center">
+                          <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">Profit</div>
+                          <div style="font-size:16px;font-weight:900;color:${grandProfit >= 0 ? '#166534' : '#991b1b'}">₹${grandProfit.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div style="flex:1;min-width:120px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;text-align:center">
+                          <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">GST Paid</div>
+                          <div style="font-size:16px;font-weight:900;color:#1e40af">₹${grandGST.toLocaleString('en-IN')}</div>
+                        </div>
+                      </div>
+                      <table style="width:100%;border-collapse:collapse;font-size:10px">
+                        <thead>
+                          <tr style="background:#e2e8f0;font-weight:700;font-size:9px;text-transform:uppercase">
+                            <th style="padding:6px 8px;text-align:left">Product</th>
+                            <th style="padding:6px 8px;text-align:left">IMEI</th>
+                            <th style="padding:6px 8px;text-align:right">Purchase</th>
+                            <th style="padding:6px 8px;text-align:right">Sale</th>
+                            <th style="padding:6px 8px;text-align:right">Total</th>
+                            <th style="padding:6px 8px;text-align:right">Profit</th>
+                            <th style="padding:6px 8px;text-align:right">Margin</th>
+                          </tr>
+                        </thead>
+                        <tbody>${bodyRows}${totalRow}</tbody>
+                      </table>
+                    </div>`;
+                    printContent(<div dangerouslySetInnerHTML={{ __html: html }} />);
+                    setTimeout(async () => {
+                      await triggerPrint();
+                      clearContent();
+                    }, 200);
+                  }}>
+                    <FileDown className="w-3.5 h-3.5" /> Download PDF
+                  </Button>
+                )}
               </div>
               {srLoaded && (
                 <div className="mt-3">
