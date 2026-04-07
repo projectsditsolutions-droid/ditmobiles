@@ -187,7 +187,7 @@ export const PurchaseEntry: React.FC = () => {
             if (li.unit_price > 0) updateData.purchase_price = li.unit_price;
             if (li.sale_price > 0) updateData.sale_price = li.sale_price;
             if (Object.keys(updateData).length > 0) {
-              await supabase.from('products').update(updateData).eq('id', product.id);
+              await supabase.from('products').update(updateData as any).eq('id', product.id);
             }
           }
           totalAdded += added;

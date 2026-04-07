@@ -154,7 +154,7 @@ export const InventoryManagement: React.FC = () => {
     if (selectedProducts.size === 0 || !bulkValue) { toast.error('Select products and enter a value'); return; }
     const val = Number(bulkValue);
     for (const id of selectedProducts) {
-      await supabase.from('products').update({ [bulkField]: val }).eq('id', id);
+      await supabase.from('products').update({ [bulkField]: val } as any).eq('id', id);
     }
     toast.success(`Updated ${selectedProducts.size} products`);
     setSelectedProducts(new Set()); setBulkValue('');
