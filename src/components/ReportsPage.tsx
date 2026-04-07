@@ -1196,6 +1196,277 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
         );
       })()}
 
+      {tab === 'sales_report' && (() => {
+        const [salesReportData, setSalesReportData] = React.useState<any[]>([]);
+        const [srLoading, setSrLoading] = React.useState(false);
+        const [srDateFrom, setSrDateFrom] = React.useState('');
+        const [srDateTo, setSrDateTo] = React.useState('');
+        const [srSearch, setSrSearch] = React.useState('');
+        const [srLoaded, setSrLoaded] = React.useState(false);
+
+        const loadSalesReport = async () => {
+          setSrLoading(true);
+          try {
+            // Get filtered invoices
+            let filtered = invoices.filter(i => i.status === 'completed');
+            if (srDateFrom) filtered = filtered.filter(i => i.date >= srDateFrom);
+            if (srDateTo) filtered = filtered.filter(i => i.date <= srDateTo + 'T23:59:59');
+
+            if (filtered.length === 0) {
+              setSalesReportData([]);
+              setSrLoading(false);
+              setSrLoaded(true);
+              return;
+            }
+
+            const invoiceIds = filtered.map(i => i.id);
+            // Fetch invoice items with products
+            const { data: allItems } = await supabase
+              .from('invoice_items')
+              .select('*, products(*)')
+              .in('invoice_id', invoiceIds);
+
+            // Fetch IMEI records for sold items to get purchase_price
+            const imeis = (allItems || []).map(i => i.imei).filter(Boolean);
+            let imeiMap: Record<string, { purchase_price: number; dealer_id: string | null }> = {};
+            if (imeis.length > 0) {
+              const { data: imeiRecords } = await supabase
+                .from('imei_records')
+                .select('imei, purchase_price, dealer_id')
+                .in('imei', imeis as string[]);
+              (imeiRecords || []).forEach(r => {
+                imeiMap[r.imei] = { purchase_price: Number(r.purchase_price), dealer_id: r.dealer_id };
+              });
+            }
+
+            // Build per-invoice report
+            const report = filtered.map(inv => {
+              const items = (allItems || []).filter(i => i.invoice_id === inv.id);
+              const itemDetails = items.map((item: any) => {
+                const product = item.products;
+                const purchasePrice = item.imei && imeiMap[item.imei]
+                  ? imeiMap[item.imei].purchase_price
+                  : Number(product?.purchase_price || 0);
+                const salePrice = Number(item.unit_price);
+                const discount = Number(item.discount);
+                const itemTotal = Number(item.total);
+                const costTotal = purchasePrice * Number(item.quantity);
+                const profit = itemTotal - costTotal;
+
+                return {
+                  productName: product ? `${product.brand} ${product.model} ${product.variant || ''} ${product.color || ''}`.trim() : 'Unknown',
+                  imei: item.imei || '',
+                  quantity: Number(item.quantity),
+                  purchasePrice,
+                  salePrice,
+                  discount,
+                  itemTotal,
+                  costTotal,
+                  profit,
+                  margin: itemTotal > 0 ? (profit / itemTotal * 100) : 0,
+                };
+              });
+
+              const totalRevenue = itemDetails.reduce((s, d) => s + d.itemTotal, 0);
+              const totalCost = itemDetails.reduce((s, d) => s + d.costTotal, 0);
+              const totalProfit = itemDetails.reduce((s, d) => s + d.profit, 0);
+              const gst = Number(inv.cgst) + Number(inv.sgst);
+              const netProfit = totalProfit - gst;
+
+              return {
+                ...inv,
+                itemDetails,
+                totalRevenue,
+                totalCost,
+                totalProfit,
+                gst,
+                netProfit,
+              };
+            });
+
+            setSalesReportData(report);
+            setSrLoaded(true);
+          } catch (err) {
+            toast.error('Failed to load sales report');
+          }
+          setSrLoading(false);
+        };
+
+        const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0 })}`;
+
+        const searchFiltered = srSearch.trim()
+          ? salesReportData.filter(r => {
+              const q = srSearch.toLowerCase();
+              return r.invoice_number?.toLowerCase().includes(q)
+                || r.customer_name?.toLowerCase().includes(q)
+                || r.customer_phone?.toLowerCase().includes(q)
+                || r.itemDetails.some((d: any) => d.productName.toLowerCase().includes(q) || d.imei.toLowerCase().includes(q));
+            })
+          : salesReportData;
+
+        const grandRevenue = searchFiltered.reduce((s: number, r: any) => s + r.totalRevenue, 0);
+        const grandCost = searchFiltered.reduce((s: number, r: any) => s + r.totalCost, 0);
+        const grandProfit = searchFiltered.reduce((s: number, r: any) => s + r.totalProfit, 0);
+        const grandGST = searchFiltered.reduce((s: number, r: any) => s + r.gst, 0);
+        const grandNet = searchFiltered.reduce((s: number, r: any) => s + r.netProfit, 0);
+
+        return (
+          <div className="space-y-4">
+            {/* Filters */}
+            <div className="bg-card rounded-xl border p-4 shadow-sm">
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">From Date</label>
+                  <Input type="date" value={srDateFrom} onChange={e => setSrDateFrom(e.target.value)} className="h-9 w-40" />
+                </div>
+                <div>
+                  <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">To Date</label>
+                  <Input type="date" value={srDateTo} onChange={e => setSrDateTo(e.target.value)} className="h-9 w-40" />
+                </div>
+                <div className="flex gap-2">
+                  {[
+                    { label: 'Today', fn: () => { const d = todayIST; setSrDateFrom(d); setSrDateTo(d); } },
+                    { label: 'This Month', fn: () => { const now = new Date(); setSrDateFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`); setSrDateTo(now.toISOString().slice(0, 10)); } },
+                    { label: 'All', fn: () => { setSrDateFrom(''); setSrDateTo(''); } },
+                  ].map(p => (
+                    <Button key={p.label} variant="outline" size="sm" className="h-9 text-xs" onClick={p.fn}>{p.label}</Button>
+                  ))}
+                </div>
+                <Button onClick={loadSalesReport} disabled={srLoading} className="h-9 gap-1.5">
+                  {srLoading ? <span className="animate-spin">⏳</span> : <TrendingUp className="w-3.5 h-3.5" />}
+                  {srLoading ? 'Loading…' : 'Load Report'}
+                </Button>
+              </div>
+              {srLoaded && (
+                <div className="mt-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Search invoice, customer, product, IMEI…" value={srSearch} onChange={e => setSrSearch(e.target.value)} className="pl-9 h-9 text-sm" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Summary Cards */}
+            {srLoaded && (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="stat-card">
+                  <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Revenue</p>
+                  <p className="font-display text-xl font-extrabold text-primary">{fmt(grandRevenue)}</p>
+                  <p className="text-[10px] text-muted-foreground">{searchFiltered.length} invoices</p>
+                </div>
+                <div className="stat-card">
+                  <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Cost of Goods</p>
+                  <p className="font-display text-xl font-extrabold text-destructive">{fmt(grandCost)}</p>
+                </div>
+                <div className="stat-card">
+                  <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Gross Profit</p>
+                  <p className={`font-display text-xl font-extrabold ${grandProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(grandProfit)}</p>
+                </div>
+                <div className="stat-card">
+                  <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">GST Liability</p>
+                  <p className="font-display text-xl font-extrabold text-warning">{fmt(grandGST)}</p>
+                </div>
+                <div className={`stat-card border-2 ${grandNet >= 0 ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
+                  <p className="text-[10px] text-muted-foreground uppercase font-display font-bold">Net Profit</p>
+                  <p className={`font-display text-2xl font-black ${grandNet >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(grandNet)}</p>
+                  <p className="text-[10px] text-muted-foreground">{grandRevenue > 0 ? ((grandNet / grandRevenue) * 100).toFixed(1) : '0'}% margin</p>
+                </div>
+              </div>
+            )}
+
+            {/* Per-invoice breakdown */}
+            {srLoaded && searchFiltered.length > 0 && (
+              <div className="space-y-3">
+                {searchFiltered.map((inv: any) => (
+                  <div key={inv.id} className="bg-card rounded-xl border shadow-sm overflow-hidden">
+                    {/* Invoice header */}
+                    <div className="px-4 py-3 bg-secondary/30 flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
+                        <span className="font-display font-bold text-primary text-sm">{inv.invoice_number}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold ${inv.is_gst_bill ? 'bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
+                          {inv.is_gst_bill ? 'GST' : 'Non-GST'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="text-muted-foreground">{inv.customer_name}{inv.customer_phone ? ` • ${inv.customer_phone}` : ''}</span>
+                        <span className="font-display font-bold capitalize px-2 py-0.5 rounded-full bg-accent text-accent-foreground">{inv.payment_method}</span>
+                      </div>
+                    </div>
+                    {/* Items table */}
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-[10px] text-muted-foreground uppercase border-b bg-muted/30">
+                          <th className="text-left px-4 py-2">Product</th>
+                          <th className="text-left px-3 py-2">IMEI</th>
+                          <th className="text-right px-3 py-2">Purchase</th>
+                          <th className="text-right px-3 py-2">Sale Price</th>
+                          <th className="text-right px-3 py-2">Discount</th>
+                          <th className="text-right px-3 py-2">Item Total</th>
+                          <th className="text-right px-4 py-2">Profit</th>
+                          <th className="text-right px-3 py-2">Margin</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inv.itemDetails.map((item: any, idx: number) => (
+                          <tr key={idx} className="border-b border-border/30 hover:bg-accent/20">
+                            <td className="px-4 py-2 font-display font-medium">{item.productName}</td>
+                            <td className="px-3 py-2 font-mono text-muted-foreground">{item.imei || '—'}</td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">{fmt(item.purchasePrice)}</td>
+                            <td className="px-3 py-2 text-right">{fmt(item.salePrice)}</td>
+                            <td className="px-3 py-2 text-right text-warning">{item.discount > 0 ? `-${fmt(item.discount)}` : '—'}</td>
+                            <td className="px-3 py-2 text-right font-display font-semibold">{fmt(item.itemTotal)}</td>
+                            <td className={`px-4 py-2 text-right font-display font-bold ${item.profit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(item.profit)}</td>
+                            <td className="px-3 py-2 text-right">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${item.margin >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                                {item.margin.toFixed(1)}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 bg-muted/20">
+                          <td colSpan={2} className="px-4 py-2 font-display font-bold text-xs">Invoice Summary</td>
+                          <td className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground">{fmt(inv.totalCost)}</td>
+                          <td className="px-3 py-2"></td>
+                          <td className="px-3 py-2"></td>
+                          <td className="px-3 py-2 text-right text-xs font-bold">{fmt(inv.totalRevenue)}</td>
+                          <td className={`px-4 py-2 text-right text-xs font-black ${inv.totalProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(inv.totalProfit)}</td>
+                          <td className="px-3 py-2 text-right text-xs">
+                            {inv.gst > 0 && <span className="text-warning text-[9px]">GST: {fmt(inv.gst)}</span>}
+                          </td>
+                        </tr>
+                        {inv.gst > 0 && (
+                          <tr className="bg-muted/10">
+                            <td colSpan={6} className="px-4 py-1.5 text-right text-[10px] text-muted-foreground font-display font-semibold">Net Profit (after GST)</td>
+                            <td className={`px-4 py-1.5 text-right text-xs font-black ${inv.netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(inv.netProfit)}</td>
+                            <td></td>
+                          </tr>
+                        )}
+                      </tfoot>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {srLoaded && searchFiltered.length === 0 && (
+              <div className="bg-card rounded-xl border p-8 text-center text-muted-foreground">
+                {srSearch ? `No results for "${srSearch}"` : 'No invoices found for the selected date range'}
+              </div>
+            )}
+
+            {!srLoaded && (
+              <div className="bg-card rounded-xl border p-8 text-center text-muted-foreground">
+                Select a date range and click <strong>Load Report</strong> to view detailed profit breakdown per invoice
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {tab === 'brands' && <BrandAnalytics />}
 
       {selectedInvoice && <InvoicePreview invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />}
