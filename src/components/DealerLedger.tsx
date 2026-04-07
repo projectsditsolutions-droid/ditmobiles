@@ -626,13 +626,6 @@ export const DealerLedger: React.FC = () => {
               </Button>
             </div>
 
-            <div className="rounded-2xl border bg-destructive/5 p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Wallet className="w-4 h-4 text-destructive" />
-                <span className="text-xs font-display font-semibold uppercase tracking-wider text-muted-foreground">Total Payable</span>
-              </div>
-              <div className="font-display text-3xl font-extrabold text-destructive">{fmt(totalOutstanding)}</div>
-            </div>
 
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -723,10 +716,6 @@ export const DealerLedger: React.FC = () => {
                       <div>
                         <p className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">Net Balance</p>
                         <p className={`font-display text-xl font-extrabold ${getBalanceTone(totals.netBalance)}`}>{fmt(totals.netBalance)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">Total</p>
-                        <p className={`font-display text-2xl font-extrabold ${getBalanceTone(totals.current)}`}>{fmt(totals.current)}</p>
                       </div>
                     </div>
                   </div>
