@@ -334,7 +334,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto overflow-y-auto h-full">
+    <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-extrabold">Reports</h1>
