@@ -117,6 +117,23 @@ export const DealerLedger: React.FC = () => {
     fetchProducts();
   }, [activeShopId]);
 
+  // Fetch stock value for selected dealer
+  useEffect(() => {
+    const fetchStockValue = async () => {
+      if (!selectedDealerId) { setDealerStockValue(0); return; }
+      const shopFilter = isAllShops ? allShopIds : [activeShopId!];
+      const { data } = await supabase
+        .from('imei_records')
+        .select('purchase_price')
+        .eq('dealer_id', selectedDealerId)
+        .eq('status', 'in_stock')
+        .in('shop_id', shopFilter);
+      const total = (data || []).reduce((s, r) => s + Number(r.purchase_price), 0);
+      setDealerStockValue(total);
+    };
+    fetchStockValue();
+  }, [selectedDealerId, activeShopId, allTxns]);
+
   useEffect(() => {
     if (!selectedDealerId && dealers.length > 0) setSelectedDealerId(dealers[0].id);
   }, [dealers, selectedDealerId]);
