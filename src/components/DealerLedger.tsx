@@ -871,20 +871,25 @@ export const DealerLedger: React.FC = () => {
                   {(() => {
                     const settleGap = totals.netBalance - dealerStockValue;
                     return (
-                      <div className="rounded-xl border-2 border-destructive/20 bg-destructive/5 p-3">
-                        <p className="text-[10px] font-display uppercase tracking-wider text-destructive/70 mb-1.5">Settle Gap</p>
-                        <p className={`font-display text-xl font-extrabold ${settleGap > 0 ? 'text-destructive' : 'text-success'}`}>{fmt(settleGap)}</p>
+                      <div className={`rounded-xl p-3 relative overflow-hidden ${settleGap > 0 ? 'border-2 border-destructive bg-gradient-to-br from-destructive/15 to-destructive/5 ring-2 ring-destructive/20 shadow-lg shadow-destructive/10' : 'border-2 border-success/30 bg-success/5'}`}>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Wallet className={`w-3.5 h-3.5 ${settleGap > 0 ? 'text-destructive' : 'text-success'}`} />
+                          <p className={`text-[10px] font-display uppercase tracking-wider font-bold ${settleGap > 0 ? 'text-destructive' : 'text-success/70'}`}>
+                            💰 Actually Pay to Dealer
+                          </p>
+                        </div>
+                        <p className={`font-display text-2xl font-black ${settleGap > 0 ? 'text-destructive' : 'text-success'}`}>{fmt(settleGap)}</p>
                         <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
                           <div className="flex justify-between text-[10px]">
                             <span className="text-muted-foreground">Net Balance</span>
                             <span className="font-semibold">{fmt(totals.netBalance)}</span>
                           </div>
                           <div className="flex justify-between text-[10px]">
-                            <span className="text-muted-foreground">Stock Value</span>
-                            <span className="font-semibold">-{fmt(dealerStockValue)}</span>
+                            <span className="text-muted-foreground">− Unsold Stock Cost</span>
+                            <span className="font-semibold text-success">-{fmt(dealerStockValue)}</span>
                           </div>
                         </div>
-                        <p className="text-[8px] text-muted-foreground mt-1">Amount to pay after selling all stock</p>
+                        <p className="text-[8px] text-muted-foreground mt-1.5 italic">This is the out-of-pocket amount you owe after all unsold stock is sold</p>
                       </div>
                     );
                   })()}
