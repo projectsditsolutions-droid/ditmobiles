@@ -413,18 +413,17 @@ export const DealerLedger: React.FC = () => {
   const handleEditOpeningCredit = async () => {
     if (!selectedDealer) return;
     const oldOpening = totals.opening;
-    const diff = editCreditValue - oldOpening;
-    if (diff === 0) {
+    if (editCreditValue === oldOpening) {
       setShowEditCredit(false);
       return;
     }
 
-    const newBalance = Number(selectedDealer.total_credit) + diff;
     const shopId = selectedDealer.shop_id;
 
+    // Directly set the new opening_balance
     const { error: dealerError } = await supabase
       .from('dealers')
-      .update({ total_credit: newBalance })
+      .update({ opening_balance: editCreditValue } as any)
       .eq('id', selectedDealer.id);
 
     if (dealerError) {
@@ -432,13 +431,19 @@ export const DealerLedger: React.FC = () => {
       return;
     }
 
+    // Also update total_credit to reflect the change
+    const diff = editCreditValue - oldOpening;
+    const newTotalCredit = Number(selectedDealer.total_credit) + diff;
+    await supabase.from('dealers').update({ total_credit: newTotalCredit }).eq('id', selectedDealer.id);
+
+    // Log audit transaction
     const { error: txnError } = await supabase.from('dealer_transactions').insert({
       dealer_id: selectedDealer.id,
       shop_id: shopId,
       type: 'opening_adjustment',
       amount: diff,
-      running_balance: newBalance,
-      description: `Opening credit adjusted from ₹${oldOpening.toLocaleString('en-IN')} to ₹${editCreditValue.toLocaleString('en-IN')}`,
+      running_balance: newTotalCredit,
+      description: `Opening balance set to ₹${editCreditValue.toLocaleString('en-IN')} (was ₹${oldOpening.toLocaleString('en-IN')})`,
     });
 
     if (txnError) {
@@ -447,7 +452,7 @@ export const DealerLedger: React.FC = () => {
     }
 
     setShowEditCredit(false);
-    toast.success('Opening credit updated');
+    toast.success('Opening balance updated');
     fetchDealers();
     fetchTransactions();
   };
