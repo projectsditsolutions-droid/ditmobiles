@@ -1336,6 +1336,41 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                   {srLoading ? <span className="animate-spin">⏳</span> : <TrendingUp className="w-3.5 h-3.5" />}
                   {srLoading ? 'Loading…' : 'Load Report'}
                 </Button>
+                {srLoaded && searchFiltered.length > 0 && (
+                  <Button variant="outline" className="h-9 gap-1.5" onClick={() => {
+                    const rows: any[] = [];
+                    searchFiltered.forEach((inv: any) => {
+                      inv.itemDetails.forEach((item: any) => {
+                        rows.push({
+                          Invoice: inv.invoice_number,
+                          Date: new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }),
+                          Customer: inv.customer_name,
+                          Phone: inv.customer_phone,
+                          Payment: inv.payment_method,
+                          GST_Bill: inv.is_gst_bill ? 'Yes' : 'No',
+                          Product: item.productName,
+                          IMEI: item.imei || '',
+                          Qty: item.quantity,
+                          Purchase_Price: item.purchasePrice,
+                          Sale_Price: item.salePrice,
+                          Discount: item.discount,
+                          Item_Total: item.itemTotal,
+                          Cost_Total: item.costTotal,
+                          Profit: item.profit,
+                          Margin_Pct: item.margin.toFixed(1),
+                          Invoice_CGST: inv.cgst,
+                          Invoice_SGST: inv.sgst,
+                          Invoice_Grand_Total: inv.grand_total,
+                          Invoice_Net_Profit: inv.netProfit,
+                        });
+                      });
+                    });
+                    downloadCSV(rows, `sales_profit_report_${srDateFrom || 'all'}_to_${srDateTo || 'all'}.csv`);
+                    toast.success(`Downloaded ${rows.length} rows`);
+                  }}>
+                    <Download className="w-3.5 h-3.5" /> Download CSV
+                  </Button>
+                )}
               </div>
               {srLoaded && (
                 <div className="mt-3">
