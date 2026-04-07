@@ -431,18 +431,17 @@ export const DealerLedger: React.FC = () => {
       return;
     }
 
-    // Also update total_credit to reflect the change
-    const diff = editCreditValue - oldOpening;
-    const newTotalCredit = Number(selectedDealer.total_credit) + diff;
-    await supabase.from('dealers').update({ total_credit: newTotalCredit }).eq('id', selectedDealer.id);
+    // Set total_credit to exactly the new opening value
+    await supabase.from('dealers').update({ total_credit: editCreditValue }).eq('id', selectedDealer.id);
 
     // Log audit transaction
+    const diff = editCreditValue - oldOpening;
     const { error: txnError } = await supabase.from('dealer_transactions').insert({
       dealer_id: selectedDealer.id,
       shop_id: shopId,
       type: 'opening_adjustment',
       amount: diff,
-      running_balance: newTotalCredit,
+      running_balance: editCreditValue,
       description: `Opening balance set to ₹${editCreditValue.toLocaleString('en-IN')} (was ₹${oldOpening.toLocaleString('en-IN')})`,
     });
 
