@@ -282,6 +282,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const tabs = [
     { key: 'daily', label: 'Sales', icon: TrendingUp },
     { key: 'monthly', label: 'Monthly', icon: Calendar },
+    { key: 'sales_report', label: 'Sales Report', icon: FileText },
     { key: 'stock', label: 'Stock', icon: Package },
     { key: 'gst', label: 'GST', icon: FileText },
     { key: 'profit', label: 'Profit', icon: DollarSign },
