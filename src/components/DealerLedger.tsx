@@ -82,6 +82,7 @@ export const DealerLedger: React.FC = () => {
   const [reportDealerMode, setReportDealerMode] = useState<'selected' | 'all'>('selected');
   const [showStatement, setShowStatement] = useState(false);
   const [detailPopup, setDetailPopup] = useState<null | 'opening' | 'purchases' | 'sold' | 'returns' | 'purchase_payments' | 'opening_settlement' | 'net_balance'>(null);
+  const [dealerStockValue, setDealerStockValue] = useState<number>(0);
 
   const fetchDealers = async () => {
     if (!activeShopId && !isAllShops) return;
