@@ -648,7 +648,6 @@ export const DealerLedger: React.FC = () => {
               <thead className="bg-secondary/50 sticky top-0 z-10">
                 <tr className="text-left font-display text-[11px] uppercase tracking-wider text-muted-foreground">
                   <th className="px-4 py-3">Brand / Dealer</th>
-                  <th className="px-4 py-3 text-right">Balance</th>
                 </tr>
               </thead>
               <tbody>
@@ -667,9 +666,6 @@ export const DealerLedger: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                    </td>
-                    <td className={`px-4 py-3 text-right font-display font-bold ${getBalanceTone(Number(dealer.total_credit))}`}>
-                      {fmt(Number(dealer.total_credit))}
                     </td>
                   </tr>
                 ))}
