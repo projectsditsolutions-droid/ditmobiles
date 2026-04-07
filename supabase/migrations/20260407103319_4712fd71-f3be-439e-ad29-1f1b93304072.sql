@@ -1,0 +1,1 @@
+ALTER TABLE public.dealers ADD COLUMN opening_balance numeric NOT NULL DEFAULT 0;
