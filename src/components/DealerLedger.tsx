@@ -218,7 +218,7 @@ export const DealerLedger: React.FC = () => {
     const openingPending = Math.max(0, opening - paidAgainstOpening);
 
     return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock: totalPaidAgainstStock, advancePayments, purchasePending, netBalance, purchasePayments, openingPending };
-  }, [selectedDealer, selectedTxns]);
+  }, [selectedDealer, selectedTxns, dealerSoldCost, dealerSoldCount]);
 
   // Filtered txns for detail popups
   const detailTxns = useMemo(() => {
