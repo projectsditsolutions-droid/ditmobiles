@@ -42,6 +42,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const [rptDateTo, setRptDateTo] = useState('');
   const [rptBrand, setRptBrand] = useState('all');
   const [rptType, setRptType] = useState<'sales' | 'stock' | 'gst' | 'profit' | 'brand'>('sales');
+  const [salesReportData, setSalesReportData] = useState<any[]>([]);
+  const [srLoading, setSrLoading] = useState(false);
+  const [srDateFrom, setSrDateFrom] = useState('');
+  const [srDateTo, setSrDateTo] = useState('');
+  const [srSearch, setSrSearch] = useState('');
+  const [srLoaded, setSrLoaded] = useState(false);
   useEffect(() => {
     if (!activeShopId && !isAllShops) return;
     const fetchData = async () => {
