@@ -121,19 +121,26 @@ export const DealerLedger: React.FC = () => {
 
   // Fetch stock value for selected dealer
   useEffect(() => {
-    const fetchStockValue = async () => {
-      if (!selectedDealerId) { setDealerStockValue(0); return; }
+    const fetchImeiValues = async () => {
+      if (!selectedDealerId) { setDealerStockValue(0); setDealerSoldCost(0); setDealerSoldCount(0); return; }
       const shopFilter = isAllShops ? allShopIds : [activeShopId!];
-      const { data } = await supabase
+      const { data: stockData } = await supabase
         .from('imei_records')
         .select('purchase_price')
         .eq('dealer_id', selectedDealerId)
         .eq('status', 'in_stock')
         .in('shop_id', shopFilter);
-      const total = (data || []).reduce((s, r) => s + Number(r.purchase_price), 0);
-      setDealerStockValue(total);
+      setDealerStockValue((stockData || []).reduce((s, r) => s + Number(r.purchase_price), 0));
+      const { data: soldData } = await supabase
+        .from('imei_records')
+        .select('purchase_price')
+        .eq('dealer_id', selectedDealerId)
+        .eq('status', 'sold')
+        .in('shop_id', shopFilter);
+      setDealerSoldCost((soldData || []).reduce((s, r) => s + Number(r.purchase_price), 0));
+      setDealerSoldCount((soldData || []).length);
     };
-    fetchStockValue();
+    fetchImeiValues();
   }, [selectedDealerId, activeShopId, allTxns]);
 
   useEffect(() => {
