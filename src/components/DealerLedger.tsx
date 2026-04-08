@@ -888,6 +888,34 @@ export const DealerLedger: React.FC = () => {
                       </div>
                     );
                   })()}
+
+                  {/* Total Payable = Opening Pending + Actually Pay to Dealer */}
+                  {(() => {
+                    const settleGap = totals.netBalance - dealerStockValue;
+                    const totalPayable = totals.openingPending + settleGap;
+                    return (
+                      <div className={`rounded-xl p-3 border-2 ${totalPayable > 0 ? 'border-destructive/40 bg-gradient-to-br from-destructive/10 to-warning/5 ring-1 ring-destructive/10' : 'border-success/30 bg-success/5'}`}>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Wallet className={`w-3.5 h-3.5 ${totalPayable > 0 ? 'text-destructive' : 'text-success'}`} />
+                          <p className={`text-[10px] font-display uppercase tracking-wider font-bold ${totalPayable > 0 ? 'text-destructive' : 'text-success/70'}`}>
+                            🧾 Total Payable
+                          </p>
+                        </div>
+                        <p className={`font-display text-2xl font-black ${totalPayable > 0 ? 'text-destructive' : 'text-success'}`}>{fmt(totalPayable)}</p>
+                        <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-muted-foreground">Opening Pending</span>
+                            <span className="font-semibold text-warning">{fmt(totals.openingPending)}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-muted-foreground">+ Actually Pay to Dealer</span>
+                            <span className={`font-semibold ${settleGap > 0 ? 'text-destructive' : 'text-success'}`}>{fmt(settleGap)}</span>
+                          </div>
+                        </div>
+                        <p className="text-[8px] text-muted-foreground mt-1.5 italic">Total amount you need to settle with this dealer</p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Action buttons */}
