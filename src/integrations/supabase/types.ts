@@ -307,6 +307,7 @@ export type Database = {
           customer_phone: string
           date: string
           emi_lending_partner: string
+          exchange_notes: string
           grand_total: number
           gst_bearer: string
           gst_profile_id: string | null
@@ -343,6 +344,7 @@ export type Database = {
           customer_phone?: string
           date?: string
           emi_lending_partner?: string
+          exchange_notes?: string
           grand_total?: number
           gst_bearer?: string
           gst_profile_id?: string | null
@@ -379,6 +381,7 @@ export type Database = {
           customer_phone?: string
           date?: string
           emi_lending_partner?: string
+          exchange_notes?: string
           grand_total?: number
           gst_bearer?: string
           gst_profile_id?: string | null
