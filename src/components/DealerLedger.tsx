@@ -15,7 +15,8 @@ type Dealer = Database['public']['Tables']['dealers']['Row'];
 type DealerTransaction = Database['public']['Tables']['dealer_transactions']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
 
-const fmt = (n: number) => `₹${Math.abs(n).toLocaleString('en-IN')}`;
+const fmt = (n: number) => `₹${Math.abs(Math.round(n)).toLocaleString('en-IN')}`;
+const fmtSigned = (n: number) => n < 0 ? `-₹${Math.abs(Math.round(n)).toLocaleString('en-IN')}` : `₹${Math.round(n).toLocaleString('en-IN')}`;
 
 const Modal: React.FC<{ open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode }> = ({ open, onClose, title, subtitle, children }) => {
   if (!open) return null;
@@ -855,6 +856,8 @@ export const DealerLedger: React.FC = () => {
                   {/* Settle Gap: Net Balance - Stock Value */}
                   {(() => {
                     const settleGap = totals.netBalance - dealerStockValue;
+                    const displayGap = Math.max(0, settleGap);
+                    const hasAdvance = settleGap < 0;
                     return (
                       <div className={`rounded-xl p-3 relative overflow-hidden ${settleGap > 0 ? 'border-2 border-destructive bg-gradient-to-br from-destructive/15 to-destructive/5 ring-2 ring-destructive/20 shadow-lg shadow-destructive/10' : 'border-2 border-success/30 bg-success/5'}`}>
                         <div className="flex items-center gap-1.5 mb-1.5">
@@ -863,26 +866,29 @@ export const DealerLedger: React.FC = () => {
                             💰 Actually Pay to Dealer
                           </p>
                         </div>
-                        <p className={`font-display text-2xl font-black ${settleGap > 0 ? 'text-destructive' : 'text-success'}`}>{fmt(settleGap)}</p>
+                        <p className={`font-display text-2xl font-black ${settleGap > 0 ? 'text-destructive' : 'text-success'}`}>{fmt(displayGap)}</p>
+                        {hasAdvance && (
+                          <p className="text-[10px] font-display font-bold text-success mt-0.5">✅ Fully Paid — {fmt(Math.abs(settleGap))} advance in stock</p>
+                        )}
                         <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
                           <div className="flex justify-between text-[10px]">
                             <span className="text-muted-foreground">Net Balance</span>
-                            <span className="font-semibold">{fmt(totals.netBalance)}</span>
+                            <span className="font-semibold">{fmtSigned(totals.netBalance)}</span>
                           </div>
                           <div className="flex justify-between text-[10px]">
                             <span className="text-muted-foreground">− Unsold Stock Cost</span>
                             <span className="font-semibold text-success">-{fmt(dealerStockValue)}</span>
                           </div>
                         </div>
-                        <p className="text-[8px] text-muted-foreground mt-1.5 italic">This is the out-of-pocket amount you owe after all unsold stock is sold</p>
+                        <p className="text-[8px] text-muted-foreground mt-1.5 italic">{hasAdvance ? 'You have already paid more than needed — stock in hand covers the gap' : 'This is the out-of-pocket amount you owe after all unsold stock is sold'}</p>
                       </div>
                     );
                   })()}
 
-                  {/* Total Payable = Opening Pending + Actually Pay to Dealer */}
+                  {/* Total Payable = Opening Balance + Actually Pay to Dealer */}
                   {(() => {
                     const settleGap = totals.netBalance - dealerStockValue;
-                    const totalPayable = totals.opening + settleGap;
+                    const totalPayable = totals.opening + Math.max(0, settleGap);
                     return (
                       <div className={`rounded-xl p-3 border-2 ${totalPayable > 0 ? 'border-destructive/40 bg-gradient-to-br from-destructive/10 to-warning/5 ring-1 ring-destructive/10' : 'border-success/30 bg-success/5'}`}>
                         <div className="flex items-center gap-1.5 mb-1.5">
@@ -899,7 +905,7 @@ export const DealerLedger: React.FC = () => {
                           </div>
                           <div className="flex justify-between text-[10px]">
                             <span className="text-muted-foreground">+ Actually Pay to Dealer</span>
-                            <span className={`font-semibold ${settleGap > 0 ? 'text-destructive' : 'text-success'}`}>{fmt(settleGap)}</span>
+                            <span className={`font-semibold ${settleGap > 0 ? 'text-destructive' : 'text-success'}`}>{fmt(Math.max(0, settleGap))}</span>
                           </div>
                         </div>
                         <p className="text-[8px] text-muted-foreground mt-1.5 italic">Total amount you need to settle with this dealer</p>
