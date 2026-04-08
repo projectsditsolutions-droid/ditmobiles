@@ -79,6 +79,7 @@ export interface InvoiceData {
   warranty_accessories?: string;
   customer_address?: string;
   emi_lending_partner?: string;
+  exchange_notes?: string;
 }
 
 // ─── GST Profile Card Selector ───────────────────────────────────────────────
@@ -197,7 +198,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const [isGSTBill, setIsGSTBill] = useState(true);
   const [customerType, setCustomerType] = useState<'B2C' | 'B2B'>('B2C');
   const [gstBearer, setGstBearer] = useState<'customer' | 'seller'>('customer');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'mixed' | 'emi'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'mixed' | 'emi' | 'exchange'>('cash');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerGST, setCustomerGST] = useState('');
@@ -206,6 +207,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const [warrantyMobile, setWarrantyMobile] = useState('1 Year Manufacturer Warranty');
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
+  const [exchangeNotes, setExchangeNotes] = useState('');
   // Helper: get current IST datetime string for datetime-local input using Intl (robust)
   const fmtIST = (d = new Date()) => {
     const p = new Intl.DateTimeFormat('sv-SE', {
@@ -274,6 +276,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       setWarrantyMobile(editingInvoice.warranty_mobile || '');
       setWarrantyAccessories(editingInvoice.warranty_accessories || '');
       setEmiLendingPartner(editingInvoice.emi_lending_partner || '');
+      setExchangeNotes((editingInvoice as any).exchange_notes || '');
       if (editingInvoice.date) {
         setBillDate(fmtIST(new Date(editingInvoice.date)));
         setIsDateManual(true);
@@ -300,6 +303,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setWarrantyMobile('1 Year Manufacturer Warranty');
     setWarrantyAccessories('6 Months Warranty');
     setEmiLendingPartner('');
+    setExchangeNotes('');
     setBillDate(fmtIST());
     setIsDateManual(false);
     onCancelEdit?.();
@@ -616,6 +620,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       warranty_accessories: warrantyAccessories || undefined,
       customer_address: customerAddress || undefined,
       emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
+      exchange_notes: paymentMethod === 'exchange' ? exchangeNotes : undefined,
     };
     setPreviewInvoice(preview);
   }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, selectedProfile, warrantyMobile, warrantyAccessories, emiLendingPartner, mixedPayment, billDate]);
@@ -679,6 +684,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         warranty_mobile: warrantyMobile || '',
         warranty_accessories: warrantyAccessories || '',
         emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : '',
+        exchange_notes: paymentMethod === 'exchange' ? exchangeNotes : '',
       } as any).eq('id', editInvoiceId);
 
       if (updErr) {
@@ -766,6 +772,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         warranty_accessories: warrantyAccessories || undefined,
         customer_address: customerAddress || undefined,
         emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
+        exchange_notes: paymentMethod === 'exchange' ? exchangeNotes : undefined,
       };
       if (paymentMethod === 'mixed') (invoiceData as any).payment_details = mixedPayment;
 
@@ -862,6 +869,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       warranty_mobile: warrantyMobile || '',
       warranty_accessories: warrantyAccessories || '',
       emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : '',
+      exchange_notes: paymentMethod === 'exchange' ? exchangeNotes : '',
     } as any).select().single();
 
     if (invError || !invoice) {
@@ -954,6 +962,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       warranty_accessories: warrantyAccessories || undefined,
       customer_address: customerAddress || undefined,
       emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
+      exchange_notes: paymentMethod === 'exchange' ? exchangeNotes : undefined,
     };
     if (paymentMethod === 'mixed') (invoiceData as any).payment_details = mixedPayment;
 
@@ -971,6 +980,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setWarrantyMobile('1 Year Manufacturer Warranty');
     setWarrantyAccessories('6 Months Warranty');
     setEmiLendingPartner('');
+    setExchangeNotes('');
     setBillDate(new Date().toISOString().slice(0, 16));
     setIsDateManual(false);
     } finally { setSaving(false); }
@@ -1255,6 +1265,8 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         onWarrantyMobileChange={setWarrantyMobile}
         onWarrantyAccessoriesChange={setWarrantyAccessories}
         onEmiLendingPartnerChange={setEmiLendingPartner}
+        exchangeNotes={exchangeNotes}
+        onExchangeNotesChange={setExchangeNotes}
         onCompleteSale={handleCompleteSale}
         onPreviewBill={handlePreviewBill}
         discountEnabled={settings?.discount_enabled ?? true}

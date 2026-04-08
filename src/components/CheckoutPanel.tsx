@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Banknote, Smartphone, Shuffle, Printer, ShoppingBag, User, Phone, Hash, Receipt, Building2, MapPin, AlertCircle, Calendar, Shield, Eye } from 'lucide-react';
+import { CreditCard, Banknote, Smartphone, Shuffle, Printer, ShoppingBag, User, Phone, Hash, Receipt, Building2, MapPin, AlertCircle, Calendar, Shield, Eye, ArrowLeftRight } from 'lucide-react';
 
 interface Props {
   items: any[];
@@ -14,7 +14,7 @@ interface Props {
   isGSTBill: boolean;
   gstBearer: string;
   customerType: 'B2B' | 'B2C';
-  paymentMethod: 'cash' | 'upi' | 'card' | 'mixed' | 'emi';
+  paymentMethod: 'cash' | 'upi' | 'card' | 'mixed' | 'emi' | 'exchange';
   customerName: string;
   customerPhone: string;
   customerGST: string;
@@ -25,7 +25,7 @@ interface Props {
   emiLendingPartner: string;
   onBillDiscountChange: (v: number) => void;
   onBillDiscountTypeChange: (v: 'percentage' | 'flat') => void;
-  onPaymentMethodChange: (v: 'cash' | 'upi' | 'card' | 'mixed' | 'emi') => void;
+  onPaymentMethodChange: (v: 'cash' | 'upi' | 'card' | 'mixed' | 'emi' | 'exchange') => void;
   onCustomerNameChange: (v: string) => void;
   onCustomerPhoneChange: (v: string) => void;
   onCustomerGSTChange: (v: string) => void;
@@ -34,6 +34,8 @@ interface Props {
   onWarrantyMobileChange: (v: string) => void;
   onWarrantyAccessoriesChange: (v: string) => void;
   onEmiLendingPartnerChange: (v: string) => void;
+  exchangeNotes: string;
+  onExchangeNotesChange: (v: string) => void;
   onCompleteSale: () => void;
   onPreviewBill?: () => void;
   discountEnabled: boolean;
@@ -48,6 +50,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   onBillDiscountChange, onBillDiscountTypeChange, onPaymentMethodChange,
   onCustomerNameChange, onCustomerPhoneChange, onCustomerGSTChange, onCustomerAddressChange,
   onMixedPaymentChange, onWarrantyMobileChange, onWarrantyAccessoriesChange, onEmiLendingPartnerChange,
+  exchangeNotes, onExchangeNotesChange,
   onCompleteSale, onPreviewBill, discountEnabled, saving,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -57,6 +60,7 @@ export const CheckoutPanel: React.FC<Props> = ({
     { key: 'upi' as const, icon: Smartphone, label: 'UPI' },
     { key: 'card' as const, icon: CreditCard, label: 'Card' },
     { key: 'emi' as const, icon: Calendar, label: 'EMI' },
+    { key: 'exchange' as const, icon: ArrowLeftRight, label: 'Exchange' },
     { key: 'mixed' as const, icon: Shuffle, label: 'Mixed' },
   ];
 
@@ -261,7 +265,7 @@ export const CheckoutPanel: React.FC<Props> = ({
       {/* ── Payment Method ────────────────────────────────────────── */}
       <div className="px-4 py-3 border-t border-checkout-foreground/8 flex-shrink-0">
         <label className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold mb-2.5 block">Payment Method</label>
-        <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-6 gap-1.5">
           {paymentMethods.map(m => (
             <button
               key={m.key}
@@ -344,6 +348,20 @@ export const CheckoutPanel: React.FC<Props> = ({
               onChange={e => onEmiLendingPartnerChange(e.target.value)}
               placeholder="e.g. Bajaj Finance, HDFC, etc."
               className="checkout-input w-full h-9 px-3 rounded-lg text-sm"
+            />
+          </div>
+        )}
+
+        {/* Exchange Notes */}
+        {paymentMethod === 'exchange' && (
+          <div className="mt-3 p-3 rounded-xl bg-checkout-foreground/5 border border-checkout-foreground/8 space-y-2">
+            <p className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">Exchange Notes</p>
+            <textarea
+              value={exchangeNotes}
+              onChange={e => onExchangeNotesChange(e.target.value)}
+              placeholder="e.g. Old phone model, condition, exchange value..."
+              rows={3}
+              className="checkout-input w-full px-3 py-2 rounded-lg text-sm resize-none"
             />
           </div>
         )}

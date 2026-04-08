@@ -1,0 +1,1 @@
+ALTER TABLE public.invoices ADD COLUMN exchange_notes TEXT NOT NULL DEFAULT '';
