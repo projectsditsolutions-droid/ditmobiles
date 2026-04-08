@@ -206,6 +206,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const [warrantyMobile, setWarrantyMobile] = useState('1 Year Manufacturer Warranty');
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
+  const [exchangeNotes, setExchangeNotes] = useState('');
   // Helper: get current IST datetime string for datetime-local input using Intl (robust)
   const fmtIST = (d = new Date()) => {
     const p = new Intl.DateTimeFormat('sv-SE', {
@@ -274,6 +275,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       setWarrantyMobile(editingInvoice.warranty_mobile || '');
       setWarrantyAccessories(editingInvoice.warranty_accessories || '');
       setEmiLendingPartner(editingInvoice.emi_lending_partner || '');
+      setExchangeNotes((editingInvoice as any).exchange_notes || '');
       if (editingInvoice.date) {
         setBillDate(fmtIST(new Date(editingInvoice.date)));
         setIsDateManual(true);
