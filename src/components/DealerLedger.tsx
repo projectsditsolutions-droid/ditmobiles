@@ -15,7 +15,8 @@ type Dealer = Database['public']['Tables']['dealers']['Row'];
 type DealerTransaction = Database['public']['Tables']['dealer_transactions']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
 
-const fmt = (n: number) => `₹${Math.abs(n).toLocaleString('en-IN')}`;
+const fmt = (n: number) => `₹${Math.abs(Math.round(n)).toLocaleString('en-IN')}`;
+const fmtSigned = (n: number) => n < 0 ? `-₹${Math.abs(Math.round(n)).toLocaleString('en-IN')}` : `₹${Math.round(n).toLocaleString('en-IN')}`;
 
 const Modal: React.FC<{ open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode }> = ({ open, onClose, title, subtitle, children }) => {
   if (!open) return null;
