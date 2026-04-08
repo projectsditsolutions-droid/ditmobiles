@@ -882,7 +882,7 @@ export const DealerLedger: React.FC = () => {
                   {/* Total Payable = Opening Pending + Actually Pay to Dealer */}
                   {(() => {
                     const settleGap = totals.netBalance - dealerStockValue;
-                    const totalPayable = totals.openingPending + settleGap;
+                    const totalPayable = totals.opening + settleGap;
                     return (
                       <div className={`rounded-xl p-3 border-2 ${totalPayable > 0 ? 'border-destructive/40 bg-gradient-to-br from-destructive/10 to-warning/5 ring-1 ring-destructive/10' : 'border-success/30 bg-success/5'}`}>
                         <div className="flex items-center gap-1.5 mb-1.5">
@@ -894,8 +894,8 @@ export const DealerLedger: React.FC = () => {
                         <p className={`font-display text-2xl font-black ${totalPayable > 0 ? 'text-destructive' : 'text-success'}`}>{fmt(totalPayable)}</p>
                         <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
                           <div className="flex justify-between text-[10px]">
-                            <span className="text-muted-foreground">Opening Pending</span>
-                            <span className="font-semibold text-warning">{fmt(totals.openingPending)}</span>
+                            <span className="text-muted-foreground">Opening Balance</span>
+                            <span className="font-semibold text-warning">{fmt(totals.opening)}</span>
                           </div>
                           <div className="flex justify-between text-[10px]">
                             <span className="text-muted-foreground">+ Actually Pay to Dealer</span>
