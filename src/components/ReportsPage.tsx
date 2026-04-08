@@ -1242,7 +1242,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
             // Build per-invoice report
             const report = filtered.map(inv => {
               const items = (allItems || []).filter(i => i.invoice_id === inv.id);
-              const itemDetails = items.map((item: any) => {
+              const billDiscount = Number(inv.total_discount || 0);
+              
+              // First pass: compute raw item totals to get proportional weights
+              const rawItems = items.map((item: any) => {
                 const product = item.products;
                 const purchasePrice = item.imei && imeiMap[item.imei]
                   ? imeiMap[item.imei].purchase_price
@@ -1251,19 +1254,29 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                 const discount = Number(item.discount);
                 const itemTotal = Number(item.total);
                 const costTotal = purchasePrice * Number(item.quantity);
-                const profit = itemTotal - costTotal;
+                return { product, purchasePrice, salePrice, discount, itemTotal, costTotal, imei: item.imei, quantity: Number(item.quantity) };
+              });
+              
+              const rawTotalRevenue = rawItems.reduce((s, d) => s + d.itemTotal, 0);
+              
+              // Second pass: distribute bill discount proportionally
+              const itemDetails = rawItems.map(item => {
+                const proportion = rawTotalRevenue > 0 ? item.itemTotal / rawTotalRevenue : 0;
+                const itemBillDiscount = billDiscount * proportion;
+                const effectiveTotal = item.itemTotal - itemBillDiscount;
+                const profit = effectiveTotal - item.costTotal;
 
                 return {
-                  productName: product ? `${product.brand} ${product.model} ${product.variant || ''} ${product.color || ''}`.trim() : 'Unknown',
+                  productName: item.product ? `${item.product.brand} ${item.product.model} ${item.product.variant || ''} ${item.product.color || ''}`.trim() : 'Unknown',
                   imei: item.imei || '',
-                  quantity: Number(item.quantity),
-                  purchasePrice,
-                  salePrice,
-                  discount,
-                  itemTotal,
-                  costTotal,
+                  quantity: item.quantity,
+                  purchasePrice: item.purchasePrice,
+                  salePrice: item.salePrice,
+                  discount: item.discount + itemBillDiscount,
+                  itemTotal: effectiveTotal,
+                  costTotal: item.costTotal,
                   profit,
-                  margin: itemTotal > 0 ? (profit / itemTotal * 100) : 0,
+                  margin: effectiveTotal > 0 ? (profit / effectiveTotal * 100) : 0,
                 };
               });
 
