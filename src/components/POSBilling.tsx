@@ -79,6 +79,7 @@ export interface InvoiceData {
   warranty_accessories?: string;
   customer_address?: string;
   emi_lending_partner?: string;
+  exchange_notes?: string;
 }
 
 // ─── GST Profile Card Selector ───────────────────────────────────────────────
@@ -197,7 +198,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const [isGSTBill, setIsGSTBill] = useState(true);
   const [customerType, setCustomerType] = useState<'B2C' | 'B2B'>('B2C');
   const [gstBearer, setGstBearer] = useState<'customer' | 'seller'>('customer');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'mixed' | 'emi'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'card' | 'mixed' | 'emi' | 'exchange'>('cash');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerGST, setCustomerGST] = useState('');
@@ -974,6 +975,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setWarrantyMobile('1 Year Manufacturer Warranty');
     setWarrantyAccessories('6 Months Warranty');
     setEmiLendingPartner('');
+    setExchangeNotes('');
     setBillDate(new Date().toISOString().slice(0, 16));
     setIsDateManual(false);
     } finally { setSaving(false); }
