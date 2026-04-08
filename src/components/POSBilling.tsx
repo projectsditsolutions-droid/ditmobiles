@@ -203,7 +203,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerGST, setCustomerGST] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
-  const [mixedPayment, setMixedPayment] = useState({ cash: 0, upi: 0, card: 0, emi: 0 });
+  const [mixedPayment, setMixedPayment] = useState({ cash: 0, upi: 0, card: 0, emi: 0, exchange: 0 });
   const [warrantyMobile, setWarrantyMobile] = useState('1 Year Manufacturer Warranty');
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
@@ -298,7 +298,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setCustomerPhone('');
     setCustomerGST('');
     setCustomerAddress('');
-    setMixedPayment({ cash: 0, upi: 0, card: 0, emi: 0 });
+    setMixedPayment({ cash: 0, upi: 0, card: 0, emi: 0, exchange: 0 });
     setBillDiscount(0);
     setWarrantyMobile('1 Year Manufacturer Warranty');
     setWarrantyAccessories('6 Months Warranty');
@@ -975,7 +975,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setCustomerPhone('');
     setCustomerGST('');
     setCustomerAddress('');
-    setMixedPayment({ cash: 0, upi: 0, card: 0, emi: 0 });
+    setMixedPayment({ cash: 0, upi: 0, card: 0, emi: 0, exchange: 0 });
     setBillDiscount(0);
     setWarrantyMobile('1 Year Manufacturer Warranty');
     setWarrantyAccessories('6 Months Warranty');
