@@ -363,7 +363,7 @@ export const CheckoutPanel: React.FC<Props> = ({
         )}
 
         {/* Exchange Notes */}
-        {paymentMethod === 'exchange' && (
+        {(paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) && (
           <div className="mt-3 p-3 rounded-xl bg-checkout-foreground/5 border border-checkout-foreground/8 space-y-2">
             <p className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">Exchange Notes</p>
             <textarea
