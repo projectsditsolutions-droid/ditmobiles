@@ -302,6 +302,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setWarrantyMobile('1 Year Manufacturer Warranty');
     setWarrantyAccessories('6 Months Warranty');
     setEmiLendingPartner('');
+    setExchangeNotes('');
     setBillDate(fmtIST());
     setIsDateManual(false);
     onCancelEdit?.();
