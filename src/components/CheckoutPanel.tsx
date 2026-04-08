@@ -19,7 +19,7 @@ interface Props {
   customerPhone: string;
   customerGST: string;
   customerAddress: string;
-  mixedPayment: { cash: number; upi: number; card: number; emi: number };
+  mixedPayment: { cash: number; upi: number; card: number; emi: number; exchange: number };
   warrantyMobile: string;
   warrantyAccessories: string;
   emiLendingPartner: string;
@@ -30,7 +30,7 @@ interface Props {
   onCustomerPhoneChange: (v: string) => void;
   onCustomerGSTChange: (v: string) => void;
   onCustomerAddressChange: (v: string) => void;
-  onMixedPaymentChange: (v: { cash: number; upi: number; card: number; emi: number }) => void;
+  onMixedPaymentChange: (v: { cash: number; upi: number; card: number; emi: number; exchange: number }) => void;
   onWarrantyMobileChange: (v: string) => void;
   onWarrantyAccessoriesChange: (v: string) => void;
   onEmiLendingPartnerChange: (v: string) => void;
@@ -64,7 +64,7 @@ export const CheckoutPanel: React.FC<Props> = ({
     { key: 'mixed' as const, icon: Shuffle, label: 'Mixed' },
   ];
 
-  const mixedTotal = mixedPayment.cash + mixedPayment.upi + mixedPayment.card + mixedPayment.emi;
+  const mixedTotal = mixedPayment.cash + mixedPayment.upi + mixedPayment.card + mixedPayment.emi + mixedPayment.exchange;
   const mixedDiff = grandTotal - mixedTotal;
   const mixedValid = paymentMethod !== 'mixed' || Math.abs(mixedDiff) < 0.01;
 
@@ -284,7 +284,7 @@ export const CheckoutPanel: React.FC<Props> = ({
         {/* Mixed Payment Split */}
         {paymentMethod === 'mixed' && (
           <div className="mt-3 p-3 rounded-xl bg-checkout-foreground/5 border border-checkout-foreground/8 space-y-2">
-            <p className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">Split Payment (Cash + UPI + Card + EMI)</p>
+            <p className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">Split Payment</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[9px] text-checkout-foreground/45 mb-1 block">💵 Cash</label>
@@ -326,6 +326,16 @@ export const CheckoutPanel: React.FC<Props> = ({
                   placeholder="0"
                 />
               </div>
+              <div className="col-span-2">
+                <label className="text-[9px] text-checkout-foreground/45 mb-1 block">🔄 Exchange Value</label>
+                <input
+                  type="number"
+                  value={mixedPayment.exchange || ''}
+                  onChange={e => onMixedPaymentChange({ ...mixedPayment, exchange: Number(e.target.value) || 0 })}
+                  className="checkout-input w-full h-9 px-2 rounded-lg text-sm text-center"
+                  placeholder="0"
+                />
+              </div>
             </div>
             <div className={`flex items-center justify-between text-xs pt-1 ${
               Math.abs(mixedDiff) < 0.01 ? 'text-success' : 'text-destructive'
@@ -353,7 +363,7 @@ export const CheckoutPanel: React.FC<Props> = ({
         )}
 
         {/* Exchange Notes */}
-        {paymentMethod === 'exchange' && (
+        {(paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) && (
           <div className="mt-3 p-3 rounded-xl bg-checkout-foreground/5 border border-checkout-foreground/8 space-y-2">
             <p className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">Exchange Notes</p>
             <textarea
