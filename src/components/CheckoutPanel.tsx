@@ -14,7 +14,7 @@ interface Props {
   isGSTBill: boolean;
   gstBearer: string;
   customerType: 'B2B' | 'B2C';
-  paymentMethod: 'cash' | 'upi' | 'card' | 'mixed' | 'emi';
+  paymentMethod: 'cash' | 'upi' | 'card' | 'mixed' | 'emi' | 'exchange';
   customerName: string;
   customerPhone: string;
   customerGST: string;
@@ -25,7 +25,7 @@ interface Props {
   emiLendingPartner: string;
   onBillDiscountChange: (v: number) => void;
   onBillDiscountTypeChange: (v: 'percentage' | 'flat') => void;
-  onPaymentMethodChange: (v: 'cash' | 'upi' | 'card' | 'mixed' | 'emi') => void;
+  onPaymentMethodChange: (v: 'cash' | 'upi' | 'card' | 'mixed' | 'emi' | 'exchange') => void;
   onCustomerNameChange: (v: string) => void;
   onCustomerPhoneChange: (v: string) => void;
   onCustomerGSTChange: (v: string) => void;
@@ -34,6 +34,8 @@ interface Props {
   onWarrantyMobileChange: (v: string) => void;
   onWarrantyAccessoriesChange: (v: string) => void;
   onEmiLendingPartnerChange: (v: string) => void;
+  exchangeNotes: string;
+  onExchangeNotesChange: (v: string) => void;
   onCompleteSale: () => void;
   onPreviewBill?: () => void;
   discountEnabled: boolean;
