@@ -740,16 +740,6 @@ export const DealerLedger: React.FC = () => {
                       </button>
                     </div>
                     <p className="font-display text-xl font-extrabold text-foreground">{fmt(totals.opening)}</p>
-                    <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
-                      <div className="flex justify-between text-[10px]">
-                        <span className="text-success font-medium">Settled</span>
-                        <span className="text-success font-bold">{fmt(totals.paidAgainstOpening)}</span>
-                      </div>
-                      <div className="flex justify-between text-[10px]">
-                        <span className="text-warning font-medium">Pending</span>
-                        <span className="text-warning font-bold">{fmt(totals.openingPending)}</span>
-                      </div>
-                    </div>
                   </div>
 
                   {/* Purchases */}
