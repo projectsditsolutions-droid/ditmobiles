@@ -620,7 +620,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       warranty_accessories: warrantyAccessories || undefined,
       customer_address: customerAddress || undefined,
       emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
-      exchange_notes: paymentMethod === 'exchange' ? exchangeNotes : undefined,
+      exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : undefined,
     };
     setPreviewInvoice(preview);
   }, [items, customerName, customerPhone, customerGST, customerType, customerAddress, subtotal, itemDiscountTotal, billDiscountAmount, billDiscountType, gstCalc, grandTotal, paymentMethod, isGSTBill, gstBearer, settings, activeShop, activeShopId, selectedProfile, warrantyMobile, warrantyAccessories, emiLendingPartner, mixedPayment, billDate]);
@@ -684,7 +684,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         warranty_mobile: warrantyMobile || '',
         warranty_accessories: warrantyAccessories || '',
         emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : '',
-        exchange_notes: paymentMethod === 'exchange' ? exchangeNotes : '',
+        exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : '',
       } as any).eq('id', editInvoiceId);
 
       if (updErr) {
@@ -772,7 +772,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         warranty_accessories: warrantyAccessories || undefined,
         customer_address: customerAddress || undefined,
         emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
-        exchange_notes: paymentMethod === 'exchange' ? exchangeNotes : undefined,
+        exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : undefined,
       };
       if (paymentMethod === 'mixed') (invoiceData as any).payment_details = mixedPayment;
 
@@ -869,7 +869,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       warranty_mobile: warrantyMobile || '',
       warranty_accessories: warrantyAccessories || '',
       emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : '',
-      exchange_notes: paymentMethod === 'exchange' ? exchangeNotes : '',
+      exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : '',
     } as any).select().single();
 
     if (invError || !invoice) {
@@ -962,7 +962,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       warranty_accessories: warrantyAccessories || undefined,
       customer_address: customerAddress || undefined,
       emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
-      exchange_notes: paymentMethod === 'exchange' ? exchangeNotes : undefined,
+      exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : undefined,
     };
     if (paymentMethod === 'mixed') (invoiceData as any).payment_details = mixedPayment;
 
