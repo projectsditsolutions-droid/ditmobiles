@@ -50,6 +50,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   onBillDiscountChange, onBillDiscountTypeChange, onPaymentMethodChange,
   onCustomerNameChange, onCustomerPhoneChange, onCustomerGSTChange, onCustomerAddressChange,
   onMixedPaymentChange, onWarrantyMobileChange, onWarrantyAccessoriesChange, onEmiLendingPartnerChange,
+  exchangeNotes, onExchangeNotesChange,
   onCompleteSale, onPreviewBill, discountEnabled, saving,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -59,6 +60,7 @@ export const CheckoutPanel: React.FC<Props> = ({
     { key: 'upi' as const, icon: Smartphone, label: 'UPI' },
     { key: 'card' as const, icon: CreditCard, label: 'Card' },
     { key: 'emi' as const, icon: Calendar, label: 'EMI' },
+    { key: 'exchange' as const, icon: ArrowLeftRight, label: 'Exchange' },
     { key: 'mixed' as const, icon: Shuffle, label: 'Mixed' },
   ];
 
@@ -263,7 +265,7 @@ export const CheckoutPanel: React.FC<Props> = ({
       {/* ── Payment Method ────────────────────────────────────────── */}
       <div className="px-4 py-3 border-t border-checkout-foreground/8 flex-shrink-0">
         <label className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold mb-2.5 block">Payment Method</label>
-        <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-6 gap-1.5">
           {paymentMethods.map(m => (
             <button
               key={m.key}
