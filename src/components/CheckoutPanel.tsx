@@ -351,6 +351,20 @@ export const CheckoutPanel: React.FC<Props> = ({
             />
           </div>
         )}
+
+        {/* Exchange Notes */}
+        {paymentMethod === 'exchange' && (
+          <div className="mt-3 p-3 rounded-xl bg-checkout-foreground/5 border border-checkout-foreground/8 space-y-2">
+            <p className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">Exchange Notes</p>
+            <textarea
+              value={exchangeNotes}
+              onChange={e => onExchangeNotesChange(e.target.value)}
+              placeholder="e.g. Old phone model, condition, exchange value..."
+              rows={3}
+              className="checkout-input w-full px-3 py-2 rounded-lg text-sm resize-none"
+            />
+          </div>
+        )}
       </div>
 
       {/* ── Grand Total + Complete ────────────────────────────────── */}
