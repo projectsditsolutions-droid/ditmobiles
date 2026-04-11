@@ -1004,7 +1004,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         )}
 
         {/* ── Top Bar ─────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 px-4 min-h-[3.5rem] py-1 bg-card border-b flex-wrap relative z-10">
+        <div className="flex items-center gap-2 px-4 min-h-[3.5rem] py-1 bg-card border-b flex-wrap relative z-30">
           <ProfileSelector
             profiles={gstProfiles}
             selectedId={selectedProfileId}
