@@ -1004,7 +1004,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         )}
 
         {/* ── Top Bar ─────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 px-4 min-h-[3.5rem] py-1 bg-card border-b flex-wrap relative z-10">
+        <div className="flex items-center gap-2 px-4 min-h-[3.5rem] py-1 bg-card border-b flex-wrap relative z-30">
           <ProfileSelector
             profiles={gstProfiles}
             selectedId={selectedProfileId}
@@ -1095,7 +1095,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         </div>
 
         {/* ── IMEI Scan Bar ────────────────────────────────────────────── */}
-        <div className="px-4 py-3 bg-card border-b relative z-20">
+        <div className="px-4 py-3 bg-card border-b relative z-10">
           <div className="flex gap-2">
             <div className={`flex-1 relative transition-all duration-300 ${imeiFlash ? 'ring-2 ring-green-500/60 rounded-xl' : ''}`}>
               <ScanLine className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${imeiFlash ? 'text-green-500' : 'text-primary'}`} />
