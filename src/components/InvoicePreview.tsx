@@ -75,7 +75,7 @@ const InvoiceBodyInner: React.FC<{
       {subHeading && <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', fontWeight: 600 }}>{subHeading}</div>}
       <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>{businessAddress}</div>
       <div style={{ fontSize: '11px', color: '#555' }}>Phone: {businessPhone}</div>
-      <div style={{ fontSize: '11px', fontWeight: 700, marginTop: '2px' }}>GSTIN: {businessGST}</div>
+      {invoice.is_gst_bill && <div style={{ fontSize: '11px', fontWeight: 700, marginTop: '2px' }}>GSTIN: {businessGST}</div>}
     </div>
 
     {/* Invoice Meta */}
