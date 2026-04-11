@@ -203,7 +203,7 @@ export const DealerLedger: React.FC = () => {
     const totalPaidAgainstStock = paidAgainstStockDirect + legacyDirect;
 
     const availableSoldCost = Math.max(0, sold - soldCostSettled);
-    const availableOpeningCredit = Math.max(0, opening - openingCreditSettled);
+    const availableOpeningCredit = Math.max(0, opening);
     const purchaseCount = selectedTxns.filter(t => t.type === 'purchase').length;
     const returnCount = selectedTxns.filter(t => t.type === 'stock_return').length;
     const saleCount = dealerSoldCount;
@@ -215,10 +215,7 @@ export const DealerLedger: React.FC = () => {
     const purchasePending = Math.max(0, purchase - returned - totalPaidAgainstStock - paidFromSold);
     // Net balance = purchases - purchase payments - returns (opening is separate)
     const netBalance = purchase - purchasePayments - returned;
-    // Opening pending
-    const openingPending = Math.max(0, opening - paidAgainstOpening);
-
-    return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock: totalPaidAgainstStock, advancePayments, purchasePending, netBalance, purchasePayments, openingPending };
+    return { purchase, payment, sold, returned, current, opening, soldCostSettled, openingCreditSettled, availableSoldCost, availableOpeningCredit, purchaseCount, returnCount, saleCount, paidFromSold, paidAgainstOpening, paidAgainstStock: totalPaidAgainstStock, advancePayments, purchasePending, netBalance, purchasePayments };
   }, [selectedDealer, selectedTxns, dealerSoldCost, dealerSoldCount]);
 
   // Filtered txns for detail popups
@@ -501,7 +498,7 @@ export const DealerLedger: React.FC = () => {
     } else if (sf === 'opening_credit') {
       totalAmount = paymentForm.amount;
       if (totalAmount <= 0) { toast.error('Enter a valid payment amount'); return; }
-      if (totalAmount > totals.availableOpeningCredit) { toast.error(`Amount exceeds available opening credit (${fmt(totals.availableOpeningCredit)})`); return; }
+      if (totalAmount > totals.availableOpeningCredit) { toast.error(`Amount exceeds edited opening balance (${fmt(totals.availableOpeningCredit)})`); return; }
     }
     const methods = paymentForm.paymentMethods.length > 0 ? paymentForm.paymentMethods.join(', ') : 'Not specified';
     const settleLabel = sf === 'stock_direct' ? 'Paid Against Stock (Direct)' : sf === 'sold_cost' ? 'Settled from Sold Cost' : sf === 'opening_credit' ? 'Settled from Opening Credit' : 'Advance Payment';
@@ -839,8 +836,8 @@ export const DealerLedger: React.FC = () => {
                     <p className="font-display text-xl font-extrabold text-success">-{fmt(totals.paidAgainstOpening)}</p>
                     <div className="mt-1.5 pt-1.5 border-t border-dashed space-y-0.5">
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-muted-foreground">Of {fmt(totals.opening)}</span>
-                        <span className="text-warning font-bold">Pending: {fmt(totals.openingPending)}</span>
+                        <span className="text-muted-foreground">Edited Opening</span>
+                        <span className="text-warning font-bold">{fmt(totals.opening)}</span>
                       </div>
                     </div>
                   </div>
@@ -1340,19 +1337,18 @@ export const DealerLedger: React.FC = () => {
           <div className="space-y-4">
             {/* Summary bar */}
             {detailPopup === 'opening' && (
-              <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-lg bg-secondary/50 p-3 text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase">Total</p>
-                  <p className="font-display font-extrabold text-foreground">{fmt(totals.opening)}</p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Current Opening</p>
+                    <p className="font-display font-extrabold text-foreground">{fmt(totals.opening)}</p>
+                  </div>
+                  <div className="rounded-lg bg-primary/10 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Edit Entries</p>
+                    <p className="font-display font-extrabold text-primary">{detailTxns.length}</p>
+                  </div>
                 </div>
-                <div className="rounded-lg bg-success/10 p-3 text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase">Settled</p>
-                  <p className="font-display font-extrabold text-success">{fmt(totals.paidAgainstOpening)}</p>
-                </div>
-                <div className="rounded-lg bg-warning/10 p-3 text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase">Pending</p>
-                  <p className="font-display font-extrabold text-warning">{fmt(totals.openingPending)}</p>
-                </div>
+                <p className="text-xs text-muted-foreground">Opening balance is shown exactly as the last edited value. It is not auto-reduced here.</p>
               </div>
             )}
             {detailPopup === 'purchases' && (
@@ -1412,19 +1408,18 @@ export const DealerLedger: React.FC = () => {
               </div>
             )}
             {detailPopup === 'opening_settlement' && (
-              <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-lg bg-secondary/50 p-3 text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase">Opening</p>
-                  <p className="font-display font-extrabold text-foreground">{fmt(totals.opening)}</p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Edited Opening</p>
+                    <p className="font-display font-extrabold text-foreground">{fmt(totals.opening)}</p>
+                  </div>
+                  <div className="rounded-lg bg-success/10 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Paid History</p>
+                    <p className="font-display font-extrabold text-success">{fmt(totals.paidAgainstOpening)}</p>
+                  </div>
                 </div>
-                <div className="rounded-lg bg-success/10 p-3 text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase">Paid</p>
-                  <p className="font-display font-extrabold text-success">{fmt(totals.paidAgainstOpening)}</p>
-                </div>
-                <div className="rounded-lg bg-warning/10 p-3 text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase">Pending</p>
-                  <p className="font-display font-extrabold text-warning">{fmt(totals.openingPending)}</p>
-                </div>
+                <p className="text-xs text-muted-foreground">Opening settlements stay as history only. Total Payable uses the edited opening value you set.</p>
               </div>
             )}
             {detailPopup === 'net_balance' && (
