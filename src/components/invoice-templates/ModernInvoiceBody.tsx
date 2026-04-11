@@ -36,7 +36,7 @@ export const ModernInvoiceBody: React.FC<Props> = ({
         </div>
         <div style={{ fontSize: '11px', marginTop: '4px' }}><strong>Invoice:</strong> {invoice.invoice_number}</div>
         <div style={{ fontSize: '11px' }}><strong>Date:</strong> {new Date(invoice.date).toLocaleString('en-IN')}</div>
-        <div style={{ fontSize: '11px', fontWeight: 700, marginTop: '4px', color: '#4338ca' }}>GSTIN: {businessGST}</div>
+        {invoice.is_gst_bill && <div style={{ fontSize: '11px', fontWeight: 700, marginTop: '4px', color: '#4338ca' }}>GSTIN: {businessGST}</div>}
       </div>
     </div>
 

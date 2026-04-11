@@ -26,7 +26,7 @@ export const CompactInvoiceBody: React.FC<Props> = ({
       <div style={{ fontSize: '18px', fontWeight: 900 }}>{businessName}</div>
       {subHeading && <div style={{ fontSize: '10px', color: '#666', fontWeight: 600 }}>{subHeading}</div>}
       <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>{businessAddress}</div>
-      <div style={{ fontSize: '9px', color: '#666' }}>Ph: {businessPhone} | GST: {businessGST}</div>
+      <div style={{ fontSize: '9px', color: '#666' }}>Ph: {businessPhone}{invoice.is_gst_bill ? ` | GST: ${businessGST}` : ''}</div>
     </div>
 
     {/* Invoice info */}
