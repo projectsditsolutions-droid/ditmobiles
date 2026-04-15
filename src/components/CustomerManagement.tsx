@@ -327,7 +327,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
               </div>
 
               <div className="p-5 border-b flex-shrink-0">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="rounded-2xl border bg-background p-4">
                     <p className="text-xs font-display uppercase tracking-wider text-muted-foreground">Total Purchases</p>
                     <p className="mt-2 font-display text-2xl font-extrabold text-primary">{fmt(Number(selected.total_purchases))}</p>
@@ -342,6 +342,26 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
                       {selected.last_purchase_date ? new Date(selected.last_purchase_date).toLocaleDateString('en-IN') : '—'}
                     </p>
                   </div>
+                  <div className={`rounded-2xl border p-4 ${Number(selected.pending_amount) > 0 ? 'bg-destructive/5 border-destructive/20' : 'bg-background'}`}>
+                    <p className="text-xs font-display uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      {Number(selected.pending_amount) > 0 && <AlertCircle className="w-3 h-3 text-destructive" />}
+                      Pending Amount
+                    </p>
+                    <p className={`mt-2 font-display text-2xl font-extrabold ${Number(selected.pending_amount) > 0 ? 'text-destructive' : 'text-success'}`}>
+                      {Number(selected.pending_amount) > 0 ? fmt(Number(selected.pending_amount)) : '₹0'}
+                    </p>
+                    <div className="flex gap-1.5 mt-2">
+                      <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" onClick={() => { setPendingInput(''); setShowPendingModal('add'); }}>
+                        <Plus className="w-3 h-3 mr-0.5" /> Add
+                      </Button>
+                      {Number(selected.pending_amount) > 0 && (
+                        <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 border-success/30 text-success hover:bg-success/10" onClick={() => { setPendingInput(''); setShowPendingModal('pay'); }}>
+                          <IndianRupee className="w-3 h-3 mr-0.5" /> Pay
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 </div>
                 {selected.notes && (
                   <div className="mt-3 rounded-xl bg-secondary/30 p-3 text-sm text-muted-foreground">
