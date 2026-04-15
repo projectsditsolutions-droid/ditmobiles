@@ -316,6 +316,7 @@ export type Database = {
           is_gst_bill: boolean
           payment_details: Json | null
           payment_method: string
+          payment_notes: string
           print_type: string
           sgst: number
           shop_id: string
@@ -353,6 +354,7 @@ export type Database = {
           is_gst_bill?: boolean
           payment_details?: Json | null
           payment_method?: string
+          payment_notes?: string
           print_type?: string
           sgst?: number
           shop_id: string
@@ -390,6 +392,7 @@ export type Database = {
           is_gst_bill?: boolean
           payment_details?: Json | null
           payment_method?: string
+          payment_notes?: string
           print_type?: string
           sgst?: number
           shop_id?: string
