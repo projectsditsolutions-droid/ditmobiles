@@ -501,6 +501,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                         {inv.payment_method === 'emi' && (inv as any).emi_lending_partner && (
                           <span className="text-[9px] text-muted-foreground font-medium">({(inv as any).emi_lending_partner})</span>
                         )}
+                        {(inv as any).payment_notes && (
+                          <span className="text-[9px] text-muted-foreground font-medium italic">({(inv as any).payment_notes})</span>
+                        )}
                         {inv.payment_details && (
                           expandedPaymentId === inv.id ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />
                         )}
@@ -1531,6 +1534,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       <div className="flex items-center gap-4 text-xs">
                         <span className="text-muted-foreground">{inv.customer_name}{inv.customer_phone ? ` • ${inv.customer_phone}` : ''}</span>
                         <span className="font-display font-bold capitalize px-2 py-0.5 rounded-full bg-accent text-accent-foreground">{inv.payment_method}</span>
+                        {(inv as any).payment_notes && (
+                          <span className="text-muted-foreground italic">({(inv as any).payment_notes})</span>
+                        )}
                       </div>
                     </div>
                     {/* Items table */}
