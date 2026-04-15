@@ -179,6 +179,11 @@ export const ModernInvoiceBody: React.FC<Props> = ({
         <div style={{ fontSize: '11px' }}><strong>Payment Mode:</strong> {invoice.payment_method.toUpperCase()}</div>
       </div>
     )}
+    {(invoice as any).payment_notes && (
+      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '12px', padding: '6px 10px', background: '#f9fafb', borderRadius: '6px' }}>
+        <strong>Note:</strong> {(invoice as any).payment_notes}
+      </div>
+    )}
 
     {/* Warranty */}
     {(invoice.warranty_mobile || invoice.warranty_accessories) && (

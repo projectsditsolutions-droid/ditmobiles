@@ -138,6 +138,11 @@ export const CompactInvoiceBody: React.FC<Props> = ({
         <strong>Payment: </strong>{invoice.payment_method.toUpperCase()}
       </div>
     )}
+    {(invoice as any).payment_notes && (
+      <div style={{ fontSize: '8px', color: '#666', marginBottom: '6px' }}>
+        <strong>Note: </strong>{(invoice as any).payment_notes}
+      </div>
+    )}
 
     {/* Warranty */}
     {(invoice.warranty_mobile || invoice.warranty_accessories) && (

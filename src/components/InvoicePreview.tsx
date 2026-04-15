@@ -233,8 +233,12 @@ const InvoiceBodyInner: React.FC<{
         <div style={{ fontSize: '11px' }}><strong>Payment Mode:</strong> {invoice.payment_method.toUpperCase()}</div>
       </div>
     )}
+    {(invoice as any).payment_notes && (
+      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '12px', padding: '6px 10px', background: '#f9fafb', borderRadius: '6px' }}>
+        <strong>Note:</strong> {(invoice as any).payment_notes}
+      </div>
+    )}
 
-    {/* Warranty Details */}
     {(invoice.warranty_mobile || invoice.warranty_accessories) && (
       <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px', marginBottom: '12px' }}>
         <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '4px' }}>Warranty Details:</div>

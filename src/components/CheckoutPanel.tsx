@@ -36,6 +36,8 @@ interface Props {
   onEmiLendingPartnerChange: (v: string) => void;
   exchangeNotes: string;
   onExchangeNotesChange: (v: string) => void;
+  paymentNotes: string;
+  onPaymentNotesChange: (v: string) => void;
   onCompleteSale: () => void;
   onPreviewBill?: () => void;
   discountEnabled: boolean;
@@ -51,6 +53,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   onCustomerNameChange, onCustomerPhoneChange, onCustomerGSTChange, onCustomerAddressChange,
   onMixedPaymentChange, onWarrantyMobileChange, onWarrantyAccessoriesChange, onEmiLendingPartnerChange,
   exchangeNotes, onExchangeNotesChange,
+  paymentNotes, onPaymentNotesChange,
   onCompleteSale, onPreviewBill, discountEnabled, saving,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -375,6 +378,17 @@ export const CheckoutPanel: React.FC<Props> = ({
             />
           </div>
         )}
+
+        {/* Payment Notes */}
+        <div className="mt-3 p-3 rounded-xl bg-checkout-foreground/5 border border-checkout-foreground/8 space-y-2">
+          <p className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold">📝 Payment Notes</p>
+          <input
+            value={paymentNotes}
+            onChange={e => onPaymentNotesChange(e.target.value)}
+            placeholder="e.g. UPI Ref, Card last 4, any note..."
+            className="checkout-input w-full h-9 px-3 rounded-lg text-sm"
+          />
+        </div>
       </div>
 
       {/* ── Grand Total + Complete ────────────────────────────────── */}
