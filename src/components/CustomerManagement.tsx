@@ -24,6 +24,7 @@ interface Customer {
   total_purchases: number;
   last_purchase_date: string | null;
   created_at: string;
+  pending_amount: number;
 }
 
 interface Invoice {
