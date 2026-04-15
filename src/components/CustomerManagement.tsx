@@ -362,7 +362,6 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
                     </div>
                   </div>
                 </div>
-                </div>
                 {selected.notes && (
                   <div className="mt-3 rounded-xl bg-secondary/30 p-3 text-sm text-muted-foreground">
                     <span className="font-display font-semibold text-foreground">Notes: </span>{selected.notes}
