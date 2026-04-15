@@ -80,6 +80,7 @@ export interface InvoiceData {
   customer_address?: string;
   emi_lending_partner?: string;
   exchange_notes?: string;
+  payment_notes?: string;
 }
 
 // ─── GST Profile Card Selector ───────────────────────────────────────────────
@@ -208,6 +209,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const [warrantyAccessories, setWarrantyAccessories] = useState('6 Months Warranty');
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
   const [exchangeNotes, setExchangeNotes] = useState('');
+  const [paymentNotes, setPaymentNotes] = useState('');
   // Helper: get current IST datetime string for datetime-local input using Intl (robust)
   const fmtIST = (d = new Date()) => {
     const p = new Intl.DateTimeFormat('sv-SE', {
@@ -277,6 +279,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       setWarrantyAccessories(editingInvoice.warranty_accessories || '');
       setEmiLendingPartner(editingInvoice.emi_lending_partner || '');
       setExchangeNotes((editingInvoice as any).exchange_notes || '');
+      setPaymentNotes((editingInvoice as any).payment_notes || '');
       if (editingInvoice.date) {
         setBillDate(fmtIST(new Date(editingInvoice.date)));
         setIsDateManual(true);
@@ -304,6 +307,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setWarrantyAccessories('6 Months Warranty');
     setEmiLendingPartner('');
     setExchangeNotes('');
+    setPaymentNotes('');
     setBillDate(fmtIST());
     setIsDateManual(false);
     onCancelEdit?.();
