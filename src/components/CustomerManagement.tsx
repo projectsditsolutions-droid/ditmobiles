@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Search, Phone, User, MapPin, Hash, Mail, Edit2, Trash2, X,
-  ShoppingBag, CalendarDays, FileText, ChevronRight, Users, Printer, Eye, Pencil
+  ShoppingBag, CalendarDays, FileText, ChevronRight, Users, Printer, Eye, Pencil,
+  IndianRupee, AlertCircle, Minus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { InvoicePreview } from './InvoicePreview';
