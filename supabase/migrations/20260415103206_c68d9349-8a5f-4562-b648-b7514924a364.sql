@@ -1,0 +1,1 @@
+ALTER TABLE public.customers ADD COLUMN pending_amount numeric NOT NULL DEFAULT 0;
