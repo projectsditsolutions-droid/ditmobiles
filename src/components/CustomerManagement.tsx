@@ -285,6 +285,9 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-xs font-display font-bold text-primary">{fmt(Number(c.total_purchases))}</p>
+                  {Number(c.pending_amount) > 0 && (
+                    <p className="text-[10px] font-display font-bold text-destructive">Due: {fmt(Number(c.pending_amount))}</p>
+                  )}
                   <ChevronRight className="w-3.5 h-3.5 text-muted-foreground ml-auto" />
                 </div>
               </button>
