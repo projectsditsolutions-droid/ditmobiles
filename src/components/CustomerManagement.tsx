@@ -250,6 +250,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
 
   const totalCustomers = customers.length;
   const totalRevenue = customers.reduce((s, c) => s + Number(c.total_purchases), 0);
+  const totalPending = customers.reduce((s, c) => s + Number(c.pending_amount), 0);
 
   return (
     <div className="h-full p-4 md:p-5 overflow-y-auto pos-scrollable">
@@ -260,7 +261,10 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="font-display text-lg font-extrabold">Customers</h1>
-                <p className="text-xs text-muted-foreground">{totalCustomers} customers · {fmt(totalRevenue)} revenue</p>
+                <p className="text-xs text-muted-foreground">
+                  {totalCustomers} customers · {fmt(totalRevenue)} revenue
+                  {totalPending > 0 && <span className="text-destructive font-bold"> · {fmt(totalPending)} pending</span>}
+                </p>
               </div>
               <Button size="sm" onClick={() => { resetForm(); setShowForm(true); }} className="gradient-primary border-0 text-primary-foreground">
                 <Plus className="w-4 h-4 mr-1" /> Add
