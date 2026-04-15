@@ -690,7 +690,6 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         warranty_accessories: warrantyAccessories || '',
         emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : '',
         exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : '',
-        exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : '',
         payment_notes: paymentNotes || '',
       } as any).eq('id', editInvoiceId);
 
@@ -780,7 +779,6 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         customer_address: customerAddress || undefined,
         emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
         exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : undefined,
-      exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : undefined,
       payment_notes: paymentNotes || undefined,
     };
       if (paymentMethod === 'mixed') (invoiceData as any).payment_details = mixedPayment;
@@ -879,7 +877,6 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       warranty_accessories: warrantyAccessories || '',
       emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : '',
       exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : '',
-      exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : '',
       payment_notes: paymentNotes || '',
     } as any).select().single();
 
@@ -973,7 +970,6 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       warranty_accessories: warrantyAccessories || undefined,
       customer_address: customerAddress || undefined,
       emi_lending_partner: (paymentMethod === 'emi' || (paymentMethod === 'mixed' && mixedPayment.emi > 0)) ? emiLendingPartner : undefined,
-      exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : undefined,
       exchange_notes: (paymentMethod === 'exchange' || (paymentMethod === 'mixed' && mixedPayment.exchange > 0)) ? exchangeNotes : undefined,
       payment_notes: paymentNotes || undefined,
     };
