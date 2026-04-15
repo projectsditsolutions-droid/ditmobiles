@@ -534,6 +534,31 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
         </div>
       </Modal>
 
+      {/* Pending Amount Modal */}
+      <Modal open={!!showPendingModal} onClose={() => setShowPendingModal(null)}
+        title={showPendingModal === 'add' ? 'Add Pending Amount' : 'Record Payment'}
+        subtitle={selected ? `${selected.name} · Current pending: ${fmt(Number(selected.pending_amount))}` : ''}>
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">
+              {showPendingModal === 'add' ? 'Pending Amount (₹)' : 'Payment Amount (₹)'}
+            </label>
+            <Input type="number" value={pendingInput} onChange={e => setPendingInput(e.target.value)} placeholder="Enter amount" autoFocus />
+          </div>
+          {showPendingModal === 'pay' && selected && Number(pendingInput) > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Remaining after payment: <span className="font-bold text-foreground">{fmt(Math.max(0, Number(selected.pending_amount) - Number(pendingInput)))}</span>
+            </p>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowPendingModal(null)}>Cancel</Button>
+            <Button onClick={handlePendingAction} className={showPendingModal === 'add' ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' : 'bg-success hover:bg-success/90 text-success-foreground'}>
+              {showPendingModal === 'add' ? 'Add Pending' : 'Record Payment'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Invoice Preview */}
       {selectedInvoice && (
         <InvoicePreview invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
