@@ -169,6 +169,21 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
     fetchCustomers();
   };
 
+  const handlePendingAction = async () => {
+    if (!selected || !pendingInput) return;
+    const amount = parseFloat(pendingInput);
+    if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return; }
+    const newPending = showPendingModal === 'add'
+      ? Number(selected.pending_amount) + amount
+      : Math.max(0, Number(selected.pending_amount) - amount);
+    const { error } = await supabase.from('customers').update({ pending_amount: newPending } as any).eq('id', selected.id);
+    if (error) { toast.error('Failed: ' + error.message); return; }
+    toast.success(showPendingModal === 'add' ? `₹${amount} pending added` : `₹${amount} payment recorded`);
+    setShowPendingModal(null);
+    setPendingInput('');
+    fetchCustomers();
+  };
+
   const openInvoice = async (invoice: Invoice, autoPrint = false) => {
     const { data: fullInvoice } = await supabase
       .from('invoices')
