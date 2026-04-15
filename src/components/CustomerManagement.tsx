@@ -75,6 +75,8 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
   const [customerHistory, setCustomerHistory] = useState<Invoice[]>([]);
   const [form, setForm] = useState({ name: '', phone: '', address: '', gstin: '', email: '', notes: '' });
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
+  const [showPendingModal, setShowPendingModal] = useState<'add' | 'pay' | null>(null);
+  const [pendingInput, setPendingInput] = useState('');
 
   const fetchCustomers = async () => {
     if (!activeShopId && !isAllShops) return;
