@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Search, Phone, User, MapPin, Hash, Mail, Edit2, Trash2, X,
-  ShoppingBag, CalendarDays, FileText, ChevronRight, Users, Printer, Eye, Pencil
+  ShoppingBag, CalendarDays, FileText, ChevronRight, Users, Printer, Eye, Pencil,
+  IndianRupee, AlertCircle, Minus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { InvoicePreview } from './InvoicePreview';
@@ -24,6 +25,7 @@ interface Customer {
   total_purchases: number;
   last_purchase_date: string | null;
   created_at: string;
+  pending_amount: number;
 }
 
 interface Invoice {
@@ -73,6 +75,8 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
   const [customerHistory, setCustomerHistory] = useState<Invoice[]>([]);
   const [form, setForm] = useState({ name: '', phone: '', address: '', gstin: '', email: '', notes: '' });
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
+  const [showPendingModal, setShowPendingModal] = useState<'add' | 'pay' | null>(null);
+  const [pendingInput, setPendingInput] = useState('');
 
   const fetchCustomers = async () => {
     if (!activeShopId && !isAllShops) return;
@@ -165,6 +169,21 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
     fetchCustomers();
   };
 
+  const handlePendingAction = async () => {
+    if (!selected || !pendingInput) return;
+    const amount = parseFloat(pendingInput);
+    if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return; }
+    const newPending = showPendingModal === 'add'
+      ? Number(selected.pending_amount) + amount
+      : Math.max(0, Number(selected.pending_amount) - amount);
+    const { error } = await supabase.from('customers').update({ pending_amount: newPending } as any).eq('id', selected.id);
+    if (error) { toast.error('Failed: ' + error.message); return; }
+    toast.success(showPendingModal === 'add' ? `₹${amount} pending added` : `₹${amount} payment recorded`);
+    setShowPendingModal(null);
+    setPendingInput('');
+    fetchCustomers();
+  };
+
   const openInvoice = async (invoice: Invoice, autoPrint = false) => {
     const { data: fullInvoice } = await supabase
       .from('invoices')
@@ -231,6 +250,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
 
   const totalCustomers = customers.length;
   const totalRevenue = customers.reduce((s, c) => s + Number(c.total_purchases), 0);
+  const totalPending = customers.reduce((s, c) => s + Number(c.pending_amount), 0);
 
   return (
     <div className="h-full p-4 md:p-5 overflow-y-auto pos-scrollable">
@@ -241,7 +261,10 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="font-display text-lg font-extrabold">Customers</h1>
-                <p className="text-xs text-muted-foreground">{totalCustomers} customers · {fmt(totalRevenue)} revenue</p>
+                <p className="text-xs text-muted-foreground">
+                  {totalCustomers} customers · {fmt(totalRevenue)} revenue
+                  {totalPending > 0 && <span className="text-destructive font-bold"> · {fmt(totalPending)} pending</span>}
+                </p>
               </div>
               <Button size="sm" onClick={() => { resetForm(); setShowForm(true); }} className="gradient-primary border-0 text-primary-foreground">
                 <Plus className="w-4 h-4 mr-1" /> Add
@@ -266,6 +289,9 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-xs font-display font-bold text-primary">{fmt(Number(c.total_purchases))}</p>
+                  {Number(c.pending_amount) > 0 && (
+                    <p className="text-[10px] font-display font-bold text-destructive">Due: {fmt(Number(c.pending_amount))}</p>
+                  )}
                   <ChevronRight className="w-3.5 h-3.5 text-muted-foreground ml-auto" />
                 </div>
               </button>
@@ -308,7 +334,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
               </div>
 
               <div className="p-5 border-b flex-shrink-0">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="rounded-2xl border bg-background p-4">
                     <p className="text-xs font-display uppercase tracking-wider text-muted-foreground">Total Purchases</p>
                     <p className="mt-2 font-display text-2xl font-extrabold text-primary">{fmt(Number(selected.total_purchases))}</p>
@@ -322,6 +348,25 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
                     <p className="mt-2 font-display text-lg font-extrabold">
                       {selected.last_purchase_date ? new Date(selected.last_purchase_date).toLocaleDateString('en-IN') : '—'}
                     </p>
+                  </div>
+                  <div className={`rounded-2xl border p-4 ${Number(selected.pending_amount) > 0 ? 'bg-destructive/5 border-destructive/20' : 'bg-background'}`}>
+                    <p className="text-xs font-display uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      {Number(selected.pending_amount) > 0 && <AlertCircle className="w-3 h-3 text-destructive" />}
+                      Pending Amount
+                    </p>
+                    <p className={`mt-2 font-display text-2xl font-extrabold ${Number(selected.pending_amount) > 0 ? 'text-destructive' : 'text-success'}`}>
+                      {Number(selected.pending_amount) > 0 ? fmt(Number(selected.pending_amount)) : '₹0'}
+                    </p>
+                    <div className="flex gap-1.5 mt-2">
+                      <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" onClick={() => { setPendingInput(''); setShowPendingModal('add'); }}>
+                        <Plus className="w-3 h-3 mr-0.5" /> Add
+                      </Button>
+                      {Number(selected.pending_amount) > 0 && (
+                        <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 border-success/30 text-success hover:bg-success/10" onClick={() => { setPendingInput(''); setShowPendingModal('pay'); }}>
+                          <IndianRupee className="w-3 h-3 mr-0.5" /> Pay
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
                 {selected.notes && (
@@ -493,6 +538,31 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
           <Button onClick={handleSave} className="gradient-primary border-0 text-primary-foreground">
             {editingId ? 'Update Customer' : 'Save Customer'}
           </Button>
+        </div>
+      </Modal>
+
+      {/* Pending Amount Modal */}
+      <Modal open={!!showPendingModal} onClose={() => setShowPendingModal(null)}
+        title={showPendingModal === 'add' ? 'Add Pending Amount' : 'Record Payment'}
+        subtitle={selected ? `${selected.name} · Current pending: ${fmt(Number(selected.pending_amount))}` : ''}>
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-display font-semibold text-muted-foreground mb-1.5 block">
+              {showPendingModal === 'add' ? 'Pending Amount (₹)' : 'Payment Amount (₹)'}
+            </label>
+            <Input type="number" value={pendingInput} onChange={e => setPendingInput(e.target.value)} placeholder="Enter amount" autoFocus />
+          </div>
+          {showPendingModal === 'pay' && selected && Number(pendingInput) > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Remaining after payment: <span className="font-bold text-foreground">{fmt(Math.max(0, Number(selected.pending_amount) - Number(pendingInput)))}</span>
+            </p>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowPendingModal(null)}>Cancel</Button>
+            <Button onClick={handlePendingAction} className={showPendingModal === 'add' ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' : 'bg-success hover:bg-success/90 text-success-foreground'}>
+              {showPendingModal === 'add' ? 'Add Pending' : 'Record Payment'}
+            </Button>
+          </div>
         </div>
       </Modal>
 

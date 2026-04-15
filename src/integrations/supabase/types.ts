@@ -24,6 +24,7 @@ export type Database = {
           last_purchase_date: string | null
           name: string
           notes: string
+          pending_amount: number
           phone: string
           shop_id: string
           total_purchases: number
@@ -38,6 +39,7 @@ export type Database = {
           last_purchase_date?: string | null
           name?: string
           notes?: string
+          pending_amount?: number
           phone?: string
           shop_id: string
           total_purchases?: number
@@ -52,6 +54,7 @@ export type Database = {
           last_purchase_date?: string | null
           name?: string
           notes?: string
+          pending_amount?: number
           phone?: string
           shop_id?: string
           total_purchases?: number
