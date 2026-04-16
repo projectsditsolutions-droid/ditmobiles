@@ -1745,7 +1745,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                 <h3 className="font-display font-bold text-sm mb-3">Collection Distribution</h3>
                 <div className="flex rounded-full h-6 overflow-hidden">
                   {methodConfig.map(m => {
-                    const pct = ((collections as any)[m.key] / totalCollected) * 100;
+                    const base = totalCollected + collections.pending;
+                    const pct = base > 0 ? ((collections as any)[m.key] / base) * 100 : 0;
                     if (pct < 0.5) return null;
                     return (
                       <div
