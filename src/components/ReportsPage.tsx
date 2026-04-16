@@ -1660,20 +1660,25 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
         const totalRevenue = totalCollected + collections.pending;
 
         // Day-wise breakdown
-        const dailyCollections: Record<string, { cash: number; upi: number; card: number; emi: number; exchange: number; total: number; count: number }> = {};
+        const dailyCollections: Record<string, { cash: number; upi: number; card: number; emi: number; exchange: number; pending: number; total: number; count: number }> = {};
         colFiltered.forEach(inv => {
           const day = new Date(inv.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-          if (!dailyCollections[day]) dailyCollections[day] = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0, total: 0, count: 0 };
+          if (!dailyCollections[day]) dailyCollections[day] = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0, pending: 0, total: 0, count: 0 };
           const entry = dailyCollections[day];
           entry.count++;
           const total = Number(inv.grand_total);
           entry.total += total;
           if (inv.payment_method === 'mixed' && inv.payment_details) {
             const pd = inv.payment_details as Record<string, number>;
+            let paidSum = 0;
             Object.entries(pd).forEach(([k, v]) => {
-              if (k in entry) (entry as any)[k] += Number(v) || 0;
+              const val = Number(v) || 0;
+              paidSum += val;
+              if (k in entry && k !== 'pending' && k !== 'total' && k !== 'count') (entry as any)[k] += val;
             });
-          } else if (inv.payment_method in entry) {
+            const shortfall = total - paidSum;
+            if (shortfall > 0.01) entry.pending += shortfall;
+          } else if (inv.payment_method in entry && inv.payment_method !== 'pending') {
             (entry as any)[inv.payment_method] += total;
           }
         });
@@ -1685,6 +1690,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
           { key: 'card', label: 'Card', icon: '💳', color: 'text-warning', bg: 'bg-warning/10 border-warning/20' },
           { key: 'emi', label: 'EMI', icon: '📅', color: 'text-destructive', bg: 'bg-destructive/10 border-destructive/20' },
           { key: 'exchange', label: 'Exchange', icon: '🔄', color: 'text-muted-foreground', bg: 'bg-muted border-muted-foreground/20' },
+          { key: 'pending', label: 'Pending', icon: '⏳', color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' },
         ];
 
         return (
