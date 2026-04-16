@@ -1555,6 +1555,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                           <div style="font-size:18px;font-weight:900;color:${grandNet >= 0 ? '#166534' : '#991b1b'}">₹${grandNet.toLocaleString('en-IN')}</div>
                           <div style="font-size:9px;color:#999">${grandRevenue > 0 ? (grandNet / grandRevenue * 100).toFixed(1) : '0'}% margin</div>
                         </div>
+                      </div>
                       <table style="width:100%;border-collapse:collapse;font-size:10px">
                         <thead>
                           <tr style="background:#e2e8f0;font-weight:700;font-size:9px;text-transform:uppercase">
