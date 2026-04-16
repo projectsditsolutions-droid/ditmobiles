@@ -4,7 +4,7 @@ import { useShop } from '@/contexts/ShopContext';
 import {
   TrendingUp, Package, FileText, Calendar, DollarSign, Eye, Printer,
   IndianRupee, ShoppingBag, Download, Trash2, CheckSquare, Filter, X,
-  ChevronDown, ChevronUp, Search, FileDown, Edit2, BarChart3
+  ChevronDown, ChevronUp, Search, FileDown, Edit2, BarChart3, Wallet
 } from 'lucide-react';
 import { BrandAnalytics } from './BrandAnalytics';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ interface ReportsPageProps {
 export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
   const { printContent, clearContent } = usePrint();
-  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'brands' | 'sales_report' | 'generate'>('daily');
+  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'brands' | 'sales_report' | 'generate' | 'collections'>('daily');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stockData, setStockData] = useState<any[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
@@ -48,6 +48,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const [srDateTo, setSrDateTo] = useState('');
   const [srSearch, setSrSearch] = useState('');
   const [srLoaded, setSrLoaded] = useState(false);
+  const [colDateFrom, setColDateFrom] = useState('');
+  const [colDateTo, setColDateTo] = useState('');
   useEffect(() => {
     if (!activeShopId && !isAllShops) return;
     const fetchData = async () => {
@@ -290,6 +292,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
     { key: 'daily', label: 'Sales', icon: TrendingUp },
     { key: 'monthly', label: 'Monthly', icon: Calendar },
     { key: 'sales_report', label: 'Sales Report', icon: FileText },
+    { key: 'collections', label: 'Collections', icon: IndianRupee },
     { key: 'stock', label: 'Stock', icon: Package },
     { key: 'gst', label: 'GST', icon: FileText },
     { key: 'profit', label: 'Profit', icon: DollarSign },
@@ -1532,9 +1535,21 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                           {inv.is_gst_bill ? 'GST' : 'Non-GST'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-xs">
+                      <div className="flex items-center gap-4 text-xs flex-wrap">
                         <span className="text-muted-foreground">{inv.customer_name}{inv.customer_phone ? ` • ${inv.customer_phone}` : ''}</span>
                         <span className="font-display font-bold capitalize px-2 py-0.5 rounded-full bg-accent text-accent-foreground">{inv.payment_method}</span>
+                        {inv.payment_method === 'mixed' && inv.payment_details && (() => {
+                          const pd = inv.payment_details as Record<string, number>;
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {Object.entries(pd).filter(([, v]) => Number(v) > 0).map(([k, v]) => (
+                                <span key={k} className="px-1.5 py-0.5 rounded bg-secondary text-[9px] font-display font-bold capitalize">
+                                  {k}: ₹{Number(v).toLocaleString('en-IN')}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                         {(inv as any).payment_notes && (
                           <span className="text-muted-foreground italic">({(inv as any).payment_notes})</span>
                         )}
@@ -1607,6 +1622,204 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
             {!srLoaded && (
               <div className="bg-card rounded-xl border p-8 text-center text-muted-foreground">
                 Select a date range and click <strong>Load Report</strong> to view detailed profit breakdown per invoice
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {tab === 'collections' && (() => {
+        const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+        const colFiltered = invoices.filter(inv => {
+          if (colDateFrom && inv.date < colDateFrom) return false;
+          if (colDateTo && inv.date > colDateTo + 'T23:59:59') return false;
+          return true;
+        });
+
+        // Calculate actual cash/upi/card/emi/exchange collected across all invoices
+        // For mixed payments, break down into individual methods
+        const collections = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0 };
+        colFiltered.forEach(inv => {
+          const total = Number(inv.grand_total);
+          if (inv.payment_method === 'mixed' && inv.payment_details) {
+            const pd = inv.payment_details as Record<string, number>;
+            Object.entries(pd).forEach(([k, v]) => {
+              if (k in collections) (collections as any)[k] += Number(v) || 0;
+            });
+          } else if (inv.payment_method in collections) {
+            (collections as any)[inv.payment_method] += total;
+          }
+        });
+        const totalCollected = collections.cash + collections.upi + collections.card + collections.emi + collections.exchange;
+
+        // Day-wise breakdown
+        const dailyCollections: Record<string, { cash: number; upi: number; card: number; emi: number; exchange: number; total: number; count: number }> = {};
+        colFiltered.forEach(inv => {
+          const day = new Date(inv.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+          if (!dailyCollections[day]) dailyCollections[day] = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0, total: 0, count: 0 };
+          const entry = dailyCollections[day];
+          entry.count++;
+          const total = Number(inv.grand_total);
+          entry.total += total;
+          if (inv.payment_method === 'mixed' && inv.payment_details) {
+            const pd = inv.payment_details as Record<string, number>;
+            Object.entries(pd).forEach(([k, v]) => {
+              if (k in entry) (entry as any)[k] += Number(v) || 0;
+            });
+          } else if (inv.payment_method in entry) {
+            (entry as any)[inv.payment_method] += total;
+          }
+        });
+        const dailyArr = Object.entries(dailyCollections).sort(([a], [b]) => b.localeCompare(a));
+
+        const methodConfig = [
+          { key: 'cash', label: 'Cash', icon: '💵', color: 'text-success', bg: 'bg-success/10 border-success/20' },
+          { key: 'upi', label: 'UPI', icon: '📱', color: 'text-primary', bg: 'bg-primary/10 border-primary/20' },
+          { key: 'card', label: 'Card', icon: '💳', color: 'text-warning', bg: 'bg-warning/10 border-warning/20' },
+          { key: 'emi', label: 'EMI', icon: '📅', color: 'text-destructive', bg: 'bg-destructive/10 border-destructive/20' },
+          { key: 'exchange', label: 'Exchange', icon: '🔄', color: 'text-muted-foreground', bg: 'bg-muted border-muted-foreground/20' },
+        ];
+
+        return (
+          <div className="space-y-6">
+            {/* Date Filters */}
+            <div className="bg-card rounded-xl border p-4 shadow-sm">
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">From Date</label>
+                  <Input type="date" value={colDateFrom} onChange={e => setColDateFrom(e.target.value)} className="h-9 w-40" />
+                </div>
+                <div>
+                  <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">To Date</label>
+                  <Input type="date" value={colDateTo} onChange={e => setColDateTo(e.target.value)} className="h-9 w-40" />
+                </div>
+                <div className="flex gap-2">
+                  {[
+                    { label: 'Today', fn: () => { setColDateFrom(todayIST); setColDateTo(todayIST); } },
+                    { label: 'This Month', fn: () => { const now = new Date(); setColDateFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`); setColDateTo(now.toISOString().slice(0, 10)); } },
+                    { label: 'All', fn: () => { setColDateFrom(''); setColDateTo(''); } },
+                  ].map(p => (
+                    <Button key={p.label} variant="outline" size="sm" className="h-9 text-xs" onClick={p.fn}>{p.label}</Button>
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground font-display">
+                  {colFiltered.length} invoices
+                </span>
+              </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+              <div className="stat-card border-2 border-primary/30 bg-primary/5">
+                <p className="text-[10px] text-muted-foreground uppercase font-display font-bold">Total Collected</p>
+                <p className="font-display text-2xl font-black text-primary">{fmt(totalCollected)}</p>
+                <p className="text-[10px] text-muted-foreground">{colFiltered.length} invoices</p>
+              </div>
+              {methodConfig.map(m => (
+                <div key={m.key} className={`stat-card border ${m.bg}`}>
+                  <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">{m.icon} {m.label}</p>
+                  <p className={`font-display text-xl font-extrabold ${m.color}`}>{fmt((collections as any)[m.key])}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {totalCollected > 0 ? (((collections as any)[m.key] / totalCollected) * 100).toFixed(1) : '0'}%
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Percentage Bar */}
+            {totalCollected > 0 && (
+              <div className="bg-card rounded-xl border p-4 shadow-sm">
+                <h3 className="font-display font-bold text-sm mb-3">Collection Distribution</h3>
+                <div className="flex rounded-full h-6 overflow-hidden">
+                  {methodConfig.map(m => {
+                    const pct = ((collections as any)[m.key] / totalCollected) * 100;
+                    if (pct < 0.5) return null;
+                    return (
+                      <div
+                        key={m.key}
+                        className={`flex items-center justify-center text-[8px] font-bold text-foreground/80 transition-all`}
+                        style={{ width: `${pct}%`, backgroundColor: m.key === 'cash' ? 'hsl(var(--success))' : m.key === 'upi' ? 'hsl(var(--primary))' : m.key === 'card' ? 'hsl(var(--warning))' : m.key === 'emi' ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))' }}
+                        title={`${m.label}: ${fmt((collections as any)[m.key])} (${pct.toFixed(1)}%)`}
+                      >
+                        {pct > 8 && `${m.label} ${pct.toFixed(0)}%`}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Day-wise Table */}
+            {dailyArr.length > 0 && (
+              <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-secondary/30 flex items-center justify-between">
+                  <h3 className="font-display font-bold text-sm">Day-wise Collection Breakdown</h3>
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => {
+                    const rows = dailyArr.map(([date, d]) => ({
+                      Date: new Date(date).toLocaleDateString('en-IN'),
+                      Invoices: d.count,
+                      Cash: d.cash,
+                      UPI: d.upi,
+                      Card: d.card,
+                      EMI: d.emi,
+                      Exchange: d.exchange,
+                      Total: d.total,
+                    }));
+                    downloadCSV(rows, `collections_${colDateFrom || 'all'}_to_${colDateTo || 'all'}.csv`);
+                    toast.success('Collections CSV downloaded');
+                  }}>
+                    <Download className="w-3 h-3" /> CSV
+                  </Button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-[10px] text-muted-foreground uppercase bg-muted/30">
+                        <th className="text-left py-2.5 px-4">Date</th>
+                        <th className="text-center py-2.5 px-3">Bills</th>
+                        <th className="text-right py-2.5 px-3">💵 Cash</th>
+                        <th className="text-right py-2.5 px-3">📱 UPI</th>
+                        <th className="text-right py-2.5 px-3">💳 Card</th>
+                        <th className="text-right py-2.5 px-3">📅 EMI</th>
+                        <th className="text-right py-2.5 px-3">🔄 Exchange</th>
+                        <th className="text-right py-2.5 px-4 font-bold">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dailyArr.map(([date, d]) => (
+                        <tr key={date} className="border-b border-border/30 hover:bg-accent/20 transition-colors">
+                          <td className="py-2.5 px-4 font-display font-semibold">{new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', weekday: 'short' })}</td>
+                          <td className="py-2.5 px-3 text-center text-muted-foreground">{d.count}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-success">{d.cash > 0 ? fmt(d.cash) : '—'}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-primary">{d.upi > 0 ? fmt(d.upi) : '—'}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-warning">{d.card > 0 ? fmt(d.card) : '—'}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-destructive">{d.emi > 0 ? fmt(d.emi) : '—'}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{d.exchange > 0 ? fmt(d.exchange) : '—'}</td>
+                          <td className="py-2.5 px-4 text-right font-display font-bold">{fmt(d.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 font-bold bg-muted/20">
+                        <td className="py-2.5 px-4 font-display">Grand Total</td>
+                        <td className="py-2.5 px-3 text-center">{colFiltered.length}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-success">{fmt(collections.cash)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-primary">{fmt(collections.upi)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-warning">{fmt(collections.card)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-destructive">{fmt(collections.emi)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{fmt(collections.exchange)}</td>
+                        <td className="py-2.5 px-4 text-right font-display text-primary">{fmt(totalCollected)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {colFiltered.length === 0 && (
+              <div className="bg-card rounded-xl border p-8 text-center text-muted-foreground">
+                No invoices found for the selected date range
               </div>
             )}
           </div>
