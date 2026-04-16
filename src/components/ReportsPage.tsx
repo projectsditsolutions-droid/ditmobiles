@@ -4,7 +4,7 @@ import { useShop } from '@/contexts/ShopContext';
 import {
   TrendingUp, Package, FileText, Calendar, DollarSign, Eye, Printer,
   IndianRupee, ShoppingBag, Download, Trash2, CheckSquare, Filter, X,
-  ChevronDown, ChevronUp, Search, FileDown, Edit2, BarChart3
+  ChevronDown, ChevronUp, Search, FileDown, Edit2, BarChart3, Wallet
 } from 'lucide-react';
 import { BrandAnalytics } from './BrandAnalytics';
 import { Button } from '@/components/ui/button';
