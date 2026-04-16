@@ -1550,7 +1550,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                           <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">GST</div>
                           <div style="font-size:16px;font-weight:900;color:#1e40af">₹${grandGST.toLocaleString('en-IN')}</div>
                         </div>
-                      </div>
+                        <div style="flex:1;min-width:120px;background:${grandNet >= 0 ? '#f0fdf4' : '#fef2f2'};border:2px solid ${grandNet >= 0 ? '#16a34a' : '#dc2626'};border-radius:8px;padding:8px 12px;text-align:center">
+                          <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">Net Profit (After GST)</div>
+                          <div style="font-size:18px;font-weight:900;color:${grandNet >= 0 ? '#166534' : '#991b1b'}">₹${grandNet.toLocaleString('en-IN')}</div>
+                          <div style="font-size:9px;color:#999">${grandRevenue > 0 ? (grandNet / grandRevenue * 100).toFixed(1) : '0'}% margin</div>
+                        </div>
                       <table style="width:100%;border-collapse:collapse;font-size:10px">
                         <thead>
                           <tr style="background:#e2e8f0;font-weight:700;font-size:9px;text-transform:uppercase">
