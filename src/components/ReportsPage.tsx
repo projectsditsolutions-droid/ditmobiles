@@ -1630,8 +1630,6 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
 
       {tab === 'collections' && (() => {
         const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-        const [colDateFrom, setColDateFrom] = React.useState('');
-        const [colDateTo, setColDateTo] = React.useState('');
 
         const colFiltered = invoices.filter(inv => {
           if (colDateFrom && inv.date < colDateFrom) return false;
