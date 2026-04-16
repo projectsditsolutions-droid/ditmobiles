@@ -1752,7 +1752,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       <div
                         key={m.key}
                         className={`flex items-center justify-center text-[8px] font-bold text-foreground/80 transition-all`}
-                        style={{ width: `${pct}%`, backgroundColor: m.key === 'cash' ? 'hsl(var(--success))' : m.key === 'upi' ? 'hsl(var(--primary))' : m.key === 'card' ? 'hsl(var(--warning))' : m.key === 'emi' ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))' }}
+                        style={{ width: `${pct}%`, backgroundColor: m.key === 'cash' ? 'hsl(var(--success))' : m.key === 'upi' ? 'hsl(var(--primary))' : m.key === 'card' ? 'hsl(var(--warning))' : m.key === 'emi' ? 'hsl(var(--destructive))' : m.key === 'pending' ? '#f97316' : 'hsl(var(--muted-foreground))' }}
                         title={`${m.label}: ${fmt((collections as any)[m.key])} (${pct.toFixed(1)}%)`}
                       >
                         {pct > 8 && `${m.label} ${pct.toFixed(0)}%`}
