@@ -210,6 +210,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
   const [exchangeNotes, setExchangeNotes] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [amountReceived, setAmountReceived] = useState<number | ''>('');
   const [customerPending, setCustomerPending] = useState(0);
 
   // Lookup customer pending amount when phone changes
