@@ -38,6 +38,7 @@ interface Props {
   onExchangeNotesChange: (v: string) => void;
   paymentNotes: string;
   onPaymentNotesChange: (v: string) => void;
+  customerPending: number;
   onCompleteSale: () => void;
   onPreviewBill?: () => void;
   discountEnabled: boolean;
@@ -54,6 +55,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   onMixedPaymentChange, onWarrantyMobileChange, onWarrantyAccessoriesChange, onEmiLendingPartnerChange,
   exchangeNotes, onExchangeNotesChange,
   paymentNotes, onPaymentNotesChange,
+  customerPending,
   onCompleteSale, onPreviewBill, discountEnabled, saving,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -70,7 +72,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   const mixedTotal = mixedPayment.cash + mixedPayment.upi + mixedPayment.card + mixedPayment.emi + mixedPayment.exchange;
   const mixedDiff = grandTotal - mixedTotal;
   const mixedValid = paymentMethod !== 'mixed' || Math.abs(mixedDiff) < 0.01;
-
+  const hasPending = customerPending > 0;
   return (
     <div className="w-full md:w-[360px] bg-checkout text-checkout-foreground flex flex-col border-l border-checkout-foreground/10 max-h-screen overflow-hidden">
       {/* ── Customer Details ───────────────────────────────────────── */}
@@ -153,6 +155,19 @@ export const CheckoutPanel: React.FC<Props> = ({
                   className="checkout-input w-full h-10 pl-10 pr-10 rounded-xl text-sm font-mono tracking-wider"
                 />
                 <Hash className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-checkout-foreground/40" />
+              </div>
+            </div>
+          )}
+
+          {/* Pending Amount Warning */}
+          {hasPending && (
+            <div className="mt-2 p-2.5 rounded-xl bg-destructive/10 border border-destructive/30">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-display font-bold text-destructive">Pending Amount: {fmt(customerPending)}</p>
+                  <p className="text-[10px] text-destructive/70">Clear pending to enable billing</p>
+                </div>
               </div>
             </div>
           )}
@@ -403,7 +418,7 @@ export const CheckoutPanel: React.FC<Props> = ({
             variant="outline"
             className="flex-1 h-12 font-display font-bold text-base"
             onClick={onPreviewBill}
-            disabled={items.length === 0 || !mixedValid}
+            disabled={items.length === 0 || !mixedValid || hasPending}
           >
             <Eye className="w-5 h-5 mr-2" />
             Preview
@@ -412,10 +427,10 @@ export const CheckoutPanel: React.FC<Props> = ({
             size="lg"
             className="flex-1 h-12 bg-success hover:bg-success/90 text-success-foreground font-display font-bold text-base shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
             onClick={onCompleteSale}
-            disabled={items.length === 0 || !mixedValid || saving}
+            disabled={items.length === 0 || !mixedValid || saving || hasPending}
           >
             <Printer className="w-5 h-5 mr-2" />
-            Print & Save
+            {hasPending ? 'Pending Due' : 'Print & Save'}
             <span className="text-[10px] opacity-70 ml-2 px-1.5 py-0.5 bg-success-foreground/20 rounded">F9</span>
           </Button>
         </div>

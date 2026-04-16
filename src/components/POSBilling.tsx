@@ -210,6 +210,26 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   const [emiLendingPartner, setEmiLendingPartner] = useState('');
   const [exchangeNotes, setExchangeNotes] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [customerPending, setCustomerPending] = useState(0);
+
+  // Lookup customer pending amount when phone changes
+  useEffect(() => {
+    const lookup = async () => {
+      if (!activeShopId || customerPhone.length < 10) {
+        setCustomerPending(0);
+        return;
+      }
+      const { data } = await supabase
+        .from('customers')
+        .select('pending_amount')
+        .eq('shop_id', activeShopId)
+        .eq('phone', customerPhone)
+        .maybeSingle();
+      setCustomerPending(data ? Number(data.pending_amount) || 0 : 0);
+    };
+    lookup();
+  }, [customerPhone, activeShopId]);
+
   // Helper: get current IST datetime string for datetime-local input using Intl (robust)
   const fmtIST = (d = new Date()) => {
     const p = new Intl.DateTimeFormat('sv-SE', {
@@ -1279,6 +1299,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         onExchangeNotesChange={setExchangeNotes}
         paymentNotes={paymentNotes}
         onPaymentNotesChange={setPaymentNotes}
+        customerPending={customerPending}
         onCompleteSale={handleCompleteSale}
         onPreviewBill={handlePreviewBill}
         discountEnabled={settings?.discount_enabled ?? true}
