@@ -25,7 +25,7 @@ interface ReportsPageProps {
 export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
   const { printContent, clearContent } = usePrint();
-  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'brands' | 'sales_report' | 'generate' | 'collections'>('daily');
+  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'brands' | 'sales_report' | 'generate'>('daily');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stockData, setStockData] = useState<any[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
@@ -48,8 +48,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const [srDateTo, setSrDateTo] = useState('');
   const [srSearch, setSrSearch] = useState('');
   const [srLoaded, setSrLoaded] = useState(false);
-  const [colDateFrom, setColDateFrom] = useState('');
-  const [colDateTo, setColDateTo] = useState('');
+  const [srSubTab, setSrSubTab] = useState<'profit' | 'collections'>('profit');
   useEffect(() => {
     if (!activeShopId && !isAllShops) return;
     const fetchData = async () => {
@@ -291,8 +290,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const tabs = [
     { key: 'daily', label: 'Sales', icon: TrendingUp },
     { key: 'monthly', label: 'Monthly', icon: Calendar },
-    { key: 'sales_report', label: 'Sales Report', icon: FileText },
-    { key: 'collections', label: 'Collections', icon: IndianRupee },
+    { key: 'sales_report', label: 'Sales & Collections', icon: FileText },
     { key: 'stock', label: 'Stock', icon: Package },
     { key: 'gst', label: 'GST', icon: FileText },
     { key: 'profit', label: 'Profit', icon: DollarSign },
