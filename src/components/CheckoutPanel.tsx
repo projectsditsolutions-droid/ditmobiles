@@ -39,6 +39,8 @@ interface Props {
   paymentNotes: string;
   onPaymentNotesChange: (v: string) => void;
   customerPending: number;
+  amountReceived: number | '';
+  onAmountReceivedChange: (v: number | '') => void;
   onCompleteSale: () => void;
   onPreviewBill?: () => void;
   discountEnabled: boolean;
@@ -56,6 +58,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   exchangeNotes, onExchangeNotesChange,
   paymentNotes, onPaymentNotesChange,
   customerPending,
+  amountReceived, onAmountReceivedChange,
   onCompleteSale, onPreviewBill, discountEnabled, saving,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -73,6 +76,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   const mixedDiff = grandTotal - mixedTotal;
   const mixedValid = paymentMethod !== 'mixed' || Math.abs(mixedDiff) < 0.01;
   const hasPending = customerPending > 0;
+  const balancePending = (amountReceived !== '' && amountReceived < grandTotal) ? (grandTotal - amountReceived) : 0;
   return (
     <div className="w-full md:w-[360px] bg-checkout text-checkout-foreground flex flex-col border-l border-checkout-foreground/10 max-h-screen overflow-hidden">
       {/* ── Customer Details ───────────────────────────────────────── */}
@@ -406,12 +410,41 @@ export const CheckoutPanel: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* ── Grand Total + Complete ────────────────────────────────── */}
+      {/* ── Grand Total + Received + Complete ────────────────────── */}
       <div className="p-4 border-t border-checkout-foreground/8 bg-checkout-foreground/5 flex-shrink-0">
-        <div className="flex justify-between items-baseline mb-4">
+        <div className="flex justify-between items-baseline mb-3">
           <span className="text-checkout-foreground/50 font-display text-xs uppercase tracking-wider">Grand Total</span>
           <span className="font-display text-3xl font-extrabold tracking-tight">{fmt(grandTotal)}</span>
         </div>
+
+        {/* Amount Received */}
+        {items.length > 0 && (
+          <div className="mb-3 p-3 rounded-xl bg-checkout-foreground/5 border border-checkout-foreground/8 space-y-2">
+            <label className="text-[10px] uppercase tracking-wider text-checkout-foreground/40 font-display font-semibold block">💰 Amount Received</label>
+            <input
+              type="number"
+              value={amountReceived}
+              onChange={e => {
+                const v = e.target.value;
+                onAmountReceivedChange(v === '' ? '' : Number(v));
+              }}
+              placeholder={fmt(grandTotal)}
+              className="checkout-input w-full h-10 px-3 rounded-xl text-sm font-display font-bold text-center"
+            />
+            {balancePending > 0 && (
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="flex items-center gap-1 text-warning">
+                  <AlertCircle className="w-3 h-3" />
+                  Pending will be added
+                </span>
+                <span className="font-display font-bold text-warning">{fmt(balancePending)}</span>
+              </div>
+            )}
+            {amountReceived !== '' && amountReceived >= grandTotal && (
+              <div className="text-xs text-success font-display font-semibold text-center">✓ Full payment received</div>
+            )}
+          </div>
+        )}
         <div className="flex gap-2">
           <Button
             size="lg"
