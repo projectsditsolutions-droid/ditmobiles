@@ -25,7 +25,7 @@ interface ReportsPageProps {
 export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const { activeShopId, isAllShops, allShopIds } = useShop();
   const { printContent, clearContent } = usePrint();
-  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'brands' | 'sales_report' | 'generate' | 'collections'>('daily');
+  const [tab, setTab] = useState<'daily' | 'monthly' | 'stock' | 'gst' | 'profit' | 'brands' | 'sales_report' | 'generate'>('daily');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stockData, setStockData] = useState<any[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
@@ -48,8 +48,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const [srDateTo, setSrDateTo] = useState('');
   const [srSearch, setSrSearch] = useState('');
   const [srLoaded, setSrLoaded] = useState(false);
-  const [colDateFrom, setColDateFrom] = useState('');
-  const [colDateTo, setColDateTo] = useState('');
+  const [srSubTab, setSrSubTab] = useState<'profit' | 'collections'>('profit');
   useEffect(() => {
     if (!activeShopId && !isAllShops) return;
     const fetchData = async () => {
@@ -291,8 +290,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
   const tabs = [
     { key: 'daily', label: 'Sales', icon: TrendingUp },
     { key: 'monthly', label: 'Monthly', icon: Calendar },
-    { key: 'sales_report', label: 'Sales Report', icon: FileText },
-    { key: 'collections', label: 'Collections', icon: IndianRupee },
+    { key: 'sales_report', label: 'Sales & Collections', icon: FileText },
     { key: 'stock', label: 'Stock', icon: Package },
     { key: 'gst', label: 'GST', icon: FileText },
     { key: 'profit', label: 'Profit', icon: DollarSign },
@@ -1337,6 +1335,64 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
         const grandGST = searchFiltered.reduce((s: number, r: any) => s + r.gst, 0);
         const grandNet = searchFiltered.reduce((s: number, r: any) => s + r.netProfit, 0);
 
+        // Collections calculations using same date filters
+        const colFiltered = invoices.filter(inv => {
+          if (srDateFrom && inv.date < srDateFrom) return false;
+          if (srDateTo && inv.date > srDateTo + 'T23:59:59') return false;
+          return true;
+        });
+        const collections = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0, pending: 0 };
+        colFiltered.forEach(inv => {
+          const total = Number(inv.grand_total);
+          if (inv.payment_method === 'mixed' && inv.payment_details) {
+            const pd = inv.payment_details as Record<string, number>;
+            let paidSum = 0;
+            Object.entries(pd).forEach(([k, v]) => {
+              const val = Number(v) || 0;
+              paidSum += val;
+              if (k in collections && k !== 'pending') (collections as any)[k] += val;
+            });
+            const shortfall = total - paidSum;
+            if (shortfall > 0.01) collections.pending += shortfall;
+          } else if (inv.payment_method in collections) {
+            (collections as any)[inv.payment_method] += total;
+          }
+        });
+        const totalCollected = collections.cash + collections.upi + collections.card + collections.emi + collections.exchange;
+
+        const dailyCollections: Record<string, { cash: number; upi: number; card: number; emi: number; exchange: number; pending: number; total: number; count: number }> = {};
+        colFiltered.forEach(inv => {
+          const day = new Date(inv.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+          if (!dailyCollections[day]) dailyCollections[day] = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0, pending: 0, total: 0, count: 0 };
+          const entry = dailyCollections[day];
+          entry.count++;
+          const total = Number(inv.grand_total);
+          entry.total += total;
+          if (inv.payment_method === 'mixed' && inv.payment_details) {
+            const pd = inv.payment_details as Record<string, number>;
+            let paidSum = 0;
+            Object.entries(pd).forEach(([k, v]) => {
+              const val = Number(v) || 0;
+              paidSum += val;
+              if (k in entry && k !== 'pending' && k !== 'total' && k !== 'count') (entry as any)[k] += val;
+            });
+            const shortfall = total - paidSum;
+            if (shortfall > 0.01) entry.pending += shortfall;
+          } else if (inv.payment_method in entry && inv.payment_method !== 'pending') {
+            (entry as any)[inv.payment_method] += total;
+          }
+        });
+        const dailyArr = Object.entries(dailyCollections).sort(([a], [b]) => b.localeCompare(a));
+
+        const methodConfig = [
+          { key: 'cash', label: 'Cash', icon: '💵', color: 'text-success', bg: 'bg-success/10 border-success/20' },
+          { key: 'upi', label: 'UPI', icon: '📱', color: 'text-primary', bg: 'bg-primary/10 border-primary/20' },
+          { key: 'card', label: 'Card', icon: '💳', color: 'text-warning', bg: 'bg-warning/10 border-warning/20' },
+          { key: 'emi', label: 'EMI', icon: '📅', color: 'text-destructive', bg: 'bg-destructive/10 border-destructive/20' },
+          { key: 'exchange', label: 'Exchange', icon: '🔄', color: 'text-muted-foreground', bg: 'bg-muted border-muted-foreground/20' },
+          { key: 'pending', label: 'Pending', icon: '⏳', color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' },
+        ];
+
         return (
           <div className="space-y-4">
             {/* Filters */}
@@ -1395,7 +1451,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                     downloadCSV(rows, `sales_profit_report_${srDateFrom || 'all'}_to_${srDateTo || 'all'}.csv`);
                     toast.success(`Downloaded ${rows.length} rows`);
                   }}>
-                    <Download className="w-3.5 h-3.5" /> Download CSV
+                    <Download className="w-3.5 h-3.5" /> Sales CSV
                   </Button>
                 )}
                 {srLoaded && searchFiltered.length > 0 && (
@@ -1486,296 +1542,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       clearContent();
                     }, 200);
                   }}>
-                    <FileDown className="w-3.5 h-3.5" /> Download PDF
+                    <FileDown className="w-3.5 h-3.5" /> Sales PDF
                   </Button>
                 )}
-              </div>
-              {srLoaded && (
-                <div className="mt-3">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input placeholder="Search invoice, customer, product, IMEI…" value={srSearch} onChange={e => setSrSearch(e.target.value)} className="pl-9 h-9 text-sm" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Summary Cards */}
-            {srLoaded && (
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <div className="stat-card">
-                  <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Revenue</p>
-                  <p className="font-display text-xl font-extrabold text-primary">{fmt(grandRevenue)}</p>
-                  <p className="text-[10px] text-muted-foreground">{searchFiltered.length} invoices</p>
-                </div>
-                <div className="stat-card">
-                  <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Cost of Goods</p>
-                  <p className="font-display text-xl font-extrabold text-destructive">{fmt(grandCost)}</p>
-                </div>
-                <div className="stat-card">
-                  <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Gross Profit</p>
-                  <p className={`font-display text-xl font-extrabold ${grandProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(grandProfit)}</p>
-                </div>
-                <div className="stat-card">
-                  <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">GST Liability</p>
-                  <p className="font-display text-xl font-extrabold text-warning">{fmt(grandGST)}</p>
-                </div>
-                <div className={`stat-card border-2 ${grandNet >= 0 ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
-                  <p className="text-[10px] text-muted-foreground uppercase font-display font-bold">Net Profit</p>
-                  <p className={`font-display text-2xl font-black ${grandNet >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(grandNet)}</p>
-                  <p className="text-[10px] text-muted-foreground">{grandRevenue > 0 ? ((grandNet / grandRevenue) * 100).toFixed(1) : '0'}% margin</p>
-                </div>
-              </div>
-            )}
-
-            {/* Per-invoice breakdown */}
-            {srLoaded && searchFiltered.length > 0 && (
-              <div className="space-y-3">
-                {searchFiltered.map((inv: any) => (
-                  <div key={inv.id} className="bg-card rounded-xl border shadow-sm overflow-hidden">
-                    {/* Invoice header */}
-                    <div className="px-4 py-3 bg-secondary/30 flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-3">
-                        <span className="font-display font-bold text-primary text-sm">{inv.invoice_number}</span>
-                        <span className="text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold ${inv.is_gst_bill ? 'bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
-                          {inv.is_gst_bill ? 'GST' : 'Non-GST'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs flex-wrap">
-                        <span className="text-muted-foreground">{inv.customer_name}{inv.customer_phone ? ` • ${inv.customer_phone}` : ''}</span>
-                        <span className="font-display font-bold capitalize px-2 py-0.5 rounded-full bg-accent text-accent-foreground">{inv.payment_method}</span>
-                        {inv.payment_method === 'mixed' && inv.payment_details && (() => {
-                          const pd = inv.payment_details as Record<string, number>;
-                          return (
-                            <div className="flex flex-wrap gap-1">
-                              {Object.entries(pd).filter(([, v]) => Number(v) > 0).map(([k, v]) => (
-                                <span key={k} className="px-1.5 py-0.5 rounded bg-secondary text-[9px] font-display font-bold capitalize">
-                                  {k}: ₹{Number(v).toLocaleString('en-IN')}
-                                </span>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                        {(inv as any).payment_notes && (
-                          <span className="text-muted-foreground italic">({(inv as any).payment_notes})</span>
-                        )}
-                      </div>
-                    </div>
-                    {/* Items table */}
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="text-[10px] text-muted-foreground uppercase border-b bg-muted/30">
-                          <th className="text-left px-4 py-2">Product</th>
-                          <th className="text-left px-3 py-2">IMEI</th>
-                          <th className="text-right px-3 py-2">Purchase</th>
-                          <th className="text-right px-3 py-2">Sale Price</th>
-                          <th className="text-right px-3 py-2">Discount</th>
-                          <th className="text-right px-3 py-2">Item Total</th>
-                          <th className="text-right px-4 py-2">Profit</th>
-                          <th className="text-right px-3 py-2">Margin</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {inv.itemDetails.map((item: any, idx: number) => (
-                          <tr key={idx} className="border-b border-border/30 hover:bg-accent/20">
-                            <td className="px-4 py-2 font-display font-medium">{item.productName}</td>
-                            <td className="px-3 py-2 font-mono text-muted-foreground">{item.imei || '—'}</td>
-                            <td className="px-3 py-2 text-right text-muted-foreground">{fmt(item.purchasePrice)}</td>
-                            <td className="px-3 py-2 text-right">{fmt(item.salePrice)}</td>
-                            <td className="px-3 py-2 text-right text-warning">{item.discount > 0 ? `-${fmt(item.discount)}` : '—'}</td>
-                            <td className="px-3 py-2 text-right font-display font-semibold">{fmt(item.itemTotal)}</td>
-                            <td className={`px-4 py-2 text-right font-display font-bold ${item.profit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(item.profit)}</td>
-                            <td className="px-3 py-2 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${item.margin >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
-                                {item.margin.toFixed(1)}%
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t-2 bg-muted/20">
-                          <td colSpan={2} className="px-4 py-2 font-display font-bold text-xs">Invoice Summary</td>
-                          <td className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground">{fmt(inv.totalCost)}</td>
-                          <td className="px-3 py-2"></td>
-                          <td className="px-3 py-2"></td>
-                          <td className="px-3 py-2 text-right text-xs font-bold">{fmt(inv.totalRevenue)}</td>
-                          <td className={`px-4 py-2 text-right text-xs font-black ${inv.totalProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(inv.totalProfit)}</td>
-                          <td className="px-3 py-2 text-right text-xs">
-                            {inv.gst > 0 && <span className="text-warning text-[9px]">GST: {fmt(inv.gst)}</span>}
-                          </td>
-                        </tr>
-                        {inv.gst > 0 && (
-                          <tr className="bg-muted/10">
-                            <td colSpan={6} className="px-4 py-1.5 text-right text-[10px] text-muted-foreground font-display font-semibold">Net Profit (after GST)</td>
-                            <td className={`px-4 py-1.5 text-right text-xs font-black ${inv.netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(inv.netProfit)}</td>
-                            <td></td>
-                          </tr>
-                        )}
-                      </tfoot>
-                    </table>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {srLoaded && searchFiltered.length === 0 && (
-              <div className="bg-card rounded-xl border p-8 text-center text-muted-foreground">
-                {srSearch ? `No results for "${srSearch}"` : 'No invoices found for the selected date range'}
-              </div>
-            )}
-
-            {!srLoaded && (
-              <div className="bg-card rounded-xl border p-8 text-center text-muted-foreground">
-                Select a date range and click <strong>Load Report</strong> to view detailed profit breakdown per invoice
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {tab === 'collections' && (() => {
-        const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-
-        const colFiltered = invoices.filter(inv => {
-          if (colDateFrom && inv.date < colDateFrom) return false;
-          if (colDateTo && inv.date > colDateTo + 'T23:59:59') return false;
-          return true;
-        });
-
-        // Calculate actual cash/upi/card/emi/exchange collected across all invoices
-        // For mixed payments, break down into individual methods
-        const collections = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0, pending: 0 };
-        colFiltered.forEach(inv => {
-          const total = Number(inv.grand_total);
-          if (inv.payment_method === 'mixed' && inv.payment_details) {
-            const pd = inv.payment_details as Record<string, number>;
-            let paidSum = 0;
-            Object.entries(pd).forEach(([k, v]) => {
-              const val = Number(v) || 0;
-              paidSum += val;
-              if (k in collections && k !== 'pending') (collections as any)[k] += val;
-            });
-            const shortfall = total - paidSum;
-            if (shortfall > 0.01) collections.pending += shortfall;
-          } else if (inv.payment_method in collections) {
-            (collections as any)[inv.payment_method] += total;
-          }
-        });
-        const totalCollected = collections.cash + collections.upi + collections.card + collections.emi + collections.exchange;
-        const totalRevenue = totalCollected + collections.pending;
-
-        // Day-wise breakdown
-        const dailyCollections: Record<string, { cash: number; upi: number; card: number; emi: number; exchange: number; pending: number; total: number; count: number }> = {};
-        colFiltered.forEach(inv => {
-          const day = new Date(inv.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-          if (!dailyCollections[day]) dailyCollections[day] = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0, pending: 0, total: 0, count: 0 };
-          const entry = dailyCollections[day];
-          entry.count++;
-          const total = Number(inv.grand_total);
-          entry.total += total;
-          if (inv.payment_method === 'mixed' && inv.payment_details) {
-            const pd = inv.payment_details as Record<string, number>;
-            let paidSum = 0;
-            Object.entries(pd).forEach(([k, v]) => {
-              const val = Number(v) || 0;
-              paidSum += val;
-              if (k in entry && k !== 'pending' && k !== 'total' && k !== 'count') (entry as any)[k] += val;
-            });
-            const shortfall = total - paidSum;
-            if (shortfall > 0.01) entry.pending += shortfall;
-          } else if (inv.payment_method in entry && inv.payment_method !== 'pending') {
-            (entry as any)[inv.payment_method] += total;
-          }
-        });
-        const dailyArr = Object.entries(dailyCollections).sort(([a], [b]) => b.localeCompare(a));
-
-        const methodConfig = [
-          { key: 'cash', label: 'Cash', icon: '💵', color: 'text-success', bg: 'bg-success/10 border-success/20' },
-          { key: 'upi', label: 'UPI', icon: '📱', color: 'text-primary', bg: 'bg-primary/10 border-primary/20' },
-          { key: 'card', label: 'Card', icon: '💳', color: 'text-warning', bg: 'bg-warning/10 border-warning/20' },
-          { key: 'emi', label: 'EMI', icon: '📅', color: 'text-destructive', bg: 'bg-destructive/10 border-destructive/20' },
-          { key: 'exchange', label: 'Exchange', icon: '🔄', color: 'text-muted-foreground', bg: 'bg-muted border-muted-foreground/20' },
-          { key: 'pending', label: 'Pending', icon: '⏳', color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' },
-        ];
-
-        return (
-          <div className="space-y-6">
-            {/* Date Filters */}
-            <div className="bg-card rounded-xl border p-4 shadow-sm">
-              <div className="flex flex-wrap items-end gap-3">
-                <div>
-                  <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">From Date</label>
-                  <Input type="date" value={colDateFrom} onChange={e => setColDateFrom(e.target.value)} className="h-9 w-40" />
-                </div>
-                <div>
-                  <label className="text-xs font-display font-semibold text-muted-foreground mb-1 block">To Date</label>
-                  <Input type="date" value={colDateTo} onChange={e => setColDateTo(e.target.value)} className="h-9 w-40" />
-                </div>
-                <div className="flex gap-2">
-                  {[
-                    { label: 'Today', fn: () => { setColDateFrom(todayIST); setColDateTo(todayIST); } },
-                    { label: 'This Month', fn: () => { const now = new Date(); setColDateFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`); setColDateTo(now.toISOString().slice(0, 10)); } },
-                    { label: 'All', fn: () => { setColDateFrom(''); setColDateTo(''); } },
-                  ].map(p => (
-                    <Button key={p.label} variant="outline" size="sm" className="h-9 text-xs" onClick={p.fn}>{p.label}</Button>
-                  ))}
-                </div>
-                <span className="text-xs text-muted-foreground font-display">
-                  {colFiltered.length} invoices
-                </span>
-              </div>
-            </div>
-
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
-              <div className="stat-card border-2 border-primary/30 bg-primary/5">
-                <p className="text-[10px] text-muted-foreground uppercase font-display font-bold">Total Collected</p>
-                <p className="font-display text-2xl font-black text-primary">{fmt(totalCollected)}</p>
-                <p className="text-[10px] text-muted-foreground">{colFiltered.length} invoices</p>
-              </div>
-              {methodConfig.map(m => (
-                <div key={m.key} className={`stat-card border ${m.bg}`}>
-                  <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">{m.icon} {m.label}</p>
-                  <p className={`font-display text-xl font-extrabold ${m.color}`}>{fmt((collections as any)[m.key])}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {totalCollected > 0 ? (((collections as any)[m.key] / totalCollected) * 100).toFixed(1) : '0'}%
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* Percentage Bar */}
-            {totalCollected > 0 && (
-              <div className="bg-card rounded-xl border p-4 shadow-sm">
-                <h3 className="font-display font-bold text-sm mb-3">Collection Distribution</h3>
-                <div className="flex rounded-full h-6 overflow-hidden">
-                  {methodConfig.map(m => {
-                    const base = totalCollected + collections.pending;
-                    const pct = base > 0 ? ((collections as any)[m.key] / base) * 100 : 0;
-                    if (pct < 0.5) return null;
-                    return (
-                      <div
-                        key={m.key}
-                        className={`flex items-center justify-center text-[8px] font-bold text-foreground/80 transition-all`}
-                        style={{ width: `${pct}%`, backgroundColor: m.key === 'cash' ? 'hsl(var(--success))' : m.key === 'upi' ? 'hsl(var(--primary))' : m.key === 'card' ? 'hsl(var(--warning))' : m.key === 'emi' ? 'hsl(var(--destructive))' : m.key === 'pending' ? '#f97316' : 'hsl(var(--muted-foreground))' }}
-                        title={`${m.label}: ${fmt((collections as any)[m.key])} (${pct.toFixed(1)}%)`}
-                      >
-                        {pct > 8 && `${m.label} ${pct.toFixed(0)}%`}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Day-wise Table */}
-            {dailyArr.length > 0 && (
-              <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
-                <div className="px-4 py-3 bg-secondary/30 flex items-center justify-between">
-                  <h3 className="font-display font-bold text-sm">Day-wise Collection Breakdown</h3>
-                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => {
+                {colFiltered.length > 0 && (
+                  <Button variant="outline" className="h-9 gap-1.5" onClick={() => {
                     const rows = dailyArr.map(([date, d]) => ({
                       Date: new Date(date).toLocaleDateString('en-IN'),
                       Invoices: d.count,
@@ -1787,64 +1558,278 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       Pending: d.pending,
                       Total: d.total,
                     }));
-                    downloadCSV(rows, `collections_${colDateFrom || 'all'}_to_${colDateTo || 'all'}.csv`);
+                    downloadCSV(rows, `collections_${srDateFrom || 'all'}_to_${srDateTo || 'all'}.csv`);
                     toast.success('Collections CSV downloaded');
                   }}>
-                    <Download className="w-3 h-3" /> CSV
+                    <Download className="w-3.5 h-3.5" /> Collections CSV
                   </Button>
+                )}
+              </div>
+              {srLoaded && (
+                <div className="relative mt-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input placeholder="Search invoice, customer, product, IMEI…" value={srSearch} onChange={e => setSrSearch(e.target.value)} className="pl-9 h-9 text-sm" />
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-[10px] text-muted-foreground uppercase bg-muted/30">
-                        <th className="text-left py-2.5 px-4">Date</th>
-                        <th className="text-center py-2.5 px-3">Bills</th>
-                        <th className="text-right py-2.5 px-3">💵 Cash</th>
-                        <th className="text-right py-2.5 px-3">📱 UPI</th>
-                        <th className="text-right py-2.5 px-3">💳 Card</th>
-                        <th className="text-right py-2.5 px-3">📅 EMI</th>
-                        <th className="text-right py-2.5 px-3">🔄 Exchange</th>
-                        <th className="text-right py-2.5 px-3">⏳ Pending</th>
-                        <th className="text-right py-2.5 px-4 font-bold">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dailyArr.map(([date, d]) => (
-                        <tr key={date} className="border-b border-border/30 hover:bg-accent/20 transition-colors">
-                          <td className="py-2.5 px-4 font-display font-semibold">{new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', weekday: 'short' })}</td>
-                          <td className="py-2.5 px-3 text-center text-muted-foreground">{d.count}</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-success">{d.cash > 0 ? fmt(d.cash) : '—'}</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-primary">{d.upi > 0 ? fmt(d.upi) : '—'}</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-warning">{d.card > 0 ? fmt(d.card) : '—'}</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-destructive">{d.emi > 0 ? fmt(d.emi) : '—'}</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{d.exchange > 0 ? fmt(d.exchange) : '—'}</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-orange-500">{d.pending > 0 ? fmt(d.pending) : '—'}</td>
-                          <td className="py-2.5 px-4 text-right font-display font-bold">{fmt(d.total)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t-2 font-bold bg-muted/20">
-                        <td className="py-2.5 px-4 font-display">Grand Total</td>
-                        <td className="py-2.5 px-3 text-center">{colFiltered.length}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-success">{fmt(collections.cash)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-primary">{fmt(collections.upi)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-warning">{fmt(collections.card)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-destructive">{fmt(collections.emi)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{fmt(collections.exchange)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-orange-500">{fmt(collections.pending)}</td>
-                        <td className="py-2.5 px-4 text-right font-display text-primary">{fmt(totalCollected)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
+              )}
+            </div>
+
+            {/* Sub-tabs: Profit Report / Collections */}
+            <div className="flex bg-secondary rounded-lg p-0.5 w-fit">
+              <button onClick={() => setSrSubTab('profit')} className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-display font-semibold transition-all ${srSubTab === 'profit' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                <TrendingUp className="w-3.5 h-3.5" /> Profit Report
+              </button>
+              <button onClick={() => setSrSubTab('collections')} className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-display font-semibold transition-all ${srSubTab === 'collections' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                <IndianRupee className="w-3.5 h-3.5" /> Collections
+              </button>
+            </div>
+
+            {/* ========== COLLECTIONS SUB-TAB ========== */}
+            {srSubTab === 'collections' && (
+              <div className="space-y-4">
+                {/* Collection Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
+                  <div className="stat-card border-2 border-primary/30 bg-primary/5">
+                    <p className="text-[10px] text-muted-foreground uppercase font-display font-bold">Total Collected</p>
+                    <p className="font-display text-2xl font-black text-primary">{fmt(totalCollected)}</p>
+                    <p className="text-[10px] text-muted-foreground">{colFiltered.length} invoices</p>
+                  </div>
+                  {methodConfig.map(m => (
+                    <div key={m.key} className={`stat-card border ${m.bg}`}>
+                      <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">{m.icon} {m.label}</p>
+                      <p className={`font-display text-xl font-extrabold ${m.color}`}>{fmt((collections as any)[m.key])}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {totalCollected > 0 ? (((collections as any)[m.key] / totalCollected) * 100).toFixed(1) : '0'}%
+                      </p>
+                    </div>
+                  ))}
                 </div>
+
+                {/* Distribution Bar */}
+                {totalCollected > 0 && (
+                  <div className="bg-card rounded-xl border p-4 shadow-sm">
+                    <h3 className="font-display font-bold text-sm mb-3">Collection Distribution</h3>
+                    <div className="flex rounded-full h-6 overflow-hidden">
+                      {methodConfig.map(m => {
+                        const base = totalCollected + collections.pending;
+                        const pct = base > 0 ? ((collections as any)[m.key] / base) * 100 : 0;
+                        if (pct < 0.5) return null;
+                        return (
+                          <div
+                            key={m.key}
+                            className="flex items-center justify-center text-[8px] font-bold text-foreground/80 transition-all"
+                            style={{ width: `${pct}%`, backgroundColor: m.key === 'cash' ? 'hsl(var(--success))' : m.key === 'upi' ? 'hsl(var(--primary))' : m.key === 'card' ? 'hsl(var(--warning))' : m.key === 'emi' ? 'hsl(var(--destructive))' : m.key === 'pending' ? '#f97316' : 'hsl(var(--muted-foreground))' }}
+                            title={`${m.label}: ${fmt((collections as any)[m.key])} (${pct.toFixed(1)}%)`}
+                          >
+                            {pct > 8 && `${m.label} ${pct.toFixed(0)}%`}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Day-wise Collection Table */}
+                {dailyArr.length > 0 && (
+                  <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 bg-secondary/30">
+                      <h3 className="font-display font-bold text-sm">Day-wise Collection Breakdown</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-[10px] text-muted-foreground uppercase bg-muted/30">
+                            <th className="text-left py-2.5 px-4">Date</th>
+                            <th className="text-center py-2.5 px-3">Bills</th>
+                            <th className="text-right py-2.5 px-3">💵 Cash</th>
+                            <th className="text-right py-2.5 px-3">📱 UPI</th>
+                            <th className="text-right py-2.5 px-3">💳 Card</th>
+                            <th className="text-right py-2.5 px-3">📅 EMI</th>
+                            <th className="text-right py-2.5 px-3">🔄 Exchange</th>
+                            <th className="text-right py-2.5 px-3">⏳ Pending</th>
+                            <th className="text-right py-2.5 px-4 font-bold">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dailyArr.map(([date, d]) => (
+                            <tr key={date} className="border-b border-border/30 hover:bg-accent/20 transition-colors">
+                              <td className="py-2.5 px-4 font-display font-semibold">{new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', weekday: 'short' })}</td>
+                              <td className="py-2.5 px-3 text-center text-muted-foreground">{d.count}</td>
+                              <td className="py-2.5 px-3 text-right font-mono text-success">{d.cash > 0 ? fmt(d.cash) : '—'}</td>
+                              <td className="py-2.5 px-3 text-right font-mono text-primary">{d.upi > 0 ? fmt(d.upi) : '—'}</td>
+                              <td className="py-2.5 px-3 text-right font-mono text-warning">{d.card > 0 ? fmt(d.card) : '—'}</td>
+                              <td className="py-2.5 px-3 text-right font-mono text-destructive">{d.emi > 0 ? fmt(d.emi) : '—'}</td>
+                              <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{d.exchange > 0 ? fmt(d.exchange) : '—'}</td>
+                              <td className="py-2.5 px-3 text-right font-mono text-orange-500">{d.pending > 0 ? fmt(d.pending) : '—'}</td>
+                              <td className="py-2.5 px-4 text-right font-display font-bold">{fmt(d.total)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 font-bold bg-muted/20">
+                            <td className="py-2.5 px-4 font-display">Grand Total</td>
+                            <td className="py-2.5 px-3 text-center">{colFiltered.length}</td>
+                            <td className="py-2.5 px-3 text-right font-mono text-success">{fmt(collections.cash)}</td>
+                            <td className="py-2.5 px-3 text-right font-mono text-primary">{fmt(collections.upi)}</td>
+                            <td className="py-2.5 px-3 text-right font-mono text-warning">{fmt(collections.card)}</td>
+                            <td className="py-2.5 px-3 text-right font-mono text-destructive">{fmt(collections.emi)}</td>
+                            <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{fmt(collections.exchange)}</td>
+                            <td className="py-2.5 px-3 text-right font-mono text-orange-500">{fmt(collections.pending)}</td>
+                            <td className="py-2.5 px-4 text-right font-display text-primary">{fmt(totalCollected)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {colFiltered.length === 0 && (
+                  <div className="bg-card rounded-xl border p-8 text-center text-muted-foreground">
+                    No invoices found for the selected date range
+                  </div>
+                )}
               </div>
             )}
 
-            {colFiltered.length === 0 && (
-              <div className="bg-card rounded-xl border p-8 text-center text-muted-foreground">
-                No invoices found for the selected date range
-              </div>
+            {/* ========== PROFIT REPORT SUB-TAB ========== */}
+            {srSubTab === 'profit' && (
+              <>
+                {/* Summary Cards */}
+                {srLoaded && (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div className="stat-card">
+                      <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Revenue</p>
+                      <p className="font-display text-xl font-extrabold text-primary">{fmt(grandRevenue)}</p>
+                      <p className="text-[10px] text-muted-foreground">{searchFiltered.length} invoices</p>
+                    </div>
+                    <div className="stat-card">
+                      <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Cost of Goods</p>
+                      <p className="font-display text-xl font-extrabold text-destructive">{fmt(grandCost)}</p>
+                    </div>
+                    <div className="stat-card">
+                      <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Gross Profit</p>
+                      <p className={`font-display text-xl font-extrabold ${grandProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(grandProfit)}</p>
+                    </div>
+                    <div className="stat-card">
+                      <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">GST Liability</p>
+                      <p className="font-display text-xl font-extrabold text-warning">{fmt(grandGST)}</p>
+                    </div>
+                    <div className={`stat-card border-2 ${grandNet >= 0 ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
+                      <p className="text-[10px] text-muted-foreground uppercase font-display font-bold">Net Profit</p>
+                      <p className={`font-display text-2xl font-black ${grandNet >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(grandNet)}</p>
+                      <p className="text-[10px] text-muted-foreground">{grandRevenue > 0 ? ((grandNet / grandRevenue) * 100).toFixed(1) : '0'}% margin</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Per-invoice breakdown */}
+                {srLoaded && searchFiltered.length > 0 && (
+                  <div className="space-y-3">
+                    {searchFiltered.map((inv: any) => (
+                      <div key={inv.id} className="bg-card rounded-xl border shadow-sm overflow-hidden">
+                        <div className="px-4 py-3 bg-secondary/30 flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-3">
+                            <span className="font-display font-bold text-primary text-sm">{inv.invoice_number}</span>
+                            <span className="text-xs text-muted-foreground">{new Date(inv.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-display font-bold ${inv.is_gst_bill ? 'bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
+                              {inv.is_gst_bill ? 'GST' : 'Non-GST'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs flex-wrap">
+                            <span className="text-muted-foreground">{inv.customer_name}{inv.customer_phone ? ` • ${inv.customer_phone}` : ''}</span>
+                            <span className="font-display font-bold capitalize px-2 py-0.5 rounded-full bg-accent text-accent-foreground">{inv.payment_method}</span>
+                            {inv.payment_method === 'mixed' && inv.payment_details && (() => {
+                              const pd = inv.payment_details as Record<string, number>;
+                              const paidSum = Object.values(pd).reduce((s: number, v: number) => s + (Number(v) || 0), 0);
+                              const pendingAmt = Math.max(0, Number(inv.grand_total) - paidSum);
+                              return (
+                                <div className="flex flex-wrap gap-1">
+                                  {Object.entries(pd).filter(([, v]) => Number(v) > 0).map(([k, v]) => (
+                                    <span key={k} className="px-1.5 py-0.5 rounded bg-secondary text-[9px] font-display font-bold capitalize">
+                                      {k}: ₹{Number(v).toLocaleString('en-IN')}
+                                    </span>
+                                  ))}
+                                  {pendingAmt > 0.01 && (
+                                    <span className="px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-600 text-[9px] font-display font-bold animate-pulse border border-orange-500/30">
+                                      ⚠️ Pending: ₹{pendingAmt.toLocaleString('en-IN')}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                            {(inv as any).payment_notes && (
+                              <span className="text-muted-foreground italic">({(inv as any).payment_notes})</span>
+                            )}
+                          </div>
+                        </div>
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-[10px] text-muted-foreground uppercase border-b bg-muted/30">
+                              <th className="text-left px-4 py-2">Product</th>
+                              <th className="text-left px-3 py-2">IMEI</th>
+                              <th className="text-right px-3 py-2">Purchase</th>
+                              <th className="text-right px-3 py-2">Sale Price</th>
+                              <th className="text-right px-3 py-2">Discount</th>
+                              <th className="text-right px-3 py-2">Item Total</th>
+                              <th className="text-right px-4 py-2">Profit</th>
+                              <th className="text-right px-3 py-2">Margin</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {inv.itemDetails.map((item: any, idx: number) => (
+                              <tr key={idx} className="border-b border-border/30 hover:bg-accent/20">
+                                <td className="px-4 py-2 font-display font-medium">{item.productName}</td>
+                                <td className="px-3 py-2 font-mono text-muted-foreground">{item.imei || '—'}</td>
+                                <td className="px-3 py-2 text-right text-muted-foreground">{fmt(item.purchasePrice)}</td>
+                                <td className="px-3 py-2 text-right">{fmt(item.salePrice)}</td>
+                                <td className="px-3 py-2 text-right text-warning">{item.discount > 0 ? `-${fmt(item.discount)}` : '—'}</td>
+                                <td className="px-3 py-2 text-right font-display font-semibold">{fmt(item.itemTotal)}</td>
+                                <td className={`px-4 py-2 text-right font-display font-bold ${item.profit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(item.profit)}</td>
+                                <td className="px-3 py-2 text-right">
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${item.margin >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                                    {item.margin.toFixed(1)}%
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t-2 bg-muted/20">
+                              <td colSpan={2} className="px-4 py-2 font-display font-bold text-xs">Invoice Summary</td>
+                              <td className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground">{fmt(inv.totalCost)}</td>
+                              <td className="px-3 py-2"></td>
+                              <td className="px-3 py-2"></td>
+                              <td className="px-3 py-2 text-right text-xs font-bold">{fmt(inv.totalRevenue)}</td>
+                              <td className={`px-4 py-2 text-right text-xs font-black ${inv.totalProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(inv.totalProfit)}</td>
+                              <td className="px-3 py-2 text-right text-xs">
+                                {inv.gst > 0 && <span className="text-warning text-[9px]">GST: {fmt(inv.gst)}</span>}
+                              </td>
+                            </tr>
+                            {inv.gst > 0 && (
+                              <tr className="bg-muted/10">
+                                <td colSpan={6} className="px-4 py-1.5 text-right text-[10px] text-muted-foreground font-display font-semibold">Net Profit (after GST)</td>
+                                <td className={`px-4 py-1.5 text-right text-xs font-black ${inv.netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(inv.netProfit)}</td>
+                                <td></td>
+                              </tr>
+                            )}
+                          </tfoot>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {srLoaded && searchFiltered.length === 0 && (
+                  <div className="bg-card rounded-xl border p-8 text-center text-muted-foreground">
+                    {srSearch ? `No results for "${srSearch}"` : 'No invoices found for the selected date range'}
+                  </div>
+                )}
+
+                {!srLoaded && (
+                  <div className="bg-card rounded-xl border p-8 text-center text-muted-foreground">
+                    Select a date range and click <strong>Load Report</strong> to view detailed profit breakdown per invoice
+                  </div>
+                )}
+              </>
             )}
           </div>
         );
