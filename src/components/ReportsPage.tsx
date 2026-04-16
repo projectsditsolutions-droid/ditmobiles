@@ -1639,19 +1639,25 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
 
         // Calculate actual cash/upi/card/emi/exchange collected across all invoices
         // For mixed payments, break down into individual methods
-        const collections = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0 };
+        const collections = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0, pending: 0 };
         colFiltered.forEach(inv => {
           const total = Number(inv.grand_total);
           if (inv.payment_method === 'mixed' && inv.payment_details) {
             const pd = inv.payment_details as Record<string, number>;
+            let paidSum = 0;
             Object.entries(pd).forEach(([k, v]) => {
-              if (k in collections) (collections as any)[k] += Number(v) || 0;
+              const val = Number(v) || 0;
+              paidSum += val;
+              if (k in collections && k !== 'pending') (collections as any)[k] += val;
             });
+            const shortfall = total - paidSum;
+            if (shortfall > 0.01) collections.pending += shortfall;
           } else if (inv.payment_method in collections) {
             (collections as any)[inv.payment_method] += total;
           }
         });
         const totalCollected = collections.cash + collections.upi + collections.card + collections.emi + collections.exchange;
+        const totalRevenue = totalCollected + collections.pending;
 
         // Day-wise breakdown
         const dailyCollections: Record<string, { cash: number; upi: number; card: number; emi: number; exchange: number; total: number; count: number }> = {};
