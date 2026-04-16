@@ -1499,6 +1499,16 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       <td style="padding:8px;text-align:right;font-size:12px">₹${grandRevenue.toLocaleString('en-IN')}</td>
                       <td style="padding:8px;text-align:right;font-size:12px;color:${grandProfit >= 0 ? '#16a34a' : '#dc2626'}">₹${grandProfit.toLocaleString('en-IN')}</td>
                       <td style="padding:8px;text-align:right;font-size:12px">${grandRevenue > 0 ? (grandProfit / grandRevenue * 100).toFixed(1) : '0'}%</td>
+                    </tr>
+                    <tr style="background:#eff6ff;font-weight:700">
+                      <td colspan="4" style="padding:6px 8px;text-align:right;font-size:11px;color:#1e40af">GST Liability</td>
+                      <td colspan="2" style="padding:6px 8px;text-align:right;font-size:11px;color:#1e40af">− ₹${grandGST.toLocaleString('en-IN')}</td>
+                      <td></td>
+                    </tr>
+                    <tr style="background:#f0fdf4;font-weight:900;border-top:2px solid #166534">
+                      <td colspan="4" style="padding:8px;text-align:right;font-size:13px;color:#166534">Net Profit (After GST)</td>
+                      <td colspan="2" style="padding:8px;text-align:right;font-size:14px;color:${grandNet >= 0 ? '#166534' : '#991b1b'}">₹${grandNet.toLocaleString('en-IN')}</td>
+                      <td style="padding:8px;text-align:right;font-size:11px">${grandRevenue > 0 ? (grandNet / grandRevenue * 100).toFixed(1) : '0'}%</td>
                     </tr>`;
 
                     // ===== PAGE 2: Collections Report =====
