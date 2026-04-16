@@ -316,8 +316,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
     if (!hasPaymentDetails && !showLending) return null;
     
     const details = (inv.payment_details || {}) as Record<string, number>;
+    const paidSum = Object.values(details).reduce((s, v) => s + (Number(v) || 0), 0);
+    const pendingAmt = inv.payment_method === 'mixed' ? Math.max(0, Number(inv.grand_total) - paidSum) : 0;
     return (
-      <div className="px-6 py-3 bg-accent/20 border-t text-xs">
+      <div className={`px-6 py-3 border-t text-xs ${pendingAmt > 0.01 ? 'bg-orange-500/10' : 'bg-accent/20'}`}>
         <p className="font-display font-semibold text-foreground mb-1.5">Payment Breakdown:</p>
         <div className="flex flex-wrap gap-2 items-center">
           {Object.entries(details).map(([key, val]) =>
@@ -326,6 +328,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                 {key}: ₹{Number(val).toLocaleString('en-IN')}
               </span>
             ) : null
+          )}
+          {pendingAmt > 0.01 && (
+            <span className="px-2 py-1 rounded-full bg-orange-500/20 text-orange-600 font-display font-bold text-[10px] border border-orange-500/30 animate-pulse">
+              ⚠️ Pending: ₹{pendingAmt.toLocaleString('en-IN')}
+            </span>
           )}
           {showLending && (
             <span className="px-2 py-1 rounded-full bg-warning/10 text-warning font-display font-bold text-[10px]">
