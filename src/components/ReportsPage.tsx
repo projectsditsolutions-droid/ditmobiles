@@ -1776,6 +1776,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       Card: d.card,
                       EMI: d.emi,
                       Exchange: d.exchange,
+                      Pending: d.pending,
                       Total: d.total,
                     }));
                     downloadCSV(rows, `collections_${colDateFrom || 'all'}_to_${colDateTo || 'all'}.csv`);
