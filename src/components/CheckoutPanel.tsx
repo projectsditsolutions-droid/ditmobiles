@@ -74,9 +74,11 @@ export const CheckoutPanel: React.FC<Props> = ({
 
   const mixedTotal = mixedPayment.cash + mixedPayment.upi + mixedPayment.card + mixedPayment.emi + mixedPayment.exchange;
   const mixedDiff = grandTotal - mixedTotal;
-  const mixedValid = paymentMethod !== 'mixed' || Math.abs(mixedDiff) < 0.01;
+  const mixedExcess = mixedTotal > grandTotal + 0.01;
+  const mixedValid = paymentMethod !== 'mixed' || !mixedExcess;
+  const mixedPending = paymentMethod === 'mixed' && mixedDiff > 0.01 ? mixedDiff : 0;
   const hasPending = customerPending > 0;
-  const balancePending = (amountReceived !== '' && amountReceived < grandTotal) ? (grandTotal - amountReceived) : 0;
+  const balancePending = paymentMethod === 'mixed' ? mixedPending : ((amountReceived !== '' && amountReceived < grandTotal) ? (grandTotal - amountReceived) : 0);
   return (
     <div className="w-full md:w-[360px] bg-checkout text-checkout-foreground flex flex-col border-l border-checkout-foreground/10 max-h-screen overflow-hidden">
       {/* ── Customer Details ───────────────────────────────────────── */}
@@ -360,11 +362,12 @@ export const CheckoutPanel: React.FC<Props> = ({
               </div>
             </div>
             <div className={`flex items-center justify-between text-xs pt-1 ${
-              Math.abs(mixedDiff) < 0.01 ? 'text-success' : 'text-destructive'
+              mixedExcess ? 'text-destructive' : Math.abs(mixedDiff) < 0.01 ? 'text-success' : 'text-warning'
             }`}>
               <span className="flex items-center gap-1">
-                {Math.abs(mixedDiff) >= 0.01 && <AlertCircle className="w-3 h-3" />}
-                {Math.abs(mixedDiff) < 0.01 ? '✓ Balanced' : mixedDiff > 0 ? `₹${mixedDiff.toFixed(0)} remaining` : `₹${Math.abs(mixedDiff).toFixed(0)} excess`}
+                {mixedExcess && <><AlertCircle className="w-3 h-3" /> {`₹${Math.abs(mixedDiff).toFixed(0)} excess`}</>}
+                {!mixedExcess && Math.abs(mixedDiff) < 0.01 && '✓ Balanced'}
+                {!mixedExcess && mixedDiff > 0.01 && <><AlertCircle className="w-3 h-3" /> {`₹${mixedDiff.toFixed(0)} pending`}</>}
               </span>
               <span className="font-display font-bold">{fmt(mixedTotal)} / {fmt(grandTotal)}</span>
             </div>
