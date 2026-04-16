@@ -424,6 +424,8 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
   }, [items, customerName, customerPhone, customerGST, billDiscount, billDiscountType, paymentMethod, isGSTBill, gstBearer]);
 
   const scanningImeiRef = useRef<Set<string>>(new Set());
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   const handleIMEIScan = useCallback(async (overrideImei?: string) => {
     const imei = (overrideImei || imeiInput).trim();
