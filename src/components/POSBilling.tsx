@@ -436,7 +436,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     scanningImeiRef.current.add(imei);
 
     try {
-      if (items.some(i => i.imei === imei)) {
+      if (itemsRef.current.some(i => i.imei === imei)) {
         toast.error('This IMEI is already added to the bill');
         setImeiInput('');
         return;
