@@ -1722,7 +1722,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
               <div className="stat-card border-2 border-primary/30 bg-primary/5">
                 <p className="text-[10px] text-muted-foreground uppercase font-display font-bold">Total Collected</p>
                 <p className="font-display text-2xl font-black text-primary">{fmt(totalCollected)}</p>
