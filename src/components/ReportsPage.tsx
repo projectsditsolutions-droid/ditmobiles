@@ -1499,6 +1499,16 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       <td style="padding:8px;text-align:right;font-size:12px">₹${grandRevenue.toLocaleString('en-IN')}</td>
                       <td style="padding:8px;text-align:right;font-size:12px;color:${grandProfit >= 0 ? '#16a34a' : '#dc2626'}">₹${grandProfit.toLocaleString('en-IN')}</td>
                       <td style="padding:8px;text-align:right;font-size:12px">${grandRevenue > 0 ? (grandProfit / grandRevenue * 100).toFixed(1) : '0'}%</td>
+                    </tr>
+                    <tr style="background:#eff6ff;font-weight:700">
+                      <td colspan="4" style="padding:6px 8px;text-align:right;font-size:11px;color:#1e40af">GST Liability</td>
+                      <td colspan="2" style="padding:6px 8px;text-align:right;font-size:11px;color:#1e40af">− ₹${grandGST.toLocaleString('en-IN')}</td>
+                      <td></td>
+                    </tr>
+                    <tr style="background:#f0fdf4;font-weight:900;border-top:2px solid #166534">
+                      <td colspan="4" style="padding:8px;text-align:right;font-size:13px;color:#166534">Net Profit (After GST)</td>
+                      <td colspan="2" style="padding:8px;text-align:right;font-size:14px;color:${grandNet >= 0 ? '#166534' : '#991b1b'}">₹${grandNet.toLocaleString('en-IN')}</td>
+                      <td style="padding:8px;text-align:right;font-size:11px">${grandRevenue > 0 ? (grandNet / grandRevenue * 100).toFixed(1) : '0'}%</td>
                     </tr>`;
 
                     // ===== PAGE 2: Collections Report =====
@@ -1539,6 +1549,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                         <div style="flex:1;min-width:120px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;text-align:center">
                           <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">GST</div>
                           <div style="font-size:16px;font-weight:900;color:#1e40af">₹${grandGST.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div style="flex:1;min-width:120px;background:${grandNet >= 0 ? '#f0fdf4' : '#fef2f2'};border:2px solid ${grandNet >= 0 ? '#16a34a' : '#dc2626'};border-radius:8px;padding:8px 12px;text-align:center">
+                          <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">Net Profit (After GST)</div>
+                          <div style="font-size:18px;font-weight:900;color:${grandNet >= 0 ? '#166534' : '#991b1b'}">₹${grandNet.toLocaleString('en-IN')}</div>
+                          <div style="font-size:9px;color:#999">${grandRevenue > 0 ? (grandNet / grandRevenue * 100).toFixed(1) : '0'}% margin</div>
                         </div>
                       </div>
                       <table style="width:100%;border-collapse:collapse;font-size:10px">
