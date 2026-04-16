@@ -1796,6 +1796,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                         <th className="text-right py-2.5 px-3">💳 Card</th>
                         <th className="text-right py-2.5 px-3">📅 EMI</th>
                         <th className="text-right py-2.5 px-3">🔄 Exchange</th>
+                        <th className="text-right py-2.5 px-3">⏳ Pending</th>
                         <th className="text-right py-2.5 px-4 font-bold">Total</th>
                       </tr>
                     </thead>
@@ -1809,6 +1810,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                           <td className="py-2.5 px-3 text-right font-mono text-warning">{d.card > 0 ? fmt(d.card) : '—'}</td>
                           <td className="py-2.5 px-3 text-right font-mono text-destructive">{d.emi > 0 ? fmt(d.emi) : '—'}</td>
                           <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{d.exchange > 0 ? fmt(d.exchange) : '—'}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-orange-500">{d.pending > 0 ? fmt(d.pending) : '—'}</td>
                           <td className="py-2.5 px-4 text-right font-display font-bold">{fmt(d.total)}</td>
                         </tr>
                       ))}
@@ -1822,6 +1824,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                         <td className="py-2.5 px-3 text-right font-mono text-warning">{fmt(collections.card)}</td>
                         <td className="py-2.5 px-3 text-right font-mono text-destructive">{fmt(collections.emi)}</td>
                         <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{fmt(collections.exchange)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-orange-500">{fmt(collections.pending)}</td>
                         <td className="py-2.5 px-4 text-right font-display text-primary">{fmt(totalCollected)}</td>
                       </tr>
                     </tfoot>
