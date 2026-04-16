@@ -1639,35 +1639,46 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
 
         // Calculate actual cash/upi/card/emi/exchange collected across all invoices
         // For mixed payments, break down into individual methods
-        const collections = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0 };
+        const collections = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0, pending: 0 };
         colFiltered.forEach(inv => {
           const total = Number(inv.grand_total);
           if (inv.payment_method === 'mixed' && inv.payment_details) {
             const pd = inv.payment_details as Record<string, number>;
+            let paidSum = 0;
             Object.entries(pd).forEach(([k, v]) => {
-              if (k in collections) (collections as any)[k] += Number(v) || 0;
+              const val = Number(v) || 0;
+              paidSum += val;
+              if (k in collections && k !== 'pending') (collections as any)[k] += val;
             });
+            const shortfall = total - paidSum;
+            if (shortfall > 0.01) collections.pending += shortfall;
           } else if (inv.payment_method in collections) {
             (collections as any)[inv.payment_method] += total;
           }
         });
         const totalCollected = collections.cash + collections.upi + collections.card + collections.emi + collections.exchange;
+        const totalRevenue = totalCollected + collections.pending;
 
         // Day-wise breakdown
-        const dailyCollections: Record<string, { cash: number; upi: number; card: number; emi: number; exchange: number; total: number; count: number }> = {};
+        const dailyCollections: Record<string, { cash: number; upi: number; card: number; emi: number; exchange: number; pending: number; total: number; count: number }> = {};
         colFiltered.forEach(inv => {
           const day = new Date(inv.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-          if (!dailyCollections[day]) dailyCollections[day] = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0, total: 0, count: 0 };
+          if (!dailyCollections[day]) dailyCollections[day] = { cash: 0, upi: 0, card: 0, emi: 0, exchange: 0, pending: 0, total: 0, count: 0 };
           const entry = dailyCollections[day];
           entry.count++;
           const total = Number(inv.grand_total);
           entry.total += total;
           if (inv.payment_method === 'mixed' && inv.payment_details) {
             const pd = inv.payment_details as Record<string, number>;
+            let paidSum = 0;
             Object.entries(pd).forEach(([k, v]) => {
-              if (k in entry) (entry as any)[k] += Number(v) || 0;
+              const val = Number(v) || 0;
+              paidSum += val;
+              if (k in entry && k !== 'pending' && k !== 'total' && k !== 'count') (entry as any)[k] += val;
             });
-          } else if (inv.payment_method in entry) {
+            const shortfall = total - paidSum;
+            if (shortfall > 0.01) entry.pending += shortfall;
+          } else if (inv.payment_method in entry && inv.payment_method !== 'pending') {
             (entry as any)[inv.payment_method] += total;
           }
         });
@@ -1679,6 +1690,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
           { key: 'card', label: 'Card', icon: '💳', color: 'text-warning', bg: 'bg-warning/10 border-warning/20' },
           { key: 'emi', label: 'EMI', icon: '📅', color: 'text-destructive', bg: 'bg-destructive/10 border-destructive/20' },
           { key: 'exchange', label: 'Exchange', icon: '🔄', color: 'text-muted-foreground', bg: 'bg-muted border-muted-foreground/20' },
+          { key: 'pending', label: 'Pending', icon: '⏳', color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' },
         ];
 
         return (
@@ -1710,7 +1722,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
               <div className="stat-card border-2 border-primary/30 bg-primary/5">
                 <p className="text-[10px] text-muted-foreground uppercase font-display font-bold">Total Collected</p>
                 <p className="font-display text-2xl font-black text-primary">{fmt(totalCollected)}</p>
@@ -1733,13 +1745,14 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                 <h3 className="font-display font-bold text-sm mb-3">Collection Distribution</h3>
                 <div className="flex rounded-full h-6 overflow-hidden">
                   {methodConfig.map(m => {
-                    const pct = ((collections as any)[m.key] / totalCollected) * 100;
+                    const base = totalCollected + collections.pending;
+                    const pct = base > 0 ? ((collections as any)[m.key] / base) * 100 : 0;
                     if (pct < 0.5) return null;
                     return (
                       <div
                         key={m.key}
                         className={`flex items-center justify-center text-[8px] font-bold text-foreground/80 transition-all`}
-                        style={{ width: `${pct}%`, backgroundColor: m.key === 'cash' ? 'hsl(var(--success))' : m.key === 'upi' ? 'hsl(var(--primary))' : m.key === 'card' ? 'hsl(var(--warning))' : m.key === 'emi' ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))' }}
+                        style={{ width: `${pct}%`, backgroundColor: m.key === 'cash' ? 'hsl(var(--success))' : m.key === 'upi' ? 'hsl(var(--primary))' : m.key === 'card' ? 'hsl(var(--warning))' : m.key === 'emi' ? 'hsl(var(--destructive))' : m.key === 'pending' ? '#f97316' : 'hsl(var(--muted-foreground))' }}
                         title={`${m.label}: ${fmt((collections as any)[m.key])} (${pct.toFixed(1)}%)`}
                       >
                         {pct > 8 && `${m.label} ${pct.toFixed(0)}%`}
@@ -1764,6 +1777,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       Card: d.card,
                       EMI: d.emi,
                       Exchange: d.exchange,
+                      Pending: d.pending,
                       Total: d.total,
                     }));
                     downloadCSV(rows, `collections_${colDateFrom || 'all'}_to_${colDateTo || 'all'}.csv`);
@@ -1783,6 +1797,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                         <th className="text-right py-2.5 px-3">💳 Card</th>
                         <th className="text-right py-2.5 px-3">📅 EMI</th>
                         <th className="text-right py-2.5 px-3">🔄 Exchange</th>
+                        <th className="text-right py-2.5 px-3">⏳ Pending</th>
                         <th className="text-right py-2.5 px-4 font-bold">Total</th>
                       </tr>
                     </thead>
@@ -1796,6 +1811,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                           <td className="py-2.5 px-3 text-right font-mono text-warning">{d.card > 0 ? fmt(d.card) : '—'}</td>
                           <td className="py-2.5 px-3 text-right font-mono text-destructive">{d.emi > 0 ? fmt(d.emi) : '—'}</td>
                           <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{d.exchange > 0 ? fmt(d.exchange) : '—'}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-orange-500">{d.pending > 0 ? fmt(d.pending) : '—'}</td>
                           <td className="py-2.5 px-4 text-right font-display font-bold">{fmt(d.total)}</td>
                         </tr>
                       ))}
@@ -1809,6 +1825,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                         <td className="py-2.5 px-3 text-right font-mono text-warning">{fmt(collections.card)}</td>
                         <td className="py-2.5 px-3 text-right font-mono text-destructive">{fmt(collections.emi)}</td>
                         <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{fmt(collections.exchange)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-orange-500">{fmt(collections.pending)}</td>
                         <td className="py-2.5 px-4 text-right font-display text-primary">{fmt(totalCollected)}</td>
                       </tr>
                     </tfoot>
