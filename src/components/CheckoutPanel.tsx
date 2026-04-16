@@ -38,6 +38,7 @@ interface Props {
   onExchangeNotesChange: (v: string) => void;
   paymentNotes: string;
   onPaymentNotesChange: (v: string) => void;
+  customerPending: number;
   onCompleteSale: () => void;
   onPreviewBill?: () => void;
   discountEnabled: boolean;
@@ -54,6 +55,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   onMixedPaymentChange, onWarrantyMobileChange, onWarrantyAccessoriesChange, onEmiLendingPartnerChange,
   exchangeNotes, onExchangeNotesChange,
   paymentNotes, onPaymentNotesChange,
+  customerPending,
   onCompleteSale, onPreviewBill, discountEnabled, saving,
 }) => {
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;

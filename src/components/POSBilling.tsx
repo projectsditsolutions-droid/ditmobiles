@@ -1279,6 +1279,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         onExchangeNotesChange={setExchangeNotes}
         paymentNotes={paymentNotes}
         onPaymentNotesChange={setPaymentNotes}
+        customerPending={customerPending}
         onCompleteSale={handleCompleteSale}
         onPreviewBill={handlePreviewBill}
         discountEnabled={settings?.discount_enabled ?? true}
