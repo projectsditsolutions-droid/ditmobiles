@@ -1454,16 +1454,18 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                     <Download className="w-3.5 h-3.5" /> Sales CSV
                   </Button>
                 )}
-                {srLoaded && searchFiltered.length > 0 && (
+                {srLoaded && searchFiltered.length > 0 && colFiltered.length > 0 && (
                   <Button variant="outline" className="h-9 gap-1.5" onClick={() => {
                     const period = `${srDateFrom || 'All'} to ${srDateTo || 'All'}`;
-                    let bodyRows = '';
+
+                    // ===== PAGE 1: Sales & Profit Report =====
+                    let salesBodyRows = '';
                     searchFiltered.forEach((inv: any) => {
                       const pd = inv.payment_details as any;
                       const paymentBreakdown = inv.payment_method === 'mixed' && pd
                         ? Object.entries(pd).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${String(k).charAt(0).toUpperCase() + String(k).slice(1)}: ₹${Number(v).toLocaleString('en-IN')}`).join(' | ')
                         : inv.payment_method.toUpperCase();
-                      bodyRows += `<tr style="background:#f8f9fa;border-top:2px solid #333;page-break-inside:avoid">
+                      salesBodyRows += `<tr style="background:#f8f9fa;border-top:2px solid #333;page-break-inside:avoid">
                         <td colspan="7" style="padding:8px;font-size:11px">
                           <div style="display:flex;justify-content:space-between;align-items:center">
                             <div>
@@ -1481,7 +1483,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       </tr>`;
                       inv.itemDetails.forEach((item: any) => {
                         const profitColor = item.profit >= 0 ? '#16a34a' : '#dc2626';
-                        bodyRows += `<tr style="border-bottom:1px solid #eee;page-break-inside:avoid">
+                        salesBodyRows += `<tr style="border-bottom:1px solid #eee;page-break-inside:avoid">
                           <td style="padding:4px 8px 4px 20px;font-size:10px">${item.productName}</td>
                           <td style="padding:4px 8px;font-size:10px;color:#666">${item.imei || '—'}</td>
                           <td style="padding:4px 8px;font-size:10px;text-align:right">₹${item.purchasePrice.toLocaleString('en-IN')}</td>
@@ -1492,13 +1494,31 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                         </tr>`;
                       });
                     });
-                    const totalRow = `<tr style="border-top:2px solid #222;font-weight:900">
+                    const salesTotalRow = `<tr style="border-top:2px solid #222;font-weight:900">
                       <td colspan="4" style="padding:8px;text-align:right;font-size:12px">Totals</td>
                       <td style="padding:8px;text-align:right;font-size:12px">₹${grandRevenue.toLocaleString('en-IN')}</td>
                       <td style="padding:8px;text-align:right;font-size:12px;color:${grandProfit >= 0 ? '#16a34a' : '#dc2626'}">₹${grandProfit.toLocaleString('en-IN')}</td>
                       <td style="padding:8px;text-align:right;font-size:12px">${grandRevenue > 0 ? (grandProfit / grandRevenue * 100).toFixed(1) : '0'}%</td>
                     </tr>`;
-                    const html = `<div style="font-family:Inter,Arial,sans-serif;padding:0;width:100%">
+
+                    // ===== PAGE 2: Collections Report =====
+                    let colDayRows = '';
+                    dailyArr.forEach(([date, d]) => {
+                      colDayRows += `<tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid">
+                        <td style="padding:6px 8px;font-size:11px;font-weight:600">${new Date(date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric', weekday:'short' })}</td>
+                        <td style="padding:6px 8px;font-size:11px;text-align:center">${d.count}</td>
+                        <td style="padding:6px 8px;font-size:11px;text-align:right;color:#16a34a">${d.cash > 0 ? '₹' + d.cash.toLocaleString('en-IN') : '—'}</td>
+                        <td style="padding:6px 8px;font-size:11px;text-align:right;color:#2563eb">${d.upi > 0 ? '₹' + d.upi.toLocaleString('en-IN') : '—'}</td>
+                        <td style="padding:6px 8px;font-size:11px;text-align:right;color:#d97706">${d.card > 0 ? '₹' + d.card.toLocaleString('en-IN') : '—'}</td>
+                        <td style="padding:6px 8px;font-size:11px;text-align:right;color:#dc2626">${d.emi > 0 ? '₹' + d.emi.toLocaleString('en-IN') : '—'}</td>
+                        <td style="padding:6px 8px;font-size:11px;text-align:right;color:#666">${d.exchange > 0 ? '₹' + d.exchange.toLocaleString('en-IN') : '—'}</td>
+                        <td style="padding:6px 8px;font-size:11px;text-align:right;color:#f97316;font-weight:${d.pending > 0 ? '700' : '400'}">${d.pending > 0 ? '₹' + d.pending.toLocaleString('en-IN') : '—'}</td>
+                        <td style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700">₹${d.total.toLocaleString('en-IN')}</td>
+                      </tr>`;
+                    });
+
+                    const combinedHtml = `<div style="font-family:Inter,Arial,sans-serif;padding:0;width:100%">
+                      <!-- SALES & PROFIT SECTION -->
                       <div style="text-align:center;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px">
                         <div style="font-size:20px;font-weight:900">Sales & Profit Report</div>
                         <div style="font-size:10px;color:#666;margin-top:4px">Period: ${period} · ${searchFiltered.length} invoices · Generated: ${new Date().toLocaleString('en-IN')}</div>
@@ -1517,7 +1537,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                           <div style="font-size:16px;font-weight:900;color:${grandProfit >= 0 ? '#166534' : '#991b1b'}">₹${grandProfit.toLocaleString('en-IN')}</div>
                         </div>
                         <div style="flex:1;min-width:120px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;text-align:center">
-                          <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">GST Paid</div>
+                          <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">GST</div>
                           <div style="font-size:16px;font-weight:900;color:#1e40af">₹${grandGST.toLocaleString('en-IN')}</div>
                         </div>
                       </div>
@@ -1533,107 +1553,84 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                             <th style="padding:6px 8px;text-align:right">Margin</th>
                           </tr>
                         </thead>
-                        <tbody>${bodyRows}${totalRow}</tbody>
+                        <tbody>${salesBodyRows}${salesTotalRow}</tbody>
+                      </table>
+
+                      <!-- PAGE BREAK -->
+                      <div style="page-break-before:always"></div>
+
+                      <!-- COLLECTIONS SECTION -->
+                      <div style="text-align:center;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px">
+                        <div style="font-size:20px;font-weight:900">Collections Report</div>
+                        <div style="font-size:10px;color:#666;margin-top:4px">Period: ${period} · ${colFiltered.length} invoices</div>
+                      </div>
+                      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+                        <div style="flex:1;min-width:100px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;text-align:center">
+                          <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">Total Collected</div>
+                          <div style="font-size:16px;font-weight:900;color:#166534">₹${totalCollected.toLocaleString('en-IN')}</div>
+                        </div>
+                        ${methodConfig.map(m => `<div style="flex:1;min-width:80px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;text-align:center">
+                          <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">${m.icon} ${m.label}</div>
+                          <div style="font-size:14px;font-weight:900">₹${((collections as any)[m.key]).toLocaleString('en-IN')}</div>
+                          <div style="font-size:9px;color:#999">${totalCollected > 0 ? (((collections as any)[m.key] / totalCollected) * 100).toFixed(1) : '0'}%</div>
+                        </div>`).join('')}
+                      </div>
+                      <table style="width:100%;border-collapse:collapse;font-size:10px">
+                        <thead>
+                          <tr style="background:#e2e8f0;font-weight:700;font-size:9px;text-transform:uppercase">
+                            <th style="padding:6px 8px;text-align:left">Date</th>
+                            <th style="padding:6px 8px;text-align:center">Bills</th>
+                            <th style="padding:6px 8px;text-align:right">💵 Cash</th>
+                            <th style="padding:6px 8px;text-align:right">📱 UPI</th>
+                            <th style="padding:6px 8px;text-align:right">💳 Card</th>
+                            <th style="padding:6px 8px;text-align:right">📅 EMI</th>
+                            <th style="padding:6px 8px;text-align:right">🔄 Exchange</th>
+                            <th style="padding:6px 8px;text-align:right">⏳ Pending</th>
+                            <th style="padding:6px 8px;text-align:right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>${colDayRows}
+                          <tr style="border-top:2px solid #222;font-weight:900;background:#f8f9fa">
+                            <td style="padding:8px;font-size:12px">Grand Total</td>
+                            <td style="padding:8px;text-align:center;font-size:12px">${colFiltered.length}</td>
+                            <td style="padding:8px;text-align:right;font-size:11px;color:#16a34a">₹${collections.cash.toLocaleString('en-IN')}</td>
+                            <td style="padding:8px;text-align:right;font-size:11px;color:#2563eb">₹${collections.upi.toLocaleString('en-IN')}</td>
+                            <td style="padding:8px;text-align:right;font-size:11px;color:#d97706">₹${collections.card.toLocaleString('en-IN')}</td>
+                            <td style="padding:8px;text-align:right;font-size:11px;color:#dc2626">₹${collections.emi.toLocaleString('en-IN')}</td>
+                            <td style="padding:8px;text-align:right;font-size:11px;color:#666">₹${collections.exchange.toLocaleString('en-IN')}</td>
+                            <td style="padding:8px;text-align:right;font-size:11px;color:#f97316">₹${collections.pending.toLocaleString('en-IN')}</td>
+                            <td style="padding:8px;text-align:right;font-size:13px">₹${totalCollected.toLocaleString('en-IN')}</td>
+                          </tr>
+                        </tbody>
                       </table>
                     </div>`;
-                    printContent(<div dangerouslySetInnerHTML={{ __html: html }} />);
+                    printContent(<div dangerouslySetInnerHTML={{ __html: combinedHtml }} />);
                     setTimeout(async () => {
                       await triggerPrint();
                       clearContent();
                     }, 200);
                   }}>
-                    <FileDown className="w-3.5 h-3.5" /> Sales PDF
+                    <FileDown className="w-3.5 h-3.5" /> Sales & Collections PDF
                   </Button>
                 )}
                 {colFiltered.length > 0 && (
-                  <>
-                    <Button variant="outline" className="h-9 gap-1.5" onClick={() => {
-                      const rows = dailyArr.map(([date, d]) => ({
-                        Date: new Date(date).toLocaleDateString('en-IN'),
-                        Invoices: d.count,
-                        Cash: d.cash,
-                        UPI: d.upi,
-                        Card: d.card,
-                        EMI: d.emi,
-                        Exchange: d.exchange,
-                        Pending: d.pending,
-                        Total: d.total,
-                      }));
-                      downloadCSV(rows, `collections_${srDateFrom || 'all'}_to_${srDateTo || 'all'}.csv`);
-                      toast.success('Collections CSV downloaded');
-                    }}>
-                      <Download className="w-3.5 h-3.5" /> Collections CSV
-                    </Button>
-                    <Button variant="outline" className="h-9 gap-1.5" onClick={() => {
-                      const period = `${srDateFrom || 'All'} to ${srDateTo || 'All'}`;
-                      let dayRows = '';
-                      dailyArr.forEach(([date, d]) => {
-                        dayRows += `<tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid">
-                          <td style="padding:6px 8px;font-size:11px;font-weight:600">${new Date(date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric', weekday:'short' })}</td>
-                          <td style="padding:6px 8px;font-size:11px;text-align:center">${d.count}</td>
-                          <td style="padding:6px 8px;font-size:11px;text-align:right;color:#16a34a">${d.cash > 0 ? '₹' + d.cash.toLocaleString('en-IN') : '—'}</td>
-                          <td style="padding:6px 8px;font-size:11px;text-align:right;color:#2563eb">${d.upi > 0 ? '₹' + d.upi.toLocaleString('en-IN') : '—'}</td>
-                          <td style="padding:6px 8px;font-size:11px;text-align:right;color:#d97706">${d.card > 0 ? '₹' + d.card.toLocaleString('en-IN') : '—'}</td>
-                          <td style="padding:6px 8px;font-size:11px;text-align:right;color:#dc2626">${d.emi > 0 ? '₹' + d.emi.toLocaleString('en-IN') : '—'}</td>
-                          <td style="padding:6px 8px;font-size:11px;text-align:right;color:#666">${d.exchange > 0 ? '₹' + d.exchange.toLocaleString('en-IN') : '—'}</td>
-                          <td style="padding:6px 8px;font-size:11px;text-align:right;color:#f97316;font-weight:${d.pending > 0 ? '700' : '400'}">${d.pending > 0 ? '₹' + d.pending.toLocaleString('en-IN') : '—'}</td>
-                          <td style="padding:6px 8px;font-size:11px;text-align:right;font-weight:700">₹${d.total.toLocaleString('en-IN')}</td>
-                        </tr>`;
-                      });
-                      const html = `<div style="font-family:Inter,Arial,sans-serif;padding:0;width:100%">
-                        <div style="text-align:center;margin-bottom:16px;border-bottom:2px solid #222;padding-bottom:10px">
-                          <div style="font-size:20px;font-weight:900">Collections Report</div>
-                          <div style="font-size:10px;color:#666;margin-top:4px">Period: ${period} · ${colFiltered.length} invoices · Generated: ${new Date().toLocaleString('en-IN')}</div>
-                        </div>
-                        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-                          <div style="flex:1;min-width:100px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;text-align:center">
-                            <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">Total Collected</div>
-                            <div style="font-size:16px;font-weight:900;color:#166534">₹${totalCollected.toLocaleString('en-IN')}</div>
-                          </div>
-                          ${methodConfig.map(m => `<div style="flex:1;min-width:80px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;text-align:center">
-                            <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">${m.icon} ${m.label}</div>
-                            <div style="font-size:14px;font-weight:900">₹${((collections as any)[m.key]).toLocaleString('en-IN')}</div>
-                            <div style="font-size:9px;color:#999">${totalCollected > 0 ? (((collections as any)[m.key] / totalCollected) * 100).toFixed(1) : '0'}%</div>
-                          </div>`).join('')}
-                        </div>
-                        <table style="width:100%;border-collapse:collapse;font-size:10px">
-                          <thead>
-                            <tr style="background:#e2e8f0;font-weight:700;font-size:9px;text-transform:uppercase">
-                              <th style="padding:6px 8px;text-align:left">Date</th>
-                              <th style="padding:6px 8px;text-align:center">Bills</th>
-                              <th style="padding:6px 8px;text-align:right">💵 Cash</th>
-                              <th style="padding:6px 8px;text-align:right">📱 UPI</th>
-                              <th style="padding:6px 8px;text-align:right">💳 Card</th>
-                              <th style="padding:6px 8px;text-align:right">📅 EMI</th>
-                              <th style="padding:6px 8px;text-align:right">🔄 Exchange</th>
-                              <th style="padding:6px 8px;text-align:right">⏳ Pending</th>
-                              <th style="padding:6px 8px;text-align:right">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>${dayRows}
-                            <tr style="border-top:2px solid #222;font-weight:900;background:#f8f9fa">
-                              <td style="padding:8px;font-size:12px">Grand Total</td>
-                              <td style="padding:8px;text-align:center;font-size:12px">${colFiltered.length}</td>
-                              <td style="padding:8px;text-align:right;font-size:11px;color:#16a34a">₹${collections.cash.toLocaleString('en-IN')}</td>
-                              <td style="padding:8px;text-align:right;font-size:11px;color:#2563eb">₹${collections.upi.toLocaleString('en-IN')}</td>
-                              <td style="padding:8px;text-align:right;font-size:11px;color:#d97706">₹${collections.card.toLocaleString('en-IN')}</td>
-                              <td style="padding:8px;text-align:right;font-size:11px;color:#dc2626">₹${collections.emi.toLocaleString('en-IN')}</td>
-                              <td style="padding:8px;text-align:right;font-size:11px;color:#666">₹${collections.exchange.toLocaleString('en-IN')}</td>
-                              <td style="padding:8px;text-align:right;font-size:11px;color:#f97316">₹${collections.pending.toLocaleString('en-IN')}</td>
-                              <td style="padding:8px;text-align:right;font-size:13px">₹${totalCollected.toLocaleString('en-IN')}</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>`;
-                      printContent(<div dangerouslySetInnerHTML={{ __html: html }} />);
-                      setTimeout(async () => {
-                        await triggerPrint();
-                        clearContent();
-                      }, 200);
-                    }}>
-                      <FileDown className="w-3.5 h-3.5" /> Collections PDF
-                    </Button>
-                  </>
+                  <Button variant="outline" className="h-9 gap-1.5" onClick={() => {
+                    const rows = dailyArr.map(([date, d]) => ({
+                      Date: new Date(date).toLocaleDateString('en-IN'),
+                      Invoices: d.count,
+                      Cash: d.cash,
+                      UPI: d.upi,
+                      Card: d.card,
+                      EMI: d.emi,
+                      Exchange: d.exchange,
+                      Pending: d.pending,
+                      Total: d.total,
+                    }));
+                    downloadCSV(rows, `collections_${srDateFrom || 'all'}_to_${srDateTo || 'all'}.csv`);
+                    toast.success('Collections CSV downloaded');
+                  }}>
+                    <Download className="w-3.5 h-3.5" /> Collections CSV
+                  </Button>
                 )}
               </div>
               {srLoaded && (
