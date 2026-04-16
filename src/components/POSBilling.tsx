@@ -329,6 +329,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setEmiLendingPartner('');
     setExchangeNotes('');
     setPaymentNotes('');
+    setAmountReceived('');
     setBillDate(fmtIST());
     setIsDateManual(false);
     onCancelEdit?.();
@@ -843,14 +844,20 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
 
       if (existing) {
         customerId = existing.id;
+        const pendingToAdd = (amountReceived !== '' && amountReceived < grandTotal) ? (grandTotal - amountReceived) : 0;
+        const { data: freshCust } = await supabase.from('customers').select('pending_amount').eq('id', existing.id).single();
+        const currentPending = freshCust ? Number(freshCust.pending_amount) || 0 : 0;
         await supabase.from('customers').update({
           name: customerName || existing.id,
           address: customerAddress || '',
           gstin: customerGST || '',
           total_purchases: Number(existing.total_purchases) + grandTotal,
           last_purchase_date: new Date().toISOString(),
+          pending_amount: currentPending + pendingToAdd,
         }).eq('id', existing.id);
+        if (pendingToAdd > 0) toast.warning(`₹${pendingToAdd.toLocaleString('en-IN')} added as pending for ${customerName || customerPhone}`);
       } else {
+        const pendingToAdd = (amountReceived !== '' && amountReceived < grandTotal) ? (grandTotal - amountReceived) : 0;
         const { data: newCust } = await supabase.from('customers').insert({
           shop_id: activeShopId,
           name: customerName || 'Walk-in Customer',
@@ -859,8 +866,10 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
           gstin: customerGST || '',
           total_purchases: grandTotal,
           last_purchase_date: new Date().toISOString(),
+          pending_amount: pendingToAdd,
         }).select('id').single();
         if (newCust) customerId = newCust.id;
+        if (pendingToAdd > 0) toast.warning(`₹${pendingToAdd.toLocaleString('en-IN')} added as pending for ${customerName || customerPhone}`);
       }
     }
 
@@ -1012,6 +1021,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     setEmiLendingPartner('');
     setExchangeNotes('');
     setPaymentNotes('');
+    setAmountReceived('');
     setBillDate(new Date().toISOString().slice(0, 16));
     setIsDateManual(false);
     } finally { setSaving(false); }
