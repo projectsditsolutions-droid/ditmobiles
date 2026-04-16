@@ -1533,9 +1533,21 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                           {inv.is_gst_bill ? 'GST' : 'Non-GST'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-xs">
+                      <div className="flex items-center gap-4 text-xs flex-wrap">
                         <span className="text-muted-foreground">{inv.customer_name}{inv.customer_phone ? ` • ${inv.customer_phone}` : ''}</span>
                         <span className="font-display font-bold capitalize px-2 py-0.5 rounded-full bg-accent text-accent-foreground">{inv.payment_method}</span>
+                        {inv.payment_method === 'mixed' && inv.payment_details && (() => {
+                          const pd = inv.payment_details as Record<string, number>;
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {Object.entries(pd).filter(([, v]) => Number(v) > 0).map(([k, v]) => (
+                                <span key={k} className="px-1.5 py-0.5 rounded bg-secondary text-[9px] font-display font-bold capitalize">
+                                  {k}: ₹{Number(v).toLocaleString('en-IN')}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                         {(inv as any).payment_notes && (
                           <span className="text-muted-foreground italic">({(inv as any).payment_notes})</span>
                         )}
