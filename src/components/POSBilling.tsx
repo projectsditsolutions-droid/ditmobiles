@@ -808,7 +808,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
       if (paymentMethod === 'mixed') (invoiceData as any).payment_details = mixedPayment;
 
       setShowInvoice(invoiceData);
-      toast.success(`Invoice updated: ${invoiceNumber}`);
+      toast.success(`Invoice updated: ${invoiceNumber}`, { duration: 1500 });
       cancelEdit();
       return;
     }
@@ -1010,7 +1010,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
     if (paymentMethod === 'mixed') (invoiceData as any).payment_details = mixedPayment;
 
     setShowInvoice(invoiceData);
-    toast.success(`Sale completed! Invoice: ${invoiceNumber}`);
+    toast.success(`Sale completed! Invoice: ${invoiceNumber}`, { duration: 1500 });
 
     setItems([]);
     scanningImeiRef.current.clear();
