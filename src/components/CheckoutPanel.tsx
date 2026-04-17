@@ -80,7 +80,7 @@ export const CheckoutPanel: React.FC<Props> = ({
   const hasPending = customerPending > 0;
   const balancePending = paymentMethod === 'mixed' ? mixedPending : ((amountReceived !== '' && amountReceived < grandTotal) ? (grandTotal - amountReceived) : 0);
   return (
-    <div className="w-full md:w-[360px] bg-checkout text-checkout-foreground flex flex-col border-l border-checkout-foreground/10 max-h-screen overflow-hidden">
+    <div className="w-full md:w-[360px] bg-checkout text-checkout-foreground flex flex-col border-l border-checkout-foreground/10 h-screen max-h-screen overflow-y-auto pos-scrollable">
       {/* ── Customer Details ───────────────────────────────────────── */}
       <div className="p-4 border-b border-checkout-foreground/10 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
