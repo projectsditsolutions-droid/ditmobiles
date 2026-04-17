@@ -1499,16 +1499,6 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       <td style="padding:8px;text-align:right;font-size:12px">₹${grandRevenue.toLocaleString('en-IN')}</td>
                       <td style="padding:8px;text-align:right;font-size:12px;color:${grandProfit >= 0 ? '#16a34a' : '#dc2626'}">₹${grandProfit.toLocaleString('en-IN')}</td>
                       <td style="padding:8px;text-align:right;font-size:12px">${grandRevenue > 0 ? (grandProfit / grandRevenue * 100).toFixed(1) : '0'}%</td>
-                    </tr>
-                    <tr style="background:#eff6ff;font-weight:700">
-                      <td colspan="4" style="padding:6px 8px;text-align:right;font-size:11px;color:#1e40af">GST Liability</td>
-                      <td colspan="2" style="padding:6px 8px;text-align:right;font-size:11px;color:#1e40af">− ₹${grandGST.toLocaleString('en-IN')}</td>
-                      <td></td>
-                    </tr>
-                    <tr style="background:#f0fdf4;font-weight:900;border-top:2px solid #166534">
-                      <td colspan="4" style="padding:8px;text-align:right;font-size:13px;color:#166534">Net Profit (After GST)</td>
-                      <td colspan="2" style="padding:8px;text-align:right;font-size:14px;color:${grandNet >= 0 ? '#166534' : '#991b1b'}">₹${grandNet.toLocaleString('en-IN')}</td>
-                      <td style="padding:8px;text-align:right;font-size:11px">${grandRevenue > 0 ? (grandNet / grandRevenue * 100).toFixed(1) : '0'}%</td>
                     </tr>`;
 
                     // ===== PAGE 2: Collections Report =====
@@ -1549,11 +1539,6 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                         <div style="flex:1;min-width:120px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;text-align:center">
                           <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">GST</div>
                           <div style="font-size:16px;font-weight:900;color:#1e40af">₹${grandGST.toLocaleString('en-IN')}</div>
-                        </div>
-                        <div style="flex:1;min-width:120px;background:${grandNet >= 0 ? '#f0fdf4' : '#fef2f2'};border:2px solid ${grandNet >= 0 ? '#16a34a' : '#dc2626'};border-radius:8px;padding:8px 12px;text-align:center">
-                          <div style="font-size:9px;color:#666;text-transform:uppercase;font-weight:700">Net Profit (After GST)</div>
-                          <div style="font-size:18px;font-weight:900;color:${grandNet >= 0 ? '#166534' : '#991b1b'}">₹${grandNet.toLocaleString('en-IN')}</div>
-                          <div style="font-size:9px;color:#999">${grandRevenue > 0 ? (grandNet / grandRevenue * 100).toFixed(1) : '0'}% margin</div>
                         </div>
                       </div>
                       <table style="width:100%;border-collapse:collapse;font-size:10px">
@@ -1778,7 +1763,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
               <>
                 {/* Summary Cards */}
                 {srLoaded && (
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="stat-card">
                       <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Revenue</p>
                       <p className="font-display text-xl font-extrabold text-primary">{fmt(grandRevenue)}</p>
@@ -1788,18 +1773,14 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                       <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Cost of Goods</p>
                       <p className="font-display text-xl font-extrabold text-destructive">{fmt(grandCost)}</p>
                     </div>
-                    <div className="stat-card">
-                      <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">Gross Profit</p>
-                      <p className={`font-display text-xl font-extrabold ${grandProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(grandProfit)}</p>
+                    <div className={`stat-card border-2 ${grandProfit >= 0 ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
+                      <p className="text-[10px] text-muted-foreground uppercase font-display font-bold">Gross Profit</p>
+                      <p className={`font-display text-2xl font-black ${grandProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(grandProfit)}</p>
+                      <p className="text-[10px] text-muted-foreground">{grandRevenue > 0 ? ((grandProfit / grandRevenue) * 100).toFixed(1) : '0'}% margin</p>
                     </div>
                     <div className="stat-card">
                       <p className="text-[10px] text-muted-foreground uppercase font-display font-semibold">GST Liability</p>
                       <p className="font-display text-xl font-extrabold text-warning">{fmt(grandGST)}</p>
-                    </div>
-                    <div className={`stat-card border-2 ${grandNet >= 0 ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
-                      <p className="text-[10px] text-muted-foreground uppercase font-display font-bold">Net Profit</p>
-                      <p className={`font-display text-2xl font-black ${grandNet >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(grandNet)}</p>
-                      <p className="text-[10px] text-muted-foreground">{grandRevenue > 0 ? ((grandNet / grandRevenue) * 100).toFixed(1) : '0'}% margin</p>
                     </div>
                   </div>
                 )}
@@ -1887,13 +1868,6 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
                                 {inv.gst > 0 && <span className="text-warning text-[9px]">GST: {fmt(inv.gst)}</span>}
                               </td>
                             </tr>
-                            {inv.gst > 0 && (
-                              <tr className="bg-muted/10">
-                                <td colSpan={6} className="px-4 py-1.5 text-right text-[10px] text-muted-foreground font-display font-semibold">Net Profit (after GST)</td>
-                                <td className={`px-4 py-1.5 text-right text-xs font-black ${inv.netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(inv.netProfit)}</td>
-                                <td></td>
-                              </tr>
-                            )}
                           </tfoot>
                         </table>
                       </div>
