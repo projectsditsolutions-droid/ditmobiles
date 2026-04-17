@@ -219,4 +219,13 @@ input[type="number"] {
   #print-area .no-print {
     display: none !important;
   }
+
+  /* Hide toast notifications from print output */
+  [data-sonner-toaster],
+  ol[data-sonner-toaster],
+  .toaster,
+  [role="status"][data-sonner-toast] {
+    display: none !important;
+    visibility: hidden !important;
+  }
 }
