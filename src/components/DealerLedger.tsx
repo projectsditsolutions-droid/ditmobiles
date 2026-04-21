@@ -303,7 +303,8 @@ export const DealerLedger: React.FC = () => {
    const handleDeleteTransaction = async (txn: DealerTransaction) => {
     if (!confirm('Delete this transaction? Running balances and dealer credit will be recalculated.' + 
       (txn.type === 'purchase' ? '\n\nAssociated IMEI records will also be deleted from inventory.' : 
-       txn.type === 'stock_return' ? '\n\nReturned IMEI will be reverted back to in-stock.' : ''))) return;
+       txn.type === 'stock_return' ? '\n\nReturned IMEI will be reverted back to in-stock.' :
+       txn.type === 'sale_deduction' ? '\n\nThe sold IMEI will be restored to in-stock, the linked invoice line item will be removed, and customer pending will be adjusted.' : ''))) return;
     setDeletingTxnId(txn.id);
     try {
       // Reverse inventory effects based on transaction type
@@ -343,6 +344,80 @@ export const DealerLedger: React.FC = () => {
           .maybeSingle();
         if (imeiRecord) {
           await supabase.from('imei_records').update({ status: 'in_stock' }).eq('id', imeiRecord.id);
+        }
+      } else if (txn.type === 'sale_deduction' && txn.imei_ref) {
+        // Restore sold IMEI back to in_stock and remove the linked invoice line item
+        const imei = txn.imei_ref.trim();
+        const { data: imeiRecord } = await supabase.from('imei_records')
+          .select('id, invoice_id, product_id')
+          .eq('imei', imei)
+          .eq('status', 'sold')
+          .maybeSingle();
+
+        if (imeiRecord) {
+          // Revert IMEI to in_stock (DB trigger will recount product stock_quantity)
+          await supabase.from('imei_records').update({
+            status: 'in_stock',
+            sold_date: null,
+            invoice_id: null,
+          }).eq('id', imeiRecord.id);
+
+          // Remove the matching invoice line item and adjust invoice + customer totals
+          if (imeiRecord.invoice_id) {
+            const { data: lineItem } = await supabase.from('invoice_items')
+              .select('id, total')
+              .eq('invoice_id', imeiRecord.invoice_id)
+              .eq('imei', imei)
+              .maybeSingle();
+
+            const { data: inv } = await supabase.from('invoices')
+              .select('id, customer_id, grand_total, subtotal')
+              .eq('id', imeiRecord.invoice_id)
+              .maybeSingle();
+
+            if (lineItem) {
+              await supabase.from('invoice_items').delete().eq('id', lineItem.id);
+
+              // Check if any items remain on the invoice
+              const { data: remainingItems } = await supabase.from('invoice_items')
+                .select('id')
+                .eq('invoice_id', imeiRecord.invoice_id);
+
+              if (!remainingItems || remainingItems.length === 0) {
+                // No items left → cancel the invoice and reverse full pending
+                await supabase.from('invoices').update({ status: 'cancelled' }).eq('id', imeiRecord.invoice_id);
+                if (inv?.customer_id) {
+                  const { data: cust } = await supabase.from('customers')
+                    .select('total_purchases, pending_amount')
+                    .eq('id', inv.customer_id).maybeSingle();
+                  if (cust) {
+                    await supabase.from('customers').update({
+                      total_purchases: Math.max(0, Number(cust.total_purchases) - Number(inv.grand_total)),
+                      pending_amount: Math.max(0, Number(cust.pending_amount) - Number(inv.grand_total)),
+                    }).eq('id', inv.customer_id);
+                  }
+                }
+              } else if (inv) {
+                // Reduce invoice subtotal/grand_total by line total and adjust customer
+                const lineTotal = Number(lineItem.total);
+                await supabase.from('invoices').update({
+                  subtotal: Math.max(0, Number(inv.subtotal) - lineTotal),
+                  grand_total: Math.max(0, Number(inv.grand_total) - lineTotal),
+                }).eq('id', imeiRecord.invoice_id);
+                if (inv.customer_id) {
+                  const { data: cust } = await supabase.from('customers')
+                    .select('total_purchases, pending_amount')
+                    .eq('id', inv.customer_id).maybeSingle();
+                  if (cust) {
+                    await supabase.from('customers').update({
+                      total_purchases: Math.max(0, Number(cust.total_purchases) - lineTotal),
+                      pending_amount: Math.max(0, Number(cust.pending_amount) - lineTotal),
+                    }).eq('id', inv.customer_id);
+                  }
+                }
+              }
+            }
+          }
         }
       }
 
