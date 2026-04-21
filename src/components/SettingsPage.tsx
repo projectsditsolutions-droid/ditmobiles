@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import {
   Plus, Trash2, Save, LogOut, Users, Shield, Store,
   Settings2, KeyRound, Printer, Building2, Tag, Hash, Star, FileText, Upload, Image, Layout,
-  Download, UploadCloud, Loader2
+  Download, UploadCloud, Loader2, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { DataConsistencyCheck } from './DataConsistencyCheck';
 
 type Shop = Database['public']['Tables']['shops']['Row'];
 
@@ -42,7 +43,7 @@ export const SettingsPage: React.FC = () => {
   const [localShops, setLocalShops] = useState<Shop[]>(shops);
   const [localSettings, setLocalSettings] = useState(settings);
   const [newPin, setNewPin] = useState('');
-  const [tab, setTab] = useState<'shops' | 'gst_profiles' | 'general' | 'invoice' | 'pin' | 'users' | 'backup'>('shops');
+  const [tab, setTab] = useState<'shops' | 'gst_profiles' | 'general' | 'invoice' | 'pin' | 'users' | 'backup' | 'diagnostics'>('shops');
   const [members, setMembers] = useState<any[]>([]);
   const [gstProfiles, setGstProfiles] = useState<GSTProfile[]>([]);
   const [editTerms, setEditTerms] = useState<string[]>([]);
@@ -315,6 +316,7 @@ export const SettingsPage: React.FC = () => {
     { key: 'pin', icon: KeyRound, label: 'PIN Security' },
     { key: 'users', icon: Users, label: 'Team' },
     { key: 'backup', icon: Download, label: 'Backup' },
+    { key: 'diagnostics', icon: ShieldCheck, label: 'Diagnostics' },
   ] as const;
 
   return (
@@ -854,6 +856,9 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── Diagnostics ── */}
+      {tab === 'diagnostics' && <DataConsistencyCheck />}
     </div>
   );
 };
