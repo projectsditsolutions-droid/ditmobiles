@@ -856,6 +856,9 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── Diagnostics ── */}
+      {tab === 'diagnostics' && <DataConsistencyCheck />}
     </div>
   );
 };
