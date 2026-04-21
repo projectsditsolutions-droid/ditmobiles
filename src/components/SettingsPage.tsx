@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import {
   Plus, Trash2, Save, LogOut, Users, Shield, Store,
   Settings2, KeyRound, Printer, Building2, Tag, Hash, Star, FileText, Upload, Image, Layout,
-  Download, UploadCloud, Loader2
+  Download, UploadCloud, Loader2, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { DataConsistencyCheck } from './DataConsistencyCheck';
 
 type Shop = Database['public']['Tables']['shops']['Row'];
 
