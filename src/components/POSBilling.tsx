@@ -846,19 +846,28 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
 
       if (existing) {
         customerId = existing.id;
-        const mixedShortfall = (paymentMethod === 'mixed') ? Math.max(0, grandTotal - (mixedPayment.cash + mixedPayment.upi + mixedPayment.card + mixedPayment.emi + mixedPayment.exchange)) : 0;
-        const pendingToAdd = mixedShortfall > 0.01 ? mixedShortfall : ((amountReceived !== '' && amountReceived < grandTotal) ? (grandTotal - amountReceived) : 0);
-        const { data: freshCust } = await supabase.from('customers').select('pending_amount').eq('id', existing.id).single();
-        const currentPending = freshCust ? Number(freshCust.pending_amount) || 0 : 0;
-        await supabase.from('customers').update({
-          name: customerName || existing.id,
-          address: customerAddress || '',
-          gstin: customerGST || '',
-          total_purchases: Number(existing.total_purchases) + grandTotal,
-          last_purchase_date: new Date().toISOString(),
-          pending_amount: currentPending + pendingToAdd,
-        }).eq('id', existing.id);
-        if (pendingToAdd > 0) toast.warning(`₹${pendingToAdd.toLocaleString('en-IN')} added as pending for ${customerName || customerPhone}`);
+        if (editMode) {
+          // Edit mode: only update profile fields, do NOT touch totals/pending to avoid duplication
+          await supabase.from('customers').update({
+            name: customerName || existing.id,
+            address: customerAddress || '',
+            gstin: customerGST || '',
+          }).eq('id', existing.id);
+        } else {
+          const mixedShortfall = (paymentMethod === 'mixed') ? Math.max(0, grandTotal - (mixedPayment.cash + mixedPayment.upi + mixedPayment.card + mixedPayment.emi + mixedPayment.exchange)) : 0;
+          const pendingToAdd = mixedShortfall > 0.01 ? mixedShortfall : ((amountReceived !== '' && amountReceived < grandTotal) ? (grandTotal - amountReceived) : 0);
+          const { data: freshCust } = await supabase.from('customers').select('pending_amount').eq('id', existing.id).single();
+          const currentPending = freshCust ? Number(freshCust.pending_amount) || 0 : 0;
+          await supabase.from('customers').update({
+            name: customerName || existing.id,
+            address: customerAddress || '',
+            gstin: customerGST || '',
+            total_purchases: Number(existing.total_purchases) + grandTotal,
+            last_purchase_date: new Date().toISOString(),
+            pending_amount: currentPending + pendingToAdd,
+          }).eq('id', existing.id);
+          if (pendingToAdd > 0) toast.warning(`₹${pendingToAdd.toLocaleString('en-IN')} added as pending for ${customerName || customerPhone}`);
+        }
       } else {
         const mixedShortfall2 = (paymentMethod === 'mixed') ? Math.max(0, grandTotal - (mixedPayment.cash + mixedPayment.upi + mixedPayment.card + mixedPayment.emi + mixedPayment.exchange)) : 0;
         const pendingToAdd = mixedShortfall2 > 0.01 ? mixedShortfall2 : ((amountReceived !== '' && amountReceived < grandTotal) ? (grandTotal - amountReceived) : 0);
@@ -1314,7 +1323,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({ editingInvoice, onCancel
         onExchangeNotesChange={setExchangeNotes}
         paymentNotes={paymentNotes}
         onPaymentNotesChange={setPaymentNotes}
-        customerPending={customerPending}
+        customerPending={editMode ? 0 : customerPending}
         amountReceived={amountReceived}
         onAmountReceivedChange={setAmountReceived}
         onCompleteSale={handleCompleteSale}
