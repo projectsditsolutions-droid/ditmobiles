@@ -77,6 +77,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
   const [showPendingModal, setShowPendingModal] = useState<'add' | 'pay' | null>(null);
   const [pendingInput, setPendingInput] = useState('');
+  const [pendingOnly, setPendingOnly] = useState(false);
 
   const fetchCustomers = async () => {
     if (!activeShopId && !isAllShops) return;
@@ -108,8 +109,14 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
 
   const filtered = useMemo(() =>
     customers.filter(c =>
-      !searchQ || `${c.name} ${c.phone} ${c.address} ${c.gstin}`.toLowerCase().includes(searchQ.toLowerCase())
-    ), [customers, searchQ]);
+      (!searchQ || `${c.name} ${c.phone} ${c.address} ${c.gstin}`.toLowerCase().includes(searchQ.toLowerCase()))
+      && (!pendingOnly || Number(c.pending_amount) > 0)
+    ).sort((a, b) => {
+      if (pendingOnly) return Number(b.pending_amount) - Number(a.pending_amount);
+      return 0;
+    }), [customers, searchQ, pendingOnly]);
+
+  const pendingCount = customers.filter(c => Number(c.pending_amount) > 0).length;
 
   const filteredHistory = useMemo(() =>
     customerHistory.filter(inv =>
@@ -274,6 +281,15 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ onEditIn
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input value={searchQ} onChange={e => setSearchQ(e.target.value)} className="h-10 pl-9" placeholder="Search name, phone, address..." />
             </div>
+            {pendingCount > 0 && (
+              <button
+                onClick={() => setPendingOnly(v => !v)}
+                className={`w-full inline-flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-display font-bold border transition-colors ${pendingOnly ? 'bg-destructive text-destructive-foreground border-destructive' : 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20'}`}
+              >
+                <span className="flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> Pending Customers ({pendingCount})</span>
+                <span className="opacity-80">{pendingOnly ? 'Showing only · tap to clear' : 'Show only'}</span>
+              </button>
+            )}
           </div>
 
           <div className="flex-1 overflow-auto">
