@@ -1254,7 +1254,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onEditInvoice }) => {
             // Build per-invoice report
             const report = filtered.map(inv => {
               const items = (allItems || []).filter(i => i.invoice_id === inv.id);
-              const billDiscount = Number(inv.total_discount || 0);
+              // Only the bill-level discount needs proportional distribution.
+              // `total_discount` already includes per-item discounts, so using it
+              // here would double-count item discounts in the report view.
+              const billDiscount = Number(inv.bill_discount || 0);
               
               // First pass: compute raw item totals to get proportional weights
               const rawItems = items.map((item: any) => {
