@@ -160,6 +160,32 @@ export const DealerStockAnalytics: React.FC<Props> = ({ dealerId }) => {
     );
   };
 
+  // Filter brands & models by search query (brand/model/variant/color/IMEI)
+  const filteredBrandData = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return brandData;
+
+    // Find product IDs whose IMEIs match the query
+    const matchedProductIds = new Set(
+      imeis.filter(r => (r.imei || '').toLowerCase().includes(q)).map(r => r.product_id)
+    );
+
+    return brandData
+      .map(bd => {
+        const brandMatch = bd.brand.toLowerCase().includes(q);
+        const matchedModels = bd.models.filter(m =>
+          m.model.toLowerCase().includes(q) ||
+          (m.variant || '').toLowerCase().includes(q) ||
+          (m.color || '').toLowerCase().includes(q) ||
+          matchedProductIds.has(m.productId)
+        );
+        if (brandMatch) return bd;
+        if (matchedModels.length > 0) return { ...bd, models: matchedModels };
+        return null;
+      })
+      .filter((bd): bd is BrandGroup => bd !== null);
+  }, [brandData, search, imeis]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -167,25 +193,6 @@ export const DealerStockAnalytics: React.FC<Props> = ({ dealerId }) => {
       </div>
     );
   }
-
-  // Filter brands & models by search query
-  const filteredBrandData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return brandData;
-    return brandData
-      .map(bd => {
-        const brandMatch = bd.brand.toLowerCase().includes(q);
-        const matchedModels = bd.models.filter(m =>
-          m.model.toLowerCase().includes(q) ||
-          (m.variant || '').toLowerCase().includes(q) ||
-          (m.color || '').toLowerCase().includes(q)
-        );
-        if (brandMatch) return bd;
-        if (matchedModels.length > 0) return { ...bd, models: matchedModels };
-        return null;
-      })
-      .filter((bd): bd is BrandGroup => bd !== null);
-  }, [brandData, search]);
 
   if (brandData.length === 0) {
     return (
