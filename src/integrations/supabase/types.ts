@@ -430,6 +430,42 @@ export type Database = {
           },
         ]
       }
+      maintenance_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          fy_year: number
+          id: string
+          notes: string
+          paid_at: string
+          paid_by: string | null
+          payment_method: string
+          shop_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          fy_year: number
+          id?: string
+          notes?: string
+          paid_at?: string
+          paid_by?: string | null
+          payment_method?: string
+          shop_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          fy_year?: number
+          id?: string
+          notes?: string
+          paid_at?: string
+          paid_by?: string | null
+          payment_method?: string
+          shop_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           brand: string
@@ -624,6 +660,7 @@ export type Database = {
           shop_id: string
           thermal_width: string
           updated_at: string
+          yearly_maintenance_charge: number
         }
         Insert: {
           created_at?: string
@@ -635,6 +672,7 @@ export type Database = {
           shop_id: string
           thermal_width?: string
           updated_at?: string
+          yearly_maintenance_charge?: number
         }
         Update: {
           created_at?: string
@@ -646,6 +684,7 @@ export type Database = {
           shop_id?: string
           thermal_width?: string
           updated_at?: string
+          yearly_maintenance_charge?: number
         }
         Relationships: [
           {
