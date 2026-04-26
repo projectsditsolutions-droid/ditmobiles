@@ -229,7 +229,7 @@ export const DealerStockAnalytics: React.FC<Props> = ({ dealerId }) => {
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search brand, model, variant or color..."
+          placeholder="Search brand, model, variant, color or IMEI..."
           className="w-full pl-9 pr-9 py-2 text-xs rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
         {search && (
