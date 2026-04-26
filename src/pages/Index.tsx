@@ -10,17 +10,19 @@ import { PurchaseEntry } from '@/components/PurchaseEntry';
 import { CustomerManagement } from '@/components/CustomerManagement';
 import { ReportsPage } from '@/components/ReportsPage';
 import { SettingsPage } from '@/components/SettingsPage';
+import { MaintenanceCharge } from '@/components/MaintenanceCharge';
+import { MaintenanceReminder } from '@/components/MaintenanceReminder';
 import { PinModal } from '@/components/PinModal';
 import { usePinLock } from '@/hooks/use-pin-lock';
 import {
   Receipt, Package, Users, BarChart3, Settings, Lock, Unlock,
-  ChevronLeft, ChevronRight, Loader2, LogOut, Zap, UserCircle, ArrowDownLeft,
+  ChevronLeft, ChevronRight, Loader2, LogOut, Zap, UserCircle, ArrowDownLeft, Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import type { InvoiceData } from '@/components/POSBilling';
 
-type AppModule = 'billing' | 'inventory' | 'purchases' | 'dealers' | 'customers' | 'reports' | 'settings';
+type AppModule = 'billing' | 'inventory' | 'purchases' | 'dealers' | 'customers' | 'reports' | 'maintenance' | 'settings';
 
 const MODULES: { key: AppModule; label: string; icon: React.ElementType; protected: boolean; color: string }[] = [
   { key: 'billing', label: 'Billing', icon: Receipt, protected: false, color: 'text-primary' },
@@ -29,6 +31,7 @@ const MODULES: { key: AppModule; label: string; icon: React.ElementType; protect
   { key: 'dealers', label: 'Dealers', icon: Users, protected: true, color: 'text-success' },
   { key: 'customers', label: 'Customers', icon: UserCircle, protected: false, color: 'text-primary' },
   { key: 'reports', label: 'Reports', icon: BarChart3, protected: true, color: 'text-destructive' },
+  { key: 'maintenance', label: 'Maintenance', icon: Wrench, protected: true, color: 'text-warning' },
   { key: 'settings', label: 'Settings', icon: Settings, protected: true, color: 'text-muted-foreground' },
 ];
 
@@ -141,12 +144,14 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-y-auto">
+        <MaintenanceReminder onGoToMaintenance={() => handleModuleSwitch('maintenance')} />
         {activeModule === 'billing' && <POSBilling editingInvoice={editingInvoice} onCancelEdit={() => setEditingInvoice(null)} />}
         {activeModule === 'inventory' && <InventoryManagement />}
         {activeModule === 'purchases' && <PurchaseEntry />}
         {activeModule === 'dealers' && <DealerLedger />}
         {activeModule === 'customers' && <CustomerManagement onEditInvoice={handleEditInvoice} />}
         {activeModule === 'reports' && <ReportsPage onEditInvoice={handleEditInvoice} />}
+        {activeModule === 'maintenance' && <MaintenanceCharge />}
         {activeModule === 'settings' && <SettingsPage />}
       </main>
 
