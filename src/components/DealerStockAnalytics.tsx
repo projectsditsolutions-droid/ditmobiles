@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useShop } from '@/contexts/ShopContext';
 import {
   ChevronDown, ChevronRight, Package, IndianRupee,
-  ArrowUpRight, ArrowDownRight, Minus, BarChart3
+  ArrowUpRight, ArrowDownRight, Minus, BarChart3, Search, X
 } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -48,6 +48,7 @@ export const DealerStockAnalytics: React.FC<Props> = ({ dealerId }) => {
   const [imeis, setImeis] = useState<IMEIRecord[]>([]);
   const [expandedBrand, setExpandedBrand] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (!activeShopId && !isAllShops) return;
@@ -167,6 +168,25 @@ export const DealerStockAnalytics: React.FC<Props> = ({ dealerId }) => {
     );
   }
 
+  // Filter brands & models by search query
+  const filteredBrandData = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return brandData;
+    return brandData
+      .map(bd => {
+        const brandMatch = bd.brand.toLowerCase().includes(q);
+        const matchedModels = bd.models.filter(m =>
+          m.model.toLowerCase().includes(q) ||
+          (m.variant || '').toLowerCase().includes(q) ||
+          (m.color || '').toLowerCase().includes(q)
+        );
+        if (brandMatch) return bd;
+        if (matchedModels.length > 0) return { ...bd, models: matchedModels };
+        return null;
+      })
+      .filter((bd): bd is BrandGroup => bd !== null);
+  }, [brandData, search]);
+
   if (brandData.length === 0) {
     return (
       <div className="text-center py-6 text-muted-foreground">
@@ -195,8 +215,35 @@ export const DealerStockAnalytics: React.FC<Props> = ({ dealerId }) => {
         ))}
       </div>
 
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search brand, model, variant or color..."
+          className="w-full pl-9 pr-9 py-2 text-xs rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-accent text-muted-foreground"
+            aria-label="Clear search"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {filteredBrandData.length === 0 && (
+        <div className="text-center py-6 text-muted-foreground text-xs">
+          No matches for "{search}"
+        </div>
+      )}
+
       {/* Brand accordion */}
-      {brandData.map(bd => {
+      {filteredBrandData.map(bd => {
         const isExpanded = expandedBrand === bd.brand;
         return (
           <div key={bd.brand} className="rounded-xl border overflow-hidden">
