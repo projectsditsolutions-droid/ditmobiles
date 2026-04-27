@@ -13,6 +13,7 @@ import { SettingsPage } from '@/components/SettingsPage';
 import { MaintenanceCharge } from '@/components/MaintenanceCharge';
 import { MaintenanceReminder } from '@/components/MaintenanceReminder';
 import { SuperAdmin } from '@/components/SuperAdmin';
+import { ShopStatusBanner } from '@/components/ShopStatusBanner';
 import { PinModal } from '@/components/PinModal';
 import { usePinLock } from '@/hooks/use-pin-lock';
 import {
@@ -150,6 +151,7 @@ const Index = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-y-auto">
         <MaintenanceReminder onGoToMaintenance={() => handleModuleSwitch('maintenance')} />
+        <ShopStatusBanner />
         {activeModule === 'billing' && <POSBilling editingInvoice={editingInvoice} onCancelEdit={() => setEditingInvoice(null)} />}
         {activeModule === 'inventory' && <InventoryManagement />}
         {activeModule === 'purchases' && <PurchaseEntry />}
