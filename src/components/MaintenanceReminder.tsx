@@ -5,6 +5,7 @@ import { AlertTriangle, X, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { getCurrentFY, getFYLabel, getFYStartDate } from '@/lib/financialYear';
+import { BankDetailsCard } from './BankDetailsCard';
 
 interface Props {
   onGoToMaintenance: () => void;
@@ -78,7 +79,7 @@ export const MaintenanceReminder: React.FC<Props> = ({ onGoToMaintenance }) => {
       )}
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="w-12 h-12 rounded-full bg-warning/15 flex items-center justify-center mx-auto mb-2">
               <AlertTriangle className="w-6 h-6 text-warning" />
@@ -86,10 +87,9 @@ export const MaintenanceReminder: React.FC<Props> = ({ onGoToMaintenance }) => {
             <DialogTitle className="text-center">Maintenance Charge Due</DialogTitle>
             <DialogDescription className="text-center">
               Your yearly maintenance charge of <strong className="text-foreground">₹{yearlyAmount.toLocaleString('en-IN')}</strong> for <strong className="text-foreground">{getFYLabel(currentFY)}</strong> is pending.
-              <br /><br />
-              Please pay to continue using the app without interruption.
             </DialogDescription>
           </DialogHeader>
+          <BankDetailsCard amount={yearlyAmount} fyLabel={getFYLabel(currentFY)} compact />
           <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={snoozeForToday} className="flex-1">Remind me tomorrow</Button>
             <Button onClick={goPay} className="flex-1 gap-1"><Wrench className="w-4 h-4" /> Pay now</Button>
