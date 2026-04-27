@@ -26,7 +26,7 @@ export const MaintenanceCharge: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isDeveloper, setIsDeveloper] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [notes, setNotes] = useState('');
   const [editAmount, setEditAmount] = useState(false);
@@ -40,12 +40,12 @@ export const MaintenanceCharge: React.FC = () => {
   const fetchData = async () => {
     if (!shopId || !user) return;
     setLoading(true);
-    const [{ data: payData }, { data: memData }] = await Promise.all([
+    const [{ data: payData }, { data: roleData }] = await Promise.all([
       supabase.from('maintenance_payments').select('*').eq('shop_id', shopId).order('fy_year', { ascending: false }),
-      supabase.from('shop_memberships').select('role').eq('shop_id', shopId).eq('user_id', user.id).maybeSingle(),
+      supabase.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'developer').maybeSingle(),
     ]);
     setPayments((payData as Payment[]) || []);
-    setIsAdmin(memData?.role === 'admin');
+    setIsDeveloper(!!roleData);
     setLoading(false);
   };
 
@@ -57,7 +57,7 @@ export const MaintenanceCharge: React.FC = () => {
   const isOverdue = !isPaid && new Date() >= dueDate;
 
   const handleMarkPaid = async () => {
-    if (!shopId || !isAdmin) return;
+    if (!shopId || !isDeveloper) return;
     setPaying(true);
     const { error } = await supabase.from('maintenance_payments').insert({
       shop_id: shopId,
@@ -77,7 +77,7 @@ export const MaintenanceCharge: React.FC = () => {
   const handleSaveAmount = async () => {
     const amt = Number(newAmount);
     if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return; }
-    if (!shopId) return;
+    if (!shopId || !isDeveloper) return;
     const { error } = await supabase.from('shop_settings').update({ yearly_maintenance_charge: amt }).eq('shop_id', shopId);
     if (error) { toast.error(error.message); return; }
     toast.success('Amount updated');
@@ -100,10 +100,15 @@ export const MaintenanceCharge: React.FC = () => {
         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
           <Wrench className="w-5 h-5 text-primary" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-display font-extrabold">Yearly Maintenance Charge</h1>
           <p className="text-xs text-muted-foreground">Annual fee due every April 1st</p>
         </div>
+        {isDeveloper && (
+          <span className="px-2.5 py-1 rounded-full bg-primary/15 text-primary text-[10px] font-display font-bold uppercase tracking-wider">
+            Developer
+          </span>
+        )}
       </div>
 
       {/* Current FY status */}
@@ -135,7 +140,7 @@ export const MaintenanceCharge: React.FC = () => {
         </div>
 
         {/* Pay form */}
-        {!isPaid && isAdmin && (
+        {!isPaid && isDeveloper && (
           <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -160,21 +165,21 @@ export const MaintenanceCharge: React.FC = () => {
             </Button>
           </div>
         )}
-        {!isPaid && !isAdmin && (
-          <p className="text-xs text-muted-foreground italic mt-3">Only shop admins can record this payment.</p>
+        {!isPaid && !isDeveloper && (
+          <p className="text-xs text-muted-foreground italic mt-3">Payment confirmation is recorded by the app developer once the transfer is received.</p>
         )}
       </div>
 
       {/* Bank transfer details — always visible so admin can pay */}
       {!isPaid && <BankDetailsCard amount={yearlyAmount} fyLabel={getFYLabel(currentFY)} />}
 
-      {/* Amount setting */}
-      {isAdmin && (
+      {/* Amount setting — developer only */}
+      {isDeveloper && (
         <div className="rounded-xl border bg-card p-4">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
-              <p className="text-xs font-display font-bold">Yearly Charge Amount</p>
-              <p className="text-xs text-muted-foreground">Used for new payments going forward</p>
+              <p className="text-xs font-display font-bold">Yearly Charge Amount (Developer)</p>
+              <p className="text-xs text-muted-foreground">Only the developer can change this</p>
             </div>
             {!editAmount ? (
               <div className="flex items-center gap-2">

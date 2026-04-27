@@ -274,6 +274,9 @@ export const SettingsPage: React.FC = () => {
 
       // Restore order matters due to foreign key dependencies
       const tables: { key: string; table: string }[] = [
+        { key: 'shops', table: 'shops' },
+        { key: 'shop_settings', table: 'shop_settings' },
+        { key: 'shop_gst_profiles', table: 'shop_gst_profiles' },
         { key: 'products', table: 'products' },
         { key: 'dealers', table: 'dealers' },
         { key: 'customers', table: 'customers' },
@@ -281,7 +284,6 @@ export const SettingsPage: React.FC = () => {
         { key: 'invoices', table: 'invoices' },
         { key: 'invoice_items', table: 'invoice_items' },
         { key: 'dealer_transactions', table: 'dealer_transactions' },
-        { key: 'shop_gst_profiles', table: 'shop_gst_profiles' },
       ];
 
       let restored = 0;
