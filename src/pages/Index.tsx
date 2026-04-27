@@ -12,17 +12,18 @@ import { ReportsPage } from '@/components/ReportsPage';
 import { SettingsPage } from '@/components/SettingsPage';
 import { MaintenanceCharge } from '@/components/MaintenanceCharge';
 import { MaintenanceReminder } from '@/components/MaintenanceReminder';
+import { SuperAdmin } from '@/components/SuperAdmin';
 import { PinModal } from '@/components/PinModal';
 import { usePinLock } from '@/hooks/use-pin-lock';
 import {
   Receipt, Package, Users, BarChart3, Settings, Lock, Unlock,
-  ChevronLeft, ChevronRight, Loader2, LogOut, Zap, UserCircle, ArrowDownLeft, Wrench,
+  ChevronLeft, ChevronRight, Loader2, LogOut, Zap, UserCircle, ArrowDownLeft, Wrench, Crown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import type { InvoiceData } from '@/components/POSBilling';
 
-type AppModule = 'billing' | 'inventory' | 'purchases' | 'dealers' | 'customers' | 'reports' | 'maintenance' | 'settings';
+type AppModule = 'billing' | 'inventory' | 'purchases' | 'dealers' | 'customers' | 'reports' | 'maintenance' | 'superadmin' | 'settings';
 
 const MODULES: { key: AppModule; label: string; icon: React.ElementType; protected: boolean; color: string }[] = [
   { key: 'billing', label: 'Billing', icon: Receipt, protected: false, color: 'text-primary' },
@@ -32,11 +33,12 @@ const MODULES: { key: AppModule; label: string; icon: React.ElementType; protect
   { key: 'customers', label: 'Customers', icon: UserCircle, protected: false, color: 'text-primary' },
   { key: 'reports', label: 'Reports', icon: BarChart3, protected: true, color: 'text-destructive' },
   { key: 'maintenance', label: 'Maintenance', icon: Wrench, protected: true, color: 'text-warning' },
+  { key: 'superadmin', label: 'Super Admin', icon: Crown, protected: true, color: 'text-primary' },
   { key: 'settings', label: 'Settings', icon: Settings, protected: true, color: 'text-muted-foreground' },
 ];
 
 const Index = () => {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut, isDeveloper } = useAuth();
   const { shops, loading: shopLoading, refreshShops } = useShop();
   const [activeModule, setActiveModule] = useState<AppModule>('billing');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -65,6 +67,9 @@ const Index = () => {
   if (!shopLoading && shops.length === 0) {
     return <Onboarding onComplete={refreshShops} />;
   }
+
+  // Filter modules: hide Super Admin for non-developers
+  const visibleModules = MODULES.filter(m => m.key !== 'superadmin' || isDeveloper);
 
   const handleModuleSwitch = (mod: AppModule) => {
     const module = MODULES.find(m => m.key === mod);
@@ -102,7 +107,7 @@ const Index = () => {
 
         {/* Nav */}
         <nav className="flex-1 py-3 px-2 space-y-1">
-          {MODULES.map(mod => {
+          {visibleModules.map(mod => {
             const isActive = activeModule === mod.key;
             const isLocked = mod.protected && !pin.isUnlocked;
             return (
@@ -152,6 +157,7 @@ const Index = () => {
         {activeModule === 'customers' && <CustomerManagement onEditInvoice={handleEditInvoice} />}
         {activeModule === 'reports' && <ReportsPage onEditInvoice={handleEditInvoice} />}
         {activeModule === 'maintenance' && <MaintenanceCharge />}
+        {activeModule === 'superadmin' && isDeveloper && <SuperAdmin />}
         {activeModule === 'settings' && <SettingsPage />}
       </main>
 
