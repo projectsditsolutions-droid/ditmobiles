@@ -6,6 +6,7 @@ import { Wrench, CheckCircle2, AlertCircle, IndianRupee, Calendar, Loader2 } fro
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { getCurrentFY, getFYLabel, getFYStartDate, getFYEndDate } from '@/lib/financialYear';
+import { BankDetailsCard } from './BankDetailsCard';
 
 interface Payment {
   id: string;
@@ -163,6 +164,9 @@ export const MaintenanceCharge: React.FC = () => {
           <p className="text-xs text-muted-foreground italic mt-3">Only shop admins can record this payment.</p>
         )}
       </div>
+
+      {/* Bank transfer details — always visible so admin can pay */}
+      {!isPaid && <BankDetailsCard amount={yearlyAmount} fyLabel={getFYLabel(currentFY)} />}
 
       {/* Amount setting */}
       {isAdmin && (
