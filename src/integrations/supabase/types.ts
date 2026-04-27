@@ -793,6 +793,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_developer: { Args: { _user_id: string }; Returns: boolean }
       is_shop_admin: {
         Args: { _shop_id: string; _user_id: string }
         Returns: boolean
