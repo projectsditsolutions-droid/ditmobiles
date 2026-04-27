@@ -699,51 +699,69 @@ export type Database = {
       shops: {
         Row: {
           address: string
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           created_by: string | null
           gst_number: string
           id: string
           invoice_prefix: string
+          is_suspended: boolean
           last_invoice_fy_start: number
           last_invoice_number: number
           logo_url: string | null
           name: string
           phone: string
           sub_heading: string
+          suspended_reason: string | null
           terms_and_conditions: string[] | null
           updated_at: string
+          yearly_fee: number
         }
         Insert: {
           address?: string
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string | null
           gst_number?: string
           id?: string
           invoice_prefix?: string
+          is_suspended?: boolean
           last_invoice_fy_start?: number
           last_invoice_number?: number
           logo_url?: string | null
           name: string
           phone?: string
           sub_heading?: string
+          suspended_reason?: string | null
           terms_and_conditions?: string[] | null
           updated_at?: string
+          yearly_fee?: number
         }
         Update: {
           address?: string
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string | null
           gst_number?: string
           id?: string
           invoice_prefix?: string
+          is_suspended?: boolean
           last_invoice_fy_start?: number
           last_invoice_number?: number
           logo_url?: string | null
           name?: string
           phone?: string
           sub_heading?: string
+          suspended_reason?: string | null
           terms_and_conditions?: string[] | null
           updated_at?: string
+          yearly_fee?: number
         }
         Relationships: []
       }
