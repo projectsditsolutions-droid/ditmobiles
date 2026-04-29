@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Crown, Store, Users, Wallet, BarChart3, CheckCircle2, XCircle, AlertTriangle,
-  Loader2, Pause, Play, Trash2, IndianRupee, Shield, Search,
+  Loader2, Pause, Play, Trash2, IndianRupee, Shield, Search, Plus, MessageSquare, Tag,
 } from 'lucide-react';
 import { getCurrentFY, getFYLabel } from '@/lib/financialYear';
 import {
@@ -22,6 +22,11 @@ interface Profile { id: string; email: string | null; full_name: string | null; 
 interface Membership { user_id: string; shop_id: string; role: string; }
 interface Payment { shop_id: string; fy_year: number; amount: number; paid_at: string; payment_method: string; }
 interface RoleRow { user_id: string; role: string; }
+interface ShopCharge {
+  id: string; shop_id: string; title: string; message: string; amount: number;
+  is_paid: boolean; paid_at: string | null; paid_method: string; paid_notes: string;
+  due_date: string | null; created_at: string;
+}
 
 const fmt = (n: number) => `₹${Number(n).toLocaleString('en-IN')}`;
 
@@ -34,6 +39,7 @@ export const SuperAdmin: React.FC = () => {
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [roles, setRoles] = useState<RoleRow[]>([]);
+  const [charges, setCharges] = useState<ShopCharge[]>([]);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -46,22 +52,31 @@ export const SuperAdmin: React.FC = () => {
   const [feeShop, setFeeShop] = useState<Shop | null>(null);
   const [feeAmount, setFeeAmount] = useState('');
 
+  // Custom charge dialog
+  const [chargeShop, setChargeShop] = useState<Shop | null>(null);
+  const [chargeTitle, setChargeTitle] = useState('');
+  const [chargeMessage, setChargeMessage] = useState('');
+  const [chargeAmt, setChargeAmt] = useState('');
+  const [chargeDue, setChargeDue] = useState('');
+
   const fy = getCurrentFY();
 
   const fetchAll = async () => {
     setLoading(true);
-    const [s, p, m, pay, r] = await Promise.all([
+    const [s, p, m, pay, r, c] = await Promise.all([
       supabase.from('shops').select('*').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
       supabase.from('shop_memberships').select('user_id, shop_id, role'),
       supabase.from('maintenance_payments').select('shop_id, fy_year, amount, paid_at, payment_method'),
       supabase.from('user_roles').select('user_id, role'),
+      supabase.from('shop_charges').select('*').order('created_at', { ascending: false }),
     ]);
     setShops((s.data as Shop[]) || []);
     setProfiles((p.data as Profile[]) || []);
     setMemberships((m.data as Membership[]) || []);
     setPayments((pay.data as Payment[]) || []);
     setRoles((r.data as RoleRow[]) || []);
+    setCharges((c.data as ShopCharge[]) || []);
     setLoading(false);
   };
 
@@ -75,6 +90,7 @@ export const SuperAdmin: React.FC = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_payments' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_memberships' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_charges' }, () => fetchAll())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line
