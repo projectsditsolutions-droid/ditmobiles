@@ -298,11 +298,11 @@ export const SuperAdmin: React.FC = () => {
                       </>
                     )}
                     {s.approval_status === 'approved' && !paid && (
-                      <Button size="sm" onClick={() => markPaid(s)} disabled={busy === s.id + 'pay'} className="h-8 gap-1 text-xs">
+                      <Button size="sm" onClick={() => openPayDialog(s)} disabled={busy === s.id + 'pay'} className="h-8 gap-1 text-xs">
                         <IndianRupee className="w-3.5 h-3.5" /> Mark Paid
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => updateFee(s)} className="h-8 gap-1 text-xs">
+                    <Button size="sm" variant="outline" onClick={() => openFeeDialog(s)} className="h-8 gap-1 text-xs">
                       <Wallet className="w-3.5 h-3.5" /> Fee
                     </Button>
                     {s.approval_status === 'approved' && (
@@ -402,8 +402,8 @@ export const SuperAdmin: React.FC = () => {
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" onClick={() => updateFee(s)}>Edit Fee</Button>
-                        {!paid && <Button size="sm" className="h-7 text-[10px] px-2" onClick={() => markPaid(s)} disabled={busy === s.id + 'pay'}>Mark Paid</Button>}
+                        <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" onClick={() => openFeeDialog(s)}>Edit Fee</Button>
+                        {!paid && <Button size="sm" className="h-7 text-[10px] px-2" onClick={() => openPayDialog(s)} disabled={busy === s.id + 'pay'}>Mark Paid</Button>}
                       </div>
                     </td>
                   </tr>
