@@ -366,6 +366,9 @@ export const SuperAdmin: React.FC = () => {
                     <Button size="sm" variant="outline" onClick={() => openFeeDialog(s)} className="h-8 gap-1 text-xs">
                       <Wallet className="w-3.5 h-3.5" /> Fee
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => openChargeDialog(s)} className="h-8 gap-1 text-xs">
+                      <Plus className="w-3.5 h-3.5" /> Charge
+                    </Button>
                     {s.approval_status === 'approved' && (
                       <Button size="sm" variant="outline" onClick={() => toggleSuspend(s)} className="h-8 gap-1 text-xs">
                         {s.is_suspended ? <><Play className="w-3.5 h-3.5" /> Resume</> : <><Pause className="w-3.5 h-3.5" /> Suspend</>}
@@ -376,6 +379,43 @@ export const SuperAdmin: React.FC = () => {
                     </Button>
                   </div>
                 </div>
+                {/* Charges list for this shop */}
+                {(() => {
+                  const shopCharges = charges.filter(c => c.shop_id === s.id);
+                  if (shopCharges.length === 0) return null;
+                  return (
+                    <div className="mt-3 pt-3 border-t space-y-1.5">
+                      <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <Tag className="w-3 h-3" /> Custom Charges ({shopCharges.length})
+                      </p>
+                      {shopCharges.map(c => (
+                        <div key={c.id} className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[11px] ${c.is_paid ? 'bg-success/5 border border-success/20' : 'bg-warning/5 border border-warning/20'}`}>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-display font-bold">{c.title}</span>
+                              <span className={`px-1.5 py-0 rounded-full text-[9px] font-bold uppercase ${c.is_paid ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>
+                                {c.is_paid ? 'Paid' : 'Pending'}
+                              </span>
+                              {c.due_date && !c.is_paid && (
+                                <span className="text-[9px] text-muted-foreground">Due {new Date(c.due_date).toLocaleDateString('en-IN')}</span>
+                              )}
+                            </div>
+                            {c.message && <p className="text-[10px] text-muted-foreground truncate">💬 {c.message}</p>}
+                          </div>
+                          <span className="font-display font-extrabold text-xs whitespace-nowrap">{fmt(c.amount)}</span>
+                          {!c.is_paid && (
+                            <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => markChargePaid(c)} disabled={busy === c.id + 'cpay'}>
+                              Mark Paid
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="h-6 px-1.5 text-destructive" onClick={() => deleteCharge(c)}>
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
