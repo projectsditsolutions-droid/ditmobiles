@@ -272,9 +272,29 @@ export const SettingsPage: React.FC = () => {
         return;
       }
 
+      // Check developer status — only developer can write protected shop fields
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      let isDev = false;
+      if (currentUser) {
+        const { data: roleRow } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', currentUser.id)
+          .eq('role', 'developer' as any)
+          .maybeSingle();
+        isDev = !!roleRow;
+      }
+
+      // Strip fields that triggers will reject for non-developers
+      const sanitizeShop = (row: any) => {
+        if (isDev) return row;
+        const { approval_status, is_suspended, yearly_fee, approved_by, approved_at, ...rest } = row;
+        return rest;
+      };
+
       // Restore order matters due to foreign key dependencies
-      const tables: { key: string; table: string }[] = [
-        { key: 'shops', table: 'shops' },
+      const tables: { key: string; table: string; transform?: (r: any) => any }[] = [
+        { key: 'shops', table: 'shops', transform: sanitizeShop },
         { key: 'shop_settings', table: 'shop_settings' },
         { key: 'shop_gst_profiles', table: 'shop_gst_profiles' },
         { key: 'products', table: 'products' },
@@ -287,23 +307,36 @@ export const SettingsPage: React.FC = () => {
       ];
 
       let restored = 0;
-      for (const { key, table } of tables) {
-        const rows = backup[key];
-        if (!rows || rows.length === 0) continue;
-        // Upsert in batches of 100
+      const failures: string[] = [];
+      for (const { key, table, transform } of tables) {
+        const raw = backup[key];
+        if (!raw || raw.length === 0) continue;
+        const rows = transform ? raw.map(transform) : raw;
         for (let i = 0; i < rows.length; i += 100) {
           const batch = rows.slice(i, i + 100);
-          const { error } = await supabase.from(table as any).upsert(batch as any, { onConflict: 'id' });
-          if (error) console.error(`Restore error on ${table}:`, error.message);
-          else restored += batch.length;
+          const { error } = await supabase
+            .from(table as any)
+            .upsert(batch as any, { onConflict: 'id' });
+          if (error) {
+            console.error(`Restore error on ${table}:`, error);
+            failures.push(`${table}: ${error.message}`);
+          } else {
+            restored += batch.length;
+          }
         }
       }
 
-      toast.success(`Backup restored! ${restored} records processed.`);
+      if (failures.length > 0) {
+        const unique = Array.from(new Set(failures)).slice(0, 3).join(' | ');
+        toast.error(`Restored ${restored} rows with errors: ${unique}`, { duration: 8000 });
+      } else {
+        toast.success(`Backup restored! ${restored} records processed.`);
+      }
       refreshShops();
       refreshSettings();
-    } catch (err) {
-      toast.error('Failed to restore backup. Check file format.');
+    } catch (err: any) {
+      console.error('Restore failure:', err);
+      toast.error(`Failed to restore backup: ${err?.message || 'Check file format.'}`);
     } finally {
       setRestoreLoading(false);
     }
