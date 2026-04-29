@@ -8,6 +8,9 @@ import {
   Loader2, Pause, Play, Trash2, IndianRupee, Shield, Search,
 } from 'lucide-react';
 import { getCurrentFY, getFYLabel } from '@/lib/financialYear';
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 
 type Tab = 'stats' | 'shops' | 'users' | 'fees';
 
@@ -33,6 +36,15 @@ export const SuperAdmin: React.FC = () => {
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Dialogs
+  const [payShop, setPayShop] = useState<Shop | null>(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('cash');
+  const [payNotes, setPayNotes] = useState('');
+
+  const [feeShop, setFeeShop] = useState<Shop | null>(null);
+  const [feeAmount, setFeeAmount] = useState('');
 
   const fy = getCurrentFY();
 
@@ -121,32 +133,47 @@ export const SuperAdmin: React.FC = () => {
     if (error) { toast.error(error.message); return; }
     toast.success('Shop deleted'); fetchAll();
   };
-  const updateFee = async (s: Shop) => {
-    const v = prompt(`New yearly fee for "${s.name}" (current: ₹${s.yearly_fee})`, String(s.yearly_fee));
-    if (!v) return;
-    const amt = Number(v);
+  const openFeeDialog = (s: Shop) => {
+    setFeeShop(s);
+    setFeeAmount(String(s.yearly_fee));
+  };
+  const saveFee = async () => {
+    if (!feeShop) return;
+    const amt = Number(feeAmount);
     if (!amt || amt <= 0) { toast.error('Invalid amount'); return; }
-    setBusy(s.id + 'Fee updated');
+    setBusy(feeShop.id + 'Fee updated');
     const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      supabase.from('shops').update({ yearly_fee: amt } as any).eq('id', s.id),
-      // Mirror to shop_settings so legacy maintenance views stay in sync
-      supabase.from('shop_settings').update({ yearly_maintenance_charge: amt }).eq('shop_id', s.id),
+      supabase.from('shops').update({ yearly_fee: amt } as any).eq('id', feeShop.id),
+      supabase.from('shop_settings').update({ yearly_maintenance_charge: amt }).eq('shop_id', feeShop.id),
     ]);
     setBusy(null);
     const error = e1 || e2;
     if (error) { toast.error(error.message); return; }
     toast.success('Fee updated');
+    setFeeShop(null);
     fetchAll();
   };
-  const markPaid = async (s: Shop) => {
-    if (!confirm(`Mark "${s.name}" as paid for ${getFYLabel(fy)} (${fmt(s.yearly_fee)})?`)) return;
-    setBusy(s.id + 'pay');
+  const openPayDialog = (s: Shop) => {
+    setPayShop(s);
+    setPayAmount(String(s.yearly_fee));
+    setPayMethod('cash');
+    setPayNotes('');
+  };
+  const confirmPay = async () => {
+    if (!payShop) return;
+    const amt = Number(payAmount);
+    if (!amt || amt <= 0) { toast.error('Invalid amount'); return; }
+    setBusy(payShop.id + 'pay');
     const { error } = await supabase.from('maintenance_payments').insert({
-      shop_id: s.id, fy_year: fy, amount: s.yearly_fee, payment_method: 'manual', paid_by: user?.id, notes: 'Marked by developer',
+      shop_id: payShop.id, fy_year: fy, amount: amt,
+      payment_method: payMethod, paid_by: user?.id,
+      notes: payNotes.trim() || 'Marked by developer',
     });
     setBusy(null);
     if (error) { toast.error(error.message); return; }
-    toast.success('Marked as paid'); fetchAll();
+    toast.success(`Marked as paid (${fmt(amt)})`);
+    setPayShop(null);
+    fetchAll();
   };
   const setUserRole = async (uid: string, role: 'admin' | 'staff' | 'developer', remove: boolean) => {
     setBusy(uid + role);
@@ -271,11 +298,11 @@ export const SuperAdmin: React.FC = () => {
                       </>
                     )}
                     {s.approval_status === 'approved' && !paid && (
-                      <Button size="sm" onClick={() => markPaid(s)} disabled={busy === s.id + 'pay'} className="h-8 gap-1 text-xs">
+                      <Button size="sm" onClick={() => openPayDialog(s)} disabled={busy === s.id + 'pay'} className="h-8 gap-1 text-xs">
                         <IndianRupee className="w-3.5 h-3.5" /> Mark Paid
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => updateFee(s)} className="h-8 gap-1 text-xs">
+                    <Button size="sm" variant="outline" onClick={() => openFeeDialog(s)} className="h-8 gap-1 text-xs">
                       <Wallet className="w-3.5 h-3.5" /> Fee
                     </Button>
                     {s.approval_status === 'approved' && (
@@ -375,8 +402,8 @@ export const SuperAdmin: React.FC = () => {
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" onClick={() => updateFee(s)}>Edit Fee</Button>
-                        {!paid && <Button size="sm" className="h-7 text-[10px] px-2" onClick={() => markPaid(s)} disabled={busy === s.id + 'pay'}>Mark Paid</Button>}
+                        <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" onClick={() => openFeeDialog(s)}>Edit Fee</Button>
+                        {!paid && <Button size="sm" className="h-7 text-[10px] px-2" onClick={() => openPayDialog(s)} disabled={busy === s.id + 'pay'}>Mark Paid</Button>}
                       </div>
                     </td>
                   </tr>
@@ -386,6 +413,77 @@ export const SuperAdmin: React.FC = () => {
           </table>
         </div>
       )}
+
+      {/* Mark Paid dialog with custom amount */}
+      <Dialog open={!!payShop} onOpenChange={(o) => !o && setPayShop(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mark Paid — {payShop?.name}</DialogTitle>
+            <DialogDescription>{getFYLabel(fy)} • Default fee: {payShop ? fmt(payShop.yearly_fee) : ''}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Amount Received (₹)</label>
+              <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)}
+                className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              <p className="text-[10px] text-muted-foreground mt-1">Custom-a ennaikum amount enter pannalam (partial / discounted etc.)</p>
+            </div>
+            <div>
+              <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Payment Method</label>
+              <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
+                className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <option value="cash">Cash</option>
+                <option value="upi">UPI</option>
+                <option value="card">Card</option>
+                <option value="bank">Bank Transfer</option>
+                <option value="manual">Manual / Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Notes (optional)</label>
+              <input value={payNotes} onChange={e => setPayNotes(e.target.value)} placeholder="Reference / receipt no."
+                className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayShop(null)}>Cancel</Button>
+            <Button onClick={confirmPay} disabled={!!busy}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <IndianRupee className="w-4 h-4 mr-1" />}
+              Confirm Paid
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Fee dialog */}
+      <Dialog open={!!feeShop} onOpenChange={(o) => !o && setFeeShop(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Yearly Fee — {feeShop?.name}</DialogTitle>
+            <DialogDescription>Set custom yearly maintenance fee for this shop.</DialogDescription>
+          </DialogHeader>
+          <div>
+            <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Yearly Fee (₹)</label>
+            <input type="number" value={feeAmount} onChange={e => setFeeAmount(e.target.value)}
+              className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {[1500, 2500, 5000, 7500, 10000, 15000].map(v => (
+                <button key={v} type="button" onClick={() => setFeeAmount(String(v))}
+                  className="px-2 py-1 rounded-md border text-[11px] font-display font-bold hover:bg-accent">
+                  ₹{v.toLocaleString('en-IN')}
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFeeShop(null)}>Cancel</Button>
+            <Button onClick={saveFee} disabled={!!busy}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Wallet className="w-4 h-4 mr-1" />}
+              Save Fee
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
