@@ -413,6 +413,77 @@ export const SuperAdmin: React.FC = () => {
           </table>
         </div>
       )}
+
+      {/* Mark Paid dialog with custom amount */}
+      <Dialog open={!!payShop} onOpenChange={(o) => !o && setPayShop(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mark Paid — {payShop?.name}</DialogTitle>
+            <DialogDescription>{getFYLabel(fy)} • Default fee: {payShop ? fmt(payShop.yearly_fee) : ''}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Amount Received (₹)</label>
+              <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)}
+                className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              <p className="text-[10px] text-muted-foreground mt-1">Custom-a ennaikum amount enter pannalam (partial / discounted etc.)</p>
+            </div>
+            <div>
+              <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Payment Method</label>
+              <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
+                className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <option value="cash">Cash</option>
+                <option value="upi">UPI</option>
+                <option value="card">Card</option>
+                <option value="bank">Bank Transfer</option>
+                <option value="manual">Manual / Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Notes (optional)</label>
+              <input value={payNotes} onChange={e => setPayNotes(e.target.value)} placeholder="Reference / receipt no."
+                className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayShop(null)}>Cancel</Button>
+            <Button onClick={confirmPay} disabled={!!busy}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <IndianRupee className="w-4 h-4 mr-1" />}
+              Confirm Paid
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Fee dialog */}
+      <Dialog open={!!feeShop} onOpenChange={(o) => !o && setFeeShop(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Yearly Fee — {feeShop?.name}</DialogTitle>
+            <DialogDescription>Set custom yearly maintenance fee for this shop.</DialogDescription>
+          </DialogHeader>
+          <div>
+            <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Yearly Fee (₹)</label>
+            <input type="number" value={feeAmount} onChange={e => setFeeAmount(e.target.value)}
+              className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {[1500, 2500, 5000, 7500, 10000, 15000].map(v => (
+                <button key={v} type="button" onClick={() => setFeeAmount(String(v))}
+                  className="px-2 py-1 rounded-md border text-[11px] font-display font-bold hover:bg-accent">
+                  ₹{v.toLocaleString('en-IN')}
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFeeShop(null)}>Cancel</Button>
+            <Button onClick={saveFee} disabled={!!busy}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Wallet className="w-4 h-4 mr-1" />}
+              Save Fee
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
