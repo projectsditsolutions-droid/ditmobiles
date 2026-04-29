@@ -71,6 +71,25 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeShopId && !isAllShops) refreshSettings();
   }, [activeShopId]);
 
+  // Realtime: refresh shops & settings when developer makes changes
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel('shop-updates-' + user.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shops' }, () => {
+        refreshShops();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_settings' }, () => {
+        if (activeShopId && !isAllShops) refreshSettings();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_payments' }, () => {
+        // trigger a window event so MaintenanceCharge / Reminder can refetch
+        window.dispatchEvent(new CustomEvent('maintenance-payments-changed'));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, activeShopId, isAllShops]);
+
   const setActiveShopId = (id: string) => {
     setActiveShopIdState(id);
     localStorage.setItem('pos_active_shop', id);
