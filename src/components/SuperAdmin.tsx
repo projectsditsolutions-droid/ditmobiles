@@ -585,6 +585,54 @@ export const SuperAdmin: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Custom Charge dialog */}
+      <Dialog open={!!chargeShop} onOpenChange={(o) => !o && setChargeShop(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Custom Charge — {chargeShop?.name}</DialogTitle>
+            <DialogDescription>One-time charge with custom message (e.g. setup fee, addon, penalty).</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Title *</label>
+              <input value={chargeTitle} onChange={e => setChargeTitle(e.target.value)} placeholder="e.g. Hardware Setup, Extra Training, Late Fee"
+                className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {['Hardware Setup', 'Training Fee', 'Custom Feature', 'Late Fee', 'Addon Service'].map(t => (
+                  <button key={t} type="button" onClick={() => setChargeTitle(t)}
+                    className="px-2 py-0.5 rounded-md border text-[10px] font-display hover:bg-accent">{t}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Custom Message (shown to shop)</label>
+              <textarea value={chargeMessage} onChange={e => setChargeMessage(e.target.value)} rows={3}
+                placeholder="Why is this charge applied? Detailed reason / instructions for the shop owner..."
+                className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Amount (₹) *</label>
+                <input type="number" value={chargeAmt} onChange={e => setChargeAmt(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+              <div>
+                <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Due Date (optional)</label>
+                <input type="date" value={chargeDue} onChange={e => setChargeDue(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setChargeShop(null)}>Cancel</Button>
+            <Button onClick={saveCharge} disabled={!!busy}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+              Create Charge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
