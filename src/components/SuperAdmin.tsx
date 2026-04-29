@@ -202,6 +202,51 @@ export const SuperAdmin: React.FC = () => {
     toast.success('Role updated'); fetchAll();
   };
 
+  // Custom shop charges
+  const openChargeDialog = (s: Shop) => {
+    setChargeShop(s);
+    setChargeTitle('');
+    setChargeMessage('');
+    setChargeAmt('');
+    setChargeDue('');
+  };
+  const saveCharge = async () => {
+    if (!chargeShop) return;
+    const amt = Number(chargeAmt);
+    if (!chargeTitle.trim()) { toast.error('Title required'); return; }
+    if (!amt || amt <= 0) { toast.error('Invalid amount'); return; }
+    setBusy(chargeShop.id + 'charge');
+    const { error } = await supabase.from('shop_charges').insert({
+      shop_id: chargeShop.id,
+      title: chargeTitle.trim(),
+      message: chargeMessage.trim(),
+      amount: amt,
+      due_date: chargeDue || null,
+      created_by: user?.id,
+    } as any);
+    setBusy(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Charge created — ${fmt(amt)}`);
+    setChargeShop(null);
+    fetchAll();
+  };
+  const markChargePaid = async (c: ShopCharge) => {
+    if (!confirm(`Mark "${c.title}" (${fmt(c.amount)}) as paid?`)) return;
+    setBusy(c.id + 'cpay');
+    const { error } = await supabase.from('shop_charges').update({
+      is_paid: true, paid_at: new Date().toISOString(), paid_method: 'manual',
+    } as any).eq('id', c.id);
+    setBusy(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Charge marked as paid'); fetchAll();
+  };
+  const deleteCharge = async (c: ShopCharge) => {
+    if (!confirm(`Delete charge "${c.title}"?`)) return;
+    const { error } = await supabase.from('shop_charges').delete().eq('id', c.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Charge deleted'); fetchAll();
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
