@@ -21,7 +21,7 @@ interface Payment {
 const fmt = (n: number) => `₹${Number(n).toLocaleString('en-IN')}`;
 
 export const MaintenanceCharge: React.FC = () => {
-  const { activeShopId, settings, refreshSettings, isAllShops, shops } = useShop();
+  const { activeShopId, settings, refreshSettings, refreshShops, isAllShops, shops } = useShop();
   const { user } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,9 +33,12 @@ export const MaintenanceCharge: React.FC = () => {
   const [newAmount, setNewAmount] = useState<string>('');
 
   const currentFY = getCurrentFY();
-  const yearlyAmount = Number(settings?.yearly_maintenance_charge ?? 1500);
-
   const shopId = isAllShops ? (shops[0]?.id ?? null) : activeShopId;
+  const activeShopRow = useMemo(() => shops.find(s => s.id === shopId), [shops, shopId]);
+  // Prefer per-shop yearly_fee set by Super Admin; fall back to shop_settings, then default
+  const yearlyAmount = Number(
+    (activeShopRow as any)?.yearly_fee ?? settings?.yearly_maintenance_charge ?? 1500
+  );
 
   const fetchData = async () => {
     if (!shopId || !user) return;
@@ -50,6 +53,14 @@ export const MaintenanceCharge: React.FC = () => {
   };
 
   useEffect(() => { fetchData(); /* eslint-disable-next-line */ }, [shopId, user?.id]);
+
+  // Refresh on realtime maintenance_payments changes from ShopContext
+  useEffect(() => {
+    const handler = () => fetchData();
+    window.addEventListener('maintenance-payments-changed', handler);
+    return () => window.removeEventListener('maintenance-payments-changed', handler);
+    // eslint-disable-next-line
+  }, [shopId, user?.id]);
 
   const currentFYPayment = useMemo(() => payments.find(p => p.fy_year === currentFY), [payments, currentFY]);
   const isPaid = !!currentFYPayment;
@@ -78,11 +89,16 @@ export const MaintenanceCharge: React.FC = () => {
     const amt = Number(newAmount);
     if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return; }
     if (!shopId || !isDeveloper) return;
-    const { error } = await supabase.from('shop_settings').update({ yearly_maintenance_charge: amt }).eq('shop_id', shopId);
+    // Update both canonical (shops.yearly_fee) and legacy (shop_settings) so all views agree
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      supabase.from('shops').update({ yearly_fee: amt } as any).eq('id', shopId),
+      supabase.from('shop_settings').update({ yearly_maintenance_charge: amt }).eq('shop_id', shopId),
+    ]);
+    const error = e1 || e2;
     if (error) { toast.error(error.message); return; }
     toast.success('Amount updated');
     setEditAmount(false);
-    refreshSettings();
+    await Promise.all([refreshSettings(), refreshShops()]);
   };
 
   if (!shopId) {
