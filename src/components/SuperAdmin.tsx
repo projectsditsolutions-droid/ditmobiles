@@ -8,6 +8,9 @@ import {
   Loader2, Pause, Play, Trash2, IndianRupee, Shield, Search,
 } from 'lucide-react';
 import { getCurrentFY, getFYLabel } from '@/lib/financialYear';
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 
 type Tab = 'stats' | 'shops' | 'users' | 'fees';
 
@@ -33,6 +36,15 @@ export const SuperAdmin: React.FC = () => {
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Dialogs
+  const [payShop, setPayShop] = useState<Shop | null>(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('cash');
+  const [payNotes, setPayNotes] = useState('');
+
+  const [feeShop, setFeeShop] = useState<Shop | null>(null);
+  const [feeAmount, setFeeAmount] = useState('');
 
   const fy = getCurrentFY();
 
@@ -121,32 +133,47 @@ export const SuperAdmin: React.FC = () => {
     if (error) { toast.error(error.message); return; }
     toast.success('Shop deleted'); fetchAll();
   };
-  const updateFee = async (s: Shop) => {
-    const v = prompt(`New yearly fee for "${s.name}" (current: ₹${s.yearly_fee})`, String(s.yearly_fee));
-    if (!v) return;
-    const amt = Number(v);
+  const openFeeDialog = (s: Shop) => {
+    setFeeShop(s);
+    setFeeAmount(String(s.yearly_fee));
+  };
+  const saveFee = async () => {
+    if (!feeShop) return;
+    const amt = Number(feeAmount);
     if (!amt || amt <= 0) { toast.error('Invalid amount'); return; }
-    setBusy(s.id + 'Fee updated');
+    setBusy(feeShop.id + 'Fee updated');
     const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      supabase.from('shops').update({ yearly_fee: amt } as any).eq('id', s.id),
-      // Mirror to shop_settings so legacy maintenance views stay in sync
-      supabase.from('shop_settings').update({ yearly_maintenance_charge: amt }).eq('shop_id', s.id),
+      supabase.from('shops').update({ yearly_fee: amt } as any).eq('id', feeShop.id),
+      supabase.from('shop_settings').update({ yearly_maintenance_charge: amt }).eq('shop_id', feeShop.id),
     ]);
     setBusy(null);
     const error = e1 || e2;
     if (error) { toast.error(error.message); return; }
     toast.success('Fee updated');
+    setFeeShop(null);
     fetchAll();
   };
-  const markPaid = async (s: Shop) => {
-    if (!confirm(`Mark "${s.name}" as paid for ${getFYLabel(fy)} (${fmt(s.yearly_fee)})?`)) return;
-    setBusy(s.id + 'pay');
+  const openPayDialog = (s: Shop) => {
+    setPayShop(s);
+    setPayAmount(String(s.yearly_fee));
+    setPayMethod('cash');
+    setPayNotes('');
+  };
+  const confirmPay = async () => {
+    if (!payShop) return;
+    const amt = Number(payAmount);
+    if (!amt || amt <= 0) { toast.error('Invalid amount'); return; }
+    setBusy(payShop.id + 'pay');
     const { error } = await supabase.from('maintenance_payments').insert({
-      shop_id: s.id, fy_year: fy, amount: s.yearly_fee, payment_method: 'manual', paid_by: user?.id, notes: 'Marked by developer',
+      shop_id: payShop.id, fy_year: fy, amount: amt,
+      payment_method: payMethod, paid_by: user?.id,
+      notes: payNotes.trim() || 'Marked by developer',
     });
     setBusy(null);
     if (error) { toast.error(error.message); return; }
-    toast.success('Marked as paid'); fetchAll();
+    toast.success(`Marked as paid (${fmt(amt)})`);
+    setPayShop(null);
+    fetchAll();
   };
   const setUserRole = async (uid: string, role: 'admin' | 'staff' | 'developer', remove: boolean) => {
     setBusy(uid + role);
