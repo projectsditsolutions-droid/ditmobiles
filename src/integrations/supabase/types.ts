@@ -552,6 +552,62 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_charges: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          is_paid: boolean
+          message: string
+          paid_at: string | null
+          paid_method: string
+          paid_notes: string
+          shop_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          is_paid?: boolean
+          message?: string
+          paid_at?: string | null
+          paid_method?: string
+          paid_notes?: string
+          shop_id: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          is_paid?: boolean
+          message?: string
+          paid_at?: string | null
+          paid_method?: string
+          paid_notes?: string
+          shop_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_charges_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_gst_profiles: {
         Row: {
           address: string

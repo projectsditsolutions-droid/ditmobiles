@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Crown, Store, Users, Wallet, BarChart3, CheckCircle2, XCircle, AlertTriangle,
-  Loader2, Pause, Play, Trash2, IndianRupee, Shield, Search,
+  Loader2, Pause, Play, Trash2, IndianRupee, Shield, Search, Plus, MessageSquare, Tag,
 } from 'lucide-react';
 import { getCurrentFY, getFYLabel } from '@/lib/financialYear';
 import {
@@ -22,6 +22,11 @@ interface Profile { id: string; email: string | null; full_name: string | null; 
 interface Membership { user_id: string; shop_id: string; role: string; }
 interface Payment { shop_id: string; fy_year: number; amount: number; paid_at: string; payment_method: string; }
 interface RoleRow { user_id: string; role: string; }
+interface ShopCharge {
+  id: string; shop_id: string; title: string; message: string; amount: number;
+  is_paid: boolean; paid_at: string | null; paid_method: string; paid_notes: string;
+  due_date: string | null; created_at: string;
+}
 
 const fmt = (n: number) => `₹${Number(n).toLocaleString('en-IN')}`;
 
@@ -34,6 +39,7 @@ export const SuperAdmin: React.FC = () => {
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [roles, setRoles] = useState<RoleRow[]>([]);
+  const [charges, setCharges] = useState<ShopCharge[]>([]);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -46,22 +52,31 @@ export const SuperAdmin: React.FC = () => {
   const [feeShop, setFeeShop] = useState<Shop | null>(null);
   const [feeAmount, setFeeAmount] = useState('');
 
+  // Custom charge dialog
+  const [chargeShop, setChargeShop] = useState<Shop | null>(null);
+  const [chargeTitle, setChargeTitle] = useState('');
+  const [chargeMessage, setChargeMessage] = useState('');
+  const [chargeAmt, setChargeAmt] = useState('');
+  const [chargeDue, setChargeDue] = useState('');
+
   const fy = getCurrentFY();
 
   const fetchAll = async () => {
     setLoading(true);
-    const [s, p, m, pay, r] = await Promise.all([
+    const [s, p, m, pay, r, c] = await Promise.all([
       supabase.from('shops').select('*').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
       supabase.from('shop_memberships').select('user_id, shop_id, role'),
       supabase.from('maintenance_payments').select('shop_id, fy_year, amount, paid_at, payment_method'),
       supabase.from('user_roles').select('user_id, role'),
+      supabase.from('shop_charges').select('*').order('created_at', { ascending: false }),
     ]);
     setShops((s.data as Shop[]) || []);
     setProfiles((p.data as Profile[]) || []);
     setMemberships((m.data as Membership[]) || []);
     setPayments((pay.data as Payment[]) || []);
     setRoles((r.data as RoleRow[]) || []);
+    setCharges((c.data as ShopCharge[]) || []);
     setLoading(false);
   };
 
@@ -75,6 +90,7 @@ export const SuperAdmin: React.FC = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_payments' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_memberships' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_charges' }, () => fetchAll())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line
@@ -184,6 +200,51 @@ export const SuperAdmin: React.FC = () => {
     }
     setBusy(null);
     toast.success('Role updated'); fetchAll();
+  };
+
+  // Custom shop charges
+  const openChargeDialog = (s: Shop) => {
+    setChargeShop(s);
+    setChargeTitle('');
+    setChargeMessage('');
+    setChargeAmt('');
+    setChargeDue('');
+  };
+  const saveCharge = async () => {
+    if (!chargeShop) return;
+    const amt = Number(chargeAmt);
+    if (!chargeTitle.trim()) { toast.error('Title required'); return; }
+    if (!amt || amt <= 0) { toast.error('Invalid amount'); return; }
+    setBusy(chargeShop.id + 'charge');
+    const { error } = await supabase.from('shop_charges').insert({
+      shop_id: chargeShop.id,
+      title: chargeTitle.trim(),
+      message: chargeMessage.trim(),
+      amount: amt,
+      due_date: chargeDue || null,
+      created_by: user?.id,
+    } as any);
+    setBusy(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Charge created — ${fmt(amt)}`);
+    setChargeShop(null);
+    fetchAll();
+  };
+  const markChargePaid = async (c: ShopCharge) => {
+    if (!confirm(`Mark "${c.title}" (${fmt(c.amount)}) as paid?`)) return;
+    setBusy(c.id + 'cpay');
+    const { error } = await supabase.from('shop_charges').update({
+      is_paid: true, paid_at: new Date().toISOString(), paid_method: 'manual',
+    } as any).eq('id', c.id);
+    setBusy(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Charge marked as paid'); fetchAll();
+  };
+  const deleteCharge = async (c: ShopCharge) => {
+    if (!confirm(`Delete charge "${c.title}"?`)) return;
+    const { error } = await supabase.from('shop_charges').delete().eq('id', c.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Charge deleted'); fetchAll();
   };
 
   if (loading) {
@@ -305,6 +366,9 @@ export const SuperAdmin: React.FC = () => {
                     <Button size="sm" variant="outline" onClick={() => openFeeDialog(s)} className="h-8 gap-1 text-xs">
                       <Wallet className="w-3.5 h-3.5" /> Fee
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => openChargeDialog(s)} className="h-8 gap-1 text-xs">
+                      <Plus className="w-3.5 h-3.5" /> Charge
+                    </Button>
                     {s.approval_status === 'approved' && (
                       <Button size="sm" variant="outline" onClick={() => toggleSuspend(s)} className="h-8 gap-1 text-xs">
                         {s.is_suspended ? <><Play className="w-3.5 h-3.5" /> Resume</> : <><Pause className="w-3.5 h-3.5" /> Suspend</>}
@@ -315,6 +379,43 @@ export const SuperAdmin: React.FC = () => {
                     </Button>
                   </div>
                 </div>
+                {/* Charges list for this shop */}
+                {(() => {
+                  const shopCharges = charges.filter(c => c.shop_id === s.id);
+                  if (shopCharges.length === 0) return null;
+                  return (
+                    <div className="mt-3 pt-3 border-t space-y-1.5">
+                      <p className="text-[10px] font-display uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <Tag className="w-3 h-3" /> Custom Charges ({shopCharges.length})
+                      </p>
+                      {shopCharges.map(c => (
+                        <div key={c.id} className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[11px] ${c.is_paid ? 'bg-success/5 border border-success/20' : 'bg-warning/5 border border-warning/20'}`}>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-display font-bold">{c.title}</span>
+                              <span className={`px-1.5 py-0 rounded-full text-[9px] font-bold uppercase ${c.is_paid ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>
+                                {c.is_paid ? 'Paid' : 'Pending'}
+                              </span>
+                              {c.due_date && !c.is_paid && (
+                                <span className="text-[9px] text-muted-foreground">Due {new Date(c.due_date).toLocaleDateString('en-IN')}</span>
+                              )}
+                            </div>
+                            {c.message && <p className="text-[10px] text-muted-foreground truncate">💬 {c.message}</p>}
+                          </div>
+                          <span className="font-display font-extrabold text-xs whitespace-nowrap">{fmt(c.amount)}</span>
+                          {!c.is_paid && (
+                            <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => markChargePaid(c)} disabled={busy === c.id + 'cpay'}>
+                              Mark Paid
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="h-6 px-1.5 text-destructive" onClick={() => deleteCharge(c)}>
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
@@ -480,6 +581,54 @@ export const SuperAdmin: React.FC = () => {
             <Button onClick={saveFee} disabled={!!busy}>
               {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Wallet className="w-4 h-4 mr-1" />}
               Save Fee
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Charge dialog */}
+      <Dialog open={!!chargeShop} onOpenChange={(o) => !o && setChargeShop(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Custom Charge — {chargeShop?.name}</DialogTitle>
+            <DialogDescription>One-time charge with custom message (e.g. setup fee, addon, penalty).</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Title *</label>
+              <input value={chargeTitle} onChange={e => setChargeTitle(e.target.value)} placeholder="e.g. Hardware Setup, Extra Training, Late Fee"
+                className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {['Hardware Setup', 'Training Fee', 'Custom Feature', 'Late Fee', 'Addon Service'].map(t => (
+                  <button key={t} type="button" onClick={() => setChargeTitle(t)}
+                    className="px-2 py-0.5 rounded-md border text-[10px] font-display hover:bg-accent">{t}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Custom Message (shown to shop)</label>
+              <textarea value={chargeMessage} onChange={e => setChargeMessage(e.target.value)} rows={3}
+                placeholder="Why is this charge applied? Detailed reason / instructions for the shop owner..."
+                className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Amount (₹) *</label>
+                <input type="number" value={chargeAmt} onChange={e => setChargeAmt(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+              <div>
+                <label className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">Due Date (optional)</label>
+                <input type="date" value={chargeDue} onChange={e => setChargeDue(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setChargeShop(null)}>Cancel</Button>
+            <Button onClick={saveCharge} disabled={!!busy}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+              Create Charge
             </Button>
           </DialogFooter>
         </DialogContent>
