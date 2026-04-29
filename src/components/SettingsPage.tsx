@@ -274,23 +274,46 @@ export const SettingsPage: React.FC = () => {
 
       // Check developer status — only developer can write protected shop fields
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      let isDev = false;
-      if (currentUser) {
-        const { data: roleRow } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', currentUser.id)
-          .eq('role', 'developer' as any)
-          .maybeSingle();
-        isDev = !!roleRow;
+      if (!currentUser) {
+        toast.error('Please sign in to restore backup');
+        setRestoreLoading(false);
+        return;
       }
+      let isDev = false;
+      const { data: roleRow } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', currentUser.id)
+        .eq('role', 'developer' as any)
+        .maybeSingle();
+      isDev = !!roleRow;
+
+      // Find which backup shops the current user already has access to
+      const backupShopIds: string[] = (backup.shops || []).map((s: any) => s.id);
+      const { data: existingShops } = await supabase
+        .from('shops')
+        .select('id, created_by')
+        .in('id', backupShopIds.length ? backupShopIds : ['00000000-0000-0000-0000-000000000000']);
+      const existingShopIds = new Set((existingShops || []).map((s: any) => s.id));
 
       // Strip fields that triggers will reject for non-developers
       const sanitizeShop = (row: any) => {
-        if (isDev) return row;
-        const { approval_status, is_suspended, yearly_fee, approved_by, approved_at, ...rest } = row;
-        return rest;
+        const base = { ...row };
+        // For NEW shops, remap created_by to current user (RLS requires auth.uid() = created_by on INSERT)
+        if (!existingShopIds.has(row.id)) {
+          base.created_by = currentUser.id;
+        }
+        if (isDev) return base;
+        delete base.approval_status;
+        delete base.is_suspended;
+        delete base.yearly_fee;
+        delete base.approved_by;
+        delete base.approved_at;
+        return base;
       };
+
+      // Remap invoice ownership to current user (so update RLS via user_id passes)
+      const sanitizeInvoice = (row: any) => ({ ...row, user_id: currentUser.id });
 
       // Restore order matters due to foreign key dependencies
       const tables: { key: string; table: string; transform?: (r: any) => any }[] = [
@@ -301,7 +324,7 @@ export const SettingsPage: React.FC = () => {
         { key: 'dealers', table: 'dealers' },
         { key: 'customers', table: 'customers' },
         { key: 'imei_records', table: 'imei_records' },
-        { key: 'invoices', table: 'invoices' },
+        { key: 'invoices', table: 'invoices', transform: sanitizeInvoice },
         { key: 'invoice_items', table: 'invoice_items' },
         { key: 'dealer_transactions', table: 'dealer_transactions' },
       ];
