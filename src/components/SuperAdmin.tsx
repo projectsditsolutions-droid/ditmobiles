@@ -55,6 +55,19 @@ export const SuperAdmin: React.FC = () => {
 
   useEffect(() => { fetchAll(); /* eslint-disable-next-line */ }, []);
 
+  // Realtime: keep super admin dashboard live
+  useEffect(() => {
+    const channel = supabase
+      .channel('superadmin-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shops' }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_payments' }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_memberships' }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => fetchAll())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line
+  }, []);
+
   const profileById = useMemo(() => Object.fromEntries(profiles.map(p => [p.id, p])), [profiles]);
   const paidShopFY = useMemo(() => new Set(payments.filter(p => p.fy_year === fy).map(p => p.shop_id)), [payments, fy]);
 
@@ -113,7 +126,17 @@ export const SuperAdmin: React.FC = () => {
     if (!v) return;
     const amt = Number(v);
     if (!amt || amt <= 0) { toast.error('Invalid amount'); return; }
-    updateShop(s.id, { yearly_fee: amt } as any, 'Fee updated');
+    setBusy(s.id + 'Fee updated');
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      supabase.from('shops').update({ yearly_fee: amt } as any).eq('id', s.id),
+      // Mirror to shop_settings so legacy maintenance views stay in sync
+      supabase.from('shop_settings').update({ yearly_maintenance_charge: amt }).eq('shop_id', s.id),
+    ]);
+    setBusy(null);
+    const error = e1 || e2;
+    if (error) { toast.error(error.message); return; }
+    toast.success('Fee updated');
+    fetchAll();
   };
   const markPaid = async (s: Shop) => {
     if (!confirm(`Mark "${s.name}" as paid for ${getFYLabel(fy)} (${fmt(s.yearly_fee)})?`)) return;
